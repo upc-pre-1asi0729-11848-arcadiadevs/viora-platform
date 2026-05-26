@@ -65,6 +65,22 @@
             <artifactId>spring-boot-starter-webmvc-test</artifactId>
             <scope>test</scope>
         </dependency>
+
+        <!-- Source: https://mvnrepository.com/artifact/org.springdoc/springdoc-openapi-starter-webmvc-ui -->
+        <dependency>
+            <groupId>org.springdoc</groupId>
+            <artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
+            <version>3.0.3</version>
+            <scope>compile</scope>
+        </dependency>
+
+        <!-- Source: https://mvnrepository.com/artifact/org.webjars.npm/pluralize -->
+        <dependency>
+            <groupId>org.webjars.npm</groupId>
+            <artifactId>pluralize</artifactId>
+            <version>8.0.0</version>
+            <scope>compile</scope>
+        </dependency>
     </dependencies>
 
     <build>
