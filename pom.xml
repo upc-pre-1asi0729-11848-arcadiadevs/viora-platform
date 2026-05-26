@@ -39,6 +39,14 @@
             <artifactId>spring-boot-starter-webmvc</artifactId>
         </dependency>
 
+        <!-- Source: https://mvnrepository.com/artifact/org.webjars.npm/pluralize -->
+        <dependency>
+            <groupId>org.webjars.npm</groupId>
+            <artifactId>pluralize</artifactId>
+            <version>8.0.0</version>
+            <scope>compile</scope>
+        </dependency>
+
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-devtools</artifactId>
