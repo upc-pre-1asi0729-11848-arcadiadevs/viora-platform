@@ -48,5 +48,26 @@ public class SnakeCasePhysicalNamingStrategy implements PhysicalNamingStrategy{
         return this.toSnakeCase(this.toPlural(identifier));
     }
 
+    @Override
+    public Identifier toPhysicalColumnName(Identifier identifier, JdbcEnvironment jdbcEnvironment) {
+        return this.toSnakeCase(identifier);
+    }
+
+
+    private Identifier toSnakeCase(final Identifier identifier) {
+        if (identifier == null) return null;
+
+        final String regex = "([a-z])([A-Z])";
+        final String replacement = "$1_$2";
+        final String newName = identifier.getText()
+                .replaceAll(regex, replacement)
+                .toLowerCase();
+        return Identifier.toIdentifier(newName);
+    }
+
+    private Identifier toPlural(final Identifier identifier) {
+        final String newName = pluralize(identifier.getText());
+        return Identifier.toIdentifier(newName);
+    }
 
 }
