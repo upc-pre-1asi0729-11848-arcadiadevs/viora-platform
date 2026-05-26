@@ -74,13 +74,13 @@
             <scope>compile</scope>
         </dependency>
 
-        <!-- Source: https://mvnrepository.com/artifact/org.webjars.npm/pluralize -->
+        <!-- https://mvnrepository.com/artifact/io.github.encryptorcode/pluralize -->
         <dependency>
-            <groupId>org.webjars.npm</groupId>
+            <groupId>io.github.encryptorcode</groupId>
             <artifactId>pluralize</artifactId>
-            <version>8.0.0</version>
-            <scope>compile</scope>
+            <version>1.0.0</version>
         </dependency>
+
     </dependencies>
 
     <build>
