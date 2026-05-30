@@ -47,6 +47,16 @@ public class SnakeCasePhysicalNamingStrategy implements PhysicalNamingStrategy{
     public Identifier toPhysicalTableName(Identifier identifier, JdbcEnvironment jdbcEnvironment) {
         return this.toSnakeCase(this.toPlural(identifier));
     }
+    /**
+     * Converts the Sequence Name to Snake Case
+     * @param identifier sequence name
+     * @param jdbcEnvironment jdbc environment
+     * @return Snake Case Sequence Name
+     */
+    @Override
+    public Identifier toPhysicalSequenceName(Identifier identifier, JdbcEnvironment jdbcEnvironment) {
+        return this.toSnakeCase(identifier);
+    }
 
     @Override
     public Identifier toPhysicalColumnName(Identifier identifier, JdbcEnvironment jdbcEnvironment) {
