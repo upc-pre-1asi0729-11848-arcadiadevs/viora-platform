@@ -1,113 +1,128 @@
 package com.arcadiadevs.viora.platform.shared.application.result;
 
+import org.jspecify.annotations.NullMarked;
+
 import java.util.Optional;
 import java.util.function.Function;
 
 /**
- * Generic application-layer outcome wrapper.
- * @param <T> success value type
- * @param <E> failure value type
+ * Represents the result of a command or operation that can either succeed with a value or fail with an error.
+ * This type encodes the possibility of failure in the type system, making error cases explicit and composable.
+ *
+ * @param <T> The type of the successful result value
+ * @param <E> The type of the error/failure information
  */
-public sealed interface Result<T, E> permits Result.Success, Result.Failure {
+@NullMarked
+public sealed interface Result<T, E> {
 
     /**
-     * Creates a successful result.
-     * @param value success value
-     * @return success result
-     * @param <T> success value type
-     * @param <E> failure value type
+     * Represents a successful result containing a value.
+     */
+    record Success<T, E>(T value) implements Result<T, E> {
+    }
+
+    /**
+     * Represents a failed result containing error information.
+     */
+    record Failure<T, E>(E error) implements Result<T, E> {
+    }
+
+    /**
+     * Creates a successful result with the given value.
+     *
+     * @param value the success value
+     * @param <T>   the type of the value
+     * @param <E>   the type of the error
+     * @return a Success result
      */
     static <T, E> Result<T, E> success(T value) {
         return new Success<>(value);
     }
 
     /**
-     * Creates a failed result.
+     * Creates a failed result with the given error.
      *
-     * @param error failure value
-     * @param <T> success value type
-     * @param <E> failure value type
-     * @return failure result
+     * @param error the error information
+     * @param <T>   the type of the value
+     * @param <E>   the type of the error
+     * @return a Failure result
      */
     static <T, E> Result<T, E> failure(E error) {
         return new Failure<>(error);
     }
 
     /**
-     * @return {@code true} when this result is successful
+     * Returns true if this result is a success, false if it's a failure.
      */
-     default boolean isSuccess() {
-        return this instanceof Success<?, ?>;
+    default boolean isSuccess() {
+        return this instanceof Success;
     }
 
     /**
-     * @return {@code true} when this result is failed
+     * Returns true if this result is a failure, false if it's a success.
      */
-     default boolean isFailure() {
-        return this instanceof Failure<?, ?>;
+    default boolean isFailure() {
+        return this instanceof Failure;
     }
 
     /**
-     *
-     * @return success value when present
+     * Returns an Optional containing the value if this is a success, otherwise an empty Optional.
      */
-     default Optional<T> success() {
-        if (this instanceof Success<?, ?> success) {
-            @SuppressWarnings("unchecked")
-            T value = ((Success<T, E>) success).value();
-            return Optional.of(value);
-        }
-        return Optional.empty();
+    default Optional<T> toOptional() {
+        return switch (this) {
+            case Success<T, E> s -> Optional.of(s.value);
+            case Failure<T, E> f -> Optional.empty();
+        };
     }
 
     /**
-     *
-     * @return failure value when present
+     * Extracts the value if successful, or returns the given default if failed.
      */
-    default Optional<E> failure() {
-        if (this instanceof Failure<?, ?> failure) {
-            @SuppressWarnings("unchecked")
-            E error = ((Failure<T, E>) failure).error();
-            return Optional.of(error);
-        }
-        return Optional.empty();
+    default T getOrElse(T defaultValue) {
+        return switch (this) {
+            case Success<T, E> s -> s.value;
+            case Failure<T, E> f -> defaultValue;
+        };
     }
 
     /**
-     * Folds this result into a single value.
-     *
-     * @param onSuccess mapper for a successful value
-     * @param onFailure mapper for a failure value
-     * @param <R> folded return type
-     * @return folded value
+     * Applies a function to the error if this is a failure, otherwise returns this unchanged.
      */
-     default <R> R fold(Function<? super T, ? extends R> onSuccess, Function<? super E, ? extends R> onFailure) {
-        if (this instanceof Success<?, ?> success) {
-            @SuppressWarnings("unchecked")
-            T value = ((Success<T, E>) success).value();
-            return onSuccess.apply(value);
-        } else if (this instanceof Failure<?, ?> failure) {
-            @SuppressWarnings("unchecked")
-            E error = ((Failure<T, E>) failure).error();
-            return onFailure.apply(error);
-        }
-        throw new IllegalStateException("Invalid Result state");
+    default <E2> Result<T, E2> mapError(Function<E, E2> f) {
+        return switch (this) {
+            case Success<T, E> s -> Result.success(s.value);
+            case Failure<T, E> failure -> Result.failure(f.apply(failure.error));
+        };
     }
 
     /**
-     * Success result implementation.
-     * @param value success value
-     * @param <T> success value type
-     * @param <E> failure value type
+     * Applies a function to the value if this is a success, producing a new Result.
      */
-    record Success<T, E>(T value) implements Result<T, E> {}
-
+    default <T2> Result<T2, E> flatMap(Function<T, Result<T2, E>> f) {
+        return switch (this) {
+            case Success<T, E> s -> f.apply(s.value);
+            case Failure<T, E> failure -> Result.failure(failure.error);
+        };
+    }
 
     /**
-     * Failure result implementation.
-     * @param error failure value
-     * @param <T> success value type
-     * @param <E> failure value type
+     * Applies a function to the value if this is a success.
      */
-    record Failure<T, E>(E error) implements Result<T, E> {}
+    default <T2> Result<T2, E> map(Function<T, T2> f) {
+        return switch (this) {
+            case Success<T, E> s -> Result.success(f.apply(s.value));
+            case Failure<T, E> failure -> Result.failure(failure.error);
+        };
+    }
+
+    /**
+     * Applies a function to the error if this is a failure.
+     * Unlike mapError, this takes a Result, allowing fallback recovery.
+     */
+    default Result<T, E> recover(Function<E, Result<T, E>> f) {
+        return switch (this) {
+            case Success<T, E> s -> this;
+            case Failure<T, E> failure -> f.apply(failure.error);
+        };
+    }
 }
