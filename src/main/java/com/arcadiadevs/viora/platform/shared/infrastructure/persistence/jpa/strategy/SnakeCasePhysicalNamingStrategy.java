@@ -47,6 +47,7 @@ public class SnakeCasePhysicalNamingStrategy implements PhysicalNamingStrategy{
     public Identifier toPhysicalTableName(Identifier identifier, JdbcEnvironment jdbcEnvironment) {
         return this.toSnakeCase(this.toPlural(identifier));
     }
+    
     /**
      * Converts the Sequence Name to Snake Case
      * @param identifier sequence name
@@ -58,12 +59,22 @@ public class SnakeCasePhysicalNamingStrategy implements PhysicalNamingStrategy{
         return this.toSnakeCase(identifier);
     }
 
+    /**
+     * Converts the Column Name to Snake Case
+     * @param identifier column name
+     * @param jdbcEnvironment jdbc environment
+     * @return Snake Case Column Name
+     */
     @Override
     public Identifier toPhysicalColumnName(Identifier identifier, JdbcEnvironment jdbcEnvironment) {
         return this.toSnakeCase(identifier);
     }
 
-
+    /**
+     * Converts the Identifier to Snake Case
+     * @param identifier object identifier
+     * @return Snake Case Identifier
+     */
     private Identifier toSnakeCase(final Identifier identifier) {
         if (identifier == null) return null;
 
@@ -75,6 +86,11 @@ public class SnakeCasePhysicalNamingStrategy implements PhysicalNamingStrategy{
         return Identifier.toIdentifier(newName);
     }
 
+    /**
+     * Pluralizes the Identifier
+     * @param identifier object identifier
+     * @return Pluralized Identifier
+     */
     private Identifier toPlural(final Identifier identifier) {
         final String newName = pluralize(identifier.getText());
         return Identifier.toIdentifier(newName);
