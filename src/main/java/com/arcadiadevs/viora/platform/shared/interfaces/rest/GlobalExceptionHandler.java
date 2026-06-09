@@ -2,10 +2,17 @@ package com.arcadiadevs.viora.platform.shared.interfaces.rest;
 
 import com.arcadiadevs.viora.platform.shared.application.result.ApplicationError;
 import com.arcadiadevs.viora.platform.shared.interfaces.rest.transform.ErrorResponseAssembler;
+import jakarta.validation.ConstraintViolationException;
+import lombok.extern.slf4j.Slf4j;
 import org.jspecify.annotations.NullMarked;
 import org.springframework.context.i18n.LocaleContextHolder;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.method.annotation.HandlerMethodValidationException;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
@@ -21,6 +28,7 @@ import java.util.ResourceBundle;
  */
 @RestControllerAdvice
 @NullMarked
+@Slf4j
 public class GlobalExceptionHandler {
     private static final String MESSAGES_BASENAME = "messages";
 
@@ -51,6 +59,46 @@ public class GlobalExceptionHandler {
     }
 
     /**
+     * Handles malformed JSON, invalid parameter types and missing parameters.
+     *
+     * @param ex The request binding exception.
+     * @return A standardized bad request response.
+     */
+    @ExceptionHandler({
+            HttpMessageNotReadableException.class,
+            MissingServletRequestParameterException.class,
+            MethodArgumentTypeMismatchException.class,
+            HandlerMethodValidationException.class,
+            ConstraintViolationException.class
+    })
+    public ResponseEntity<?> handleRequestBindingException(Exception ex) {
+        var applicationError = ApplicationError.validationError(
+                "request",
+                resolveMessageOrDefault("validation.request.failed", "Request validation failed")
+        );
+        return ErrorResponseAssembler.toErrorResponseFromApplicationError(applicationError);
+    }
+
+    /**
+     * Handles persistence conflicts such as unique constraint violations.
+     *
+     * @param ex The persistence exception.
+     * @return A standardized conflict response.
+     */
+    @ExceptionHandler(DataIntegrityViolationException.class)
+    public ResponseEntity<?> handleDataIntegrityViolation(DataIntegrityViolationException ex) {
+        log.warn("Persistence constraint violation", ex);
+        var applicationError = ApplicationError.conflict(
+                "resource",
+                resolveMessageOrDefault(
+                        "error.persistence-conflict.details",
+                        "The requested operation conflicts with existing data."
+                )
+        );
+        return ErrorResponseAssembler.toErrorResponseFromApplicationError(applicationError);
+    }
+
+    /**
      * Handles invalid request arguments such as malformed UUID path or payload values.
      *
      * @param ex the illegal argument exception
@@ -74,9 +122,13 @@ public class GlobalExceptionHandler {
      */
     @ExceptionHandler(RuntimeException.class)
     public ResponseEntity<?> handleRuntimeException(RuntimeException ex) {
+        log.error("Unhandled runtime exception", ex);
         var applicationError = ApplicationError.unexpected(
                 resolveMessageOrDefault("error.unexpected.context", "global-exception-handler"),
-                ex.getMessage() != null ? ex.getMessage() : "An unexpected error occurred"
+                resolveMessageOrDefault(
+                        "error.unexpected.details",
+                        "An unexpected error occurred."
+                )
         );
         return ErrorResponseAssembler.toErrorResponseFromApplicationError(applicationError);
     }
@@ -90,9 +142,13 @@ public class GlobalExceptionHandler {
      */
     @ExceptionHandler(Exception.class)
     public ResponseEntity<?> handleException(Exception ex) {
+        log.error("Unhandled exception", ex);
         var applicationError = ApplicationError.unexpected(
                 resolveMessageOrDefault("error.unexpected.context", "global-exception-handler"),
-                ex.getMessage() != null ? ex.getMessage() : "An unexpected error occurred"
+                resolveMessageOrDefault(
+                        "error.unexpected.details",
+                        "An unexpected error occurred."
+                )
         );
         return ErrorResponseAssembler.toErrorResponseFromApplicationError(applicationError);
     }

@@ -66,13 +66,30 @@ public sealed interface Result<T, E> {
     }
 
     /**
+     * Returns the success value when present.
+     */
+    default Optional<T> success() {
+        return switch (this) {
+            case Success<T, E> success -> Optional.of(success.value);
+            case Failure<T, E> failure -> Optional.empty();
+        };
+    }
+
+    /**
+     * Returns the failure value when present.
+     */
+    default Optional<E> failure() {
+        return switch (this) {
+            case Success<T, E> success -> Optional.empty();
+            case Failure<T, E> failure -> Optional.of(failure.error);
+        };
+    }
+
+    /**
      * Returns an Optional containing the value if this is a success, otherwise an empty Optional.
      */
     default Optional<T> toOptional() {
-        return switch (this) {
-            case Success<T, E> s -> Optional.of(s.value);
-            case Failure<T, E> f -> Optional.empty();
-        };
+        return success();
     }
 
     /**
@@ -112,6 +129,19 @@ public sealed interface Result<T, E> {
         return switch (this) {
             case Success<T, E> s -> Result.success(f.apply(s.value));
             case Failure<T, E> failure -> Result.failure(failure.error);
+        };
+    }
+
+    /**
+     * Transforms either branch into a single result type.
+     */
+    default <R> R fold(
+            Function<T, R> onSuccess,
+            Function<E, R> onFailure
+    ) {
+        return switch (this) {
+            case Success<T, E> success -> onSuccess.apply(success.value);
+            case Failure<T, E> failure -> onFailure.apply(failure.error);
         };
     }
 
