@@ -1,7 +1,7 @@
 package com.arcadiadevs.viora.platform.agronomic.domain.model.aggregates;
 
+import com.arcadiadevs.viora.platform.agronomic.domain.model.events.IoTDeviceUpdated;
 import com.arcadiadevs.viora.platform.agronomic.domain.model.valueobjects.DeviceName;
-import com.arcadiadevs.viora.platform.agronomic.domain.model.valueobjects.IoTDeviceId;
 import com.arcadiadevs.viora.platform.agronomic.domain.model.valueobjects.IoTDeviceStatus;
 import com.arcadiadevs.viora.platform.agronomic.domain.model.valueobjects.PlotId;
 import com.arcadiadevs.viora.platform.shared.domain.model.aggregates.AbstractDomainAggregateRoot;
@@ -59,5 +59,18 @@ public class IoTDevice extends AbstractDomainAggregateRoot<IoTDevice> {
         this.plotId = plotId.value();
         this.deviceName = deviceName.value();
         this.status = status;
+    }
+
+    /**
+     * Updates the device name and status, and registers an IoTDeviceUpdated domain event.
+     *
+     * @param newName  the new device name
+     * @param newStatus the new operational status
+     */
+    public void update(DeviceName newName, IoTDeviceStatus newStatus) {
+        IoTDeviceStatus oldStatus = this.status;
+        this.deviceName = newName.value();
+        this.status = newStatus;
+        registerDomainEvent(new IoTDeviceUpdated(this.id, this.plotId, oldStatus, newStatus));
     }
 }
