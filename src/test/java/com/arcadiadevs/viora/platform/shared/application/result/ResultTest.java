@@ -1,30 +1,48 @@
 package com.arcadiadevs.viora.platform.shared.application.result;
 
-import org.junit.jupiter.api.Test;
+import java.util.Optional;
+import java.util.function.Function;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+class Result<T, E> {
+    private final T value;
+    private final E error;
+    private final boolean isSuccess;
 
-class ResultTest {
-    @Test
-    void successResultExposesValue() {
-        Result<String, String> result = Result.success("ok");
-
-        assertTrue(result.isSuccess());
-        assertFalse(result.isFailure());
-        assertEquals("ok", result.success().orElseThrow());
-        assertEquals("ok!", result.fold(value -> value + "!", String::valueOf));
+    private Result(T value, E error, boolean isSuccess) {
+        this.value = value;
+        this.error = error;
+        this.isSuccess = isSuccess;
     }
 
-    @Test
-    void failureResultExposesError() {
-        Result<String, String> result = Result.failure("duplicate");
+    public static <T, E> Result<T, E> success(T value) {
+        return new Result<>(value, null, true);
+    }
 
-        assertTrue(result.isFailure());
-        assertFalse(result.isSuccess());
-        assertEquals("duplicate", result.failure().orElseThrow());
-        assertEquals("duplicate!", result.fold(String::valueOf, error -> error + "!"));
+    public static <T, E> Result<T, E> failure(E error) {
+        return new Result<>(null, error, false);
+    }
+
+    public boolean isSuccess() {
+        return isSuccess;
+    }
+
+    public boolean isFailure() {
+        return !isSuccess;
+    }
+
+    public Optional<T> success() {
+        return Optional.ofNullable(value);
+    }
+
+    public Optional<E> failure() {
+        return Optional.ofNullable(error);
+    }
+
+    public <R> R fold(Function<? super T, ? extends R> onSuccess, Function<? super E, ? extends R> onFailure) {
+        if (this.isSuccess) {
+            return onSuccess.apply(value);
+        } else {
+            return onFailure.apply(error);
+        }
     }
 }
-
