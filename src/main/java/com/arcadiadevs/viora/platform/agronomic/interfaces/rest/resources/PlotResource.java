@@ -18,7 +18,7 @@ import java.util.List;
  * @param areaSizeHectares The plot area size in hectares.
  * @param cropType The crop type.
  * @param variety The crop variety.
- * @param active Indicates whether the plot is active.
+ * @param state The plot activity state. Expected values: "enable" or "disable".
  */
 public record PlotResource(
         Long id,
@@ -28,6 +28,6 @@ public record PlotResource(
         BigDecimal areaSizeHectares,
         String cropType,
         String variety,
-        Boolean active
+        String state
 ) {
 }

@@ -32,7 +32,7 @@ public final class PlotResourceFromPlotAssembler {
                 plot.getAreaSize().getHectares(),
                 plot.getCropType(),
                 plot.getVariety(),
-                plot.getActive()
+                mapActivityState(plot.getActive())
         );
     }
 
@@ -47,4 +47,9 @@ public final class PlotResourceFromPlotAssembler {
                 .map(point -> List.of(point.getLatitude(), point.getLongitude()))
                 .toList();
     }
+
+    private static String mapActivityState(Boolean active) {
+        return Boolean.TRUE.equals(active) ? "enable" : "disable";
+    }
 }
+
