@@ -1,5 +1,6 @@
 package com.arcadiadevs.viora.platform.agronomic.interfaces.rest;
 
+import com.arcadiadevs.viora.platform.agronomic.application.commands.DeleteIoTDeviceCommand;
 import com.arcadiadevs.viora.platform.agronomic.application.commandservices.IoTDeviceCommandService;
 import com.arcadiadevs.viora.platform.agronomic.application.queryservices.IoTDeviceQueryService;
 import com.arcadiadevs.viora.platform.agronomic.domain.model.queries.GetIoTDevicesByPlotIdQuery;
@@ -157,5 +158,42 @@ public class IoTDevicesController {
                 IoTDeviceResourceFromIoTDeviceAssembler::toResourceFromEntity,
                 HttpStatus.OK
         );
+    }
+
+    /**
+     * DELETE /api/v1/plots/{plotId}/iot-devices/{deviceId}
+     * <p>
+     * Deletes an IoT device from the specified plot.
+     *
+     * @param plotId   the plot identifier (path variable)
+     * @param deviceId the device identifier (path variable)
+     * @param userId   the authenticated user identifier (query parameter)
+     * @return 204 No Content on success, or 403/404 on error
+     */
+    @DeleteMapping("/{deviceId}")
+    @Operation(summary = "Delete an IoT device",
+            description = "Removes an IoT device from a plot. Requires plot ownership.")
+    @ApiResponses({
+            @ApiResponse(responseCode = "204", description = "Device deleted successfully"),
+            @ApiResponse(responseCode = "403", description = "Authenticated user does not own the plot"),
+            @ApiResponse(responseCode = "404", description = "Plot or device not found")
+    })
+    public ResponseEntity<?> deleteIoTDevice(
+            @Parameter(description = "Plot identifier", required = true)
+            @PathVariable Long plotId,
+            @Parameter(description = "Device identifier", required = true)
+            @PathVariable Long deviceId,
+            @Parameter(description = "Authenticated user identifier", required = true)
+            @RequestParam Long userId) {
+
+        var command = new DeleteIoTDeviceCommand(plotId, deviceId, userId);
+        var result = ioTDeviceCommandService.handle(command);
+
+        if (result.isSuccess()) {
+            return ResponseEntity.noContent().build();
+        }
+
+        return ErrorResponseAssembler.toErrorResponseFromApplicationError(
+                result.failure().orElseThrow().error());
     }
 }
