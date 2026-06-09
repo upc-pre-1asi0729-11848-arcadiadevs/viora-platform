@@ -121,8 +121,8 @@ public class Plot extends AbstractDomainAggregateRoot<Plot> {
      * Deactivates the plot.
      *
      * <p>
-     * This method is useful when the system needs logical deletion
-     * instead of physical deletion.
+     *     This method is useful when the system needs logical deletion
+     *     instead of physical deletion.
      * </p>
      *
      * @return The deactivated plot.
