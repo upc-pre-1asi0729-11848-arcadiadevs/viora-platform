@@ -1,11 +1,16 @@
 package com.arcadiadevs.viora.platform.agronomic.domain.model.valueobjects;
 
+import lombok.EqualsAndHashCode;
+import lombok.Getter;
+
 /**
  * PlotName value object.
  * <p>
  *     Represents the bussines name assigned by the grower to a plot
  * </p>
  */
+@Getter
+@EqualsAndHashCode
 public class PlotName {
     /**
      * The plot name.

@@ -1,12 +1,13 @@
 package com.arcadiadevs.viora.platform.shared.application.result;
 
 import org.jspecify.annotations.NullMarked;
+import org.jspecify.annotations.Nullable;
 
 @NullMarked
 public record ApplicationError(
         String code,
         String message,
-        String details) {
+        @Nullable String details) {
 
     /**
      * Creates an ApplicationError with code and message only.
