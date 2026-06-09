@@ -10,14 +10,9 @@ import org.springframework.stereotype.Service;
  * Application service contract for commands over the IoTDevice aggregate.
  */
 @Service
-public interface IoTDeviceCommandService {
+public class IoTDeviceCommandService {
 
-    /**
-     * Handles IoT device creation.
-     *
-     * @param command command containing plot id, user id, device name and status
-     * @return the created IoTDevice aggregate or an application error
-     * @see CreateIoTDeviceCommand
-     */
-    Result<IoTDevice, ApplicationError> handle(CreateIoTDeviceCommand command);
+    public Result<IoTDevice, ApplicationError> handle(CreateIoTDeviceCommand command) {
+        return null;
+    }
 }
