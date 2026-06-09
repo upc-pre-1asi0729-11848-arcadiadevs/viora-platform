@@ -1,24 +1,181 @@
 package com.arcadiadevs.viora.platform.agronomic.infrastructure.persistence.jpa.adapters;
 
+import com.arcadiadevs.viora.platform.agronomic.domain.model.aggregates.Plot;
+import com.arcadiadevs.viora.platform.agronomic.domain.model.valueobjects.PlotId;
+import com.arcadiadevs.viora.platform.agronomic.domain.model.valueobjects.PlotName;
+import com.arcadiadevs.viora.platform.agronomic.domain.model.valueobjects.UserId;
 import com.arcadiadevs.viora.platform.agronomic.domain.repositories.PlotRepository;
+import com.arcadiadevs.viora.platform.agronomic.infrastructure.persistence.jpa.assemblers.PlotFromPlotPersistenceEntityAssembler;
+import com.arcadiadevs.viora.platform.agronomic.infrastructure.persistence.jpa.assemblers.PlotPersistenceEntityFromPlotAssembler;
 import com.arcadiadevs.viora.platform.agronomic.infrastructure.persistence.jpa.repositories.SpringDataPlotRepository;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Repository;
 
+import java.util.List;
+import java.util.Optional;
+
 /**
- * JPA adapter that bridges the domain PlotRepository contract
- * and the Spring Data persistence layer.
+ * JPA implementation of the PlotRepository domain port.
+ *
+ * <p>
+ *     This adapter connects the agronomic domain with Spring Data JPA persistence.
+ * </p>
  */
 @Repository
+@RequiredArgsConstructor
 public class JpaPlotRepositoryAdapter implements PlotRepository {
 
-    private final SpringDataPlotRepository springRepo;
+    /**
+     * Spring Data JPA repository.
+     */
+    private final SpringDataPlotRepository springDataPlotRepository;
 
-    public JpaPlotRepositoryAdapter(SpringDataPlotRepository springRepo) {
-        this.springRepo = springRepo;
+    /**
+     * Finds a plot by ID.
+     *
+     * @param id The plot ID.
+     * @return The plot if found.
+     */
+    @Override
+    public Optional<Plot> findById(PlotId id) {
+        return springDataPlotRepository.findById(id.getValue())
+                .map(PlotFromPlotPersistenceEntityAssembler::toAggregateFromEntity);
     }
 
+    /**
+     * Finds all plots.
+     *
+     * @return The list of plots.
+     */
     @Override
-    public boolean existsByIdAndOwnerUserId(Long plotId, Long userId) {
-        return springRepo.existsByIdAndOwnerUserId(plotId, userId);
+    public List<Plot> findAll() {
+        return springDataPlotRepository.findAll()
+                .stream()
+                .map(PlotFromPlotPersistenceEntityAssembler::toAggregateFromEntity)
+                .toList();
+    }
+
+    /**
+     * Finds all active plots owned by a user.
+     *
+     * @param userId The owner user ID.
+     * @return The list of active plots.
+     */
+    @Override
+    public List<Plot> findByUserId(UserId userId) {
+        return springDataPlotRepository.findByUserIdAndActiveTrue(userId.getValue())
+                .stream()
+                .map(PlotFromPlotPersistenceEntityAssembler::toAggregateFromEntity)
+                .toList();
+    }
+
+    /**
+     * Finds a plot by name and owner user ID.
+     *
+     * @param name The plot name.
+     * @param userId The owner user ID.
+     * @return The plot if found.
+     */
+    @Override
+    public Optional<Plot> findByNameAndUserId(PlotName name, UserId userId) {
+        return springDataPlotRepository.findByNameAndUserId(name.getValue(), userId.getValue())
+                .map(PlotFromPlotPersistenceEntityAssembler::toAggregateFromEntity);
+    }
+
+    /**
+     * Saves a plot.
+     *
+     * @param plot The plot to save.
+     * @return The saved plot.
+     */
+    @Override
+    public Plot save(Plot plot) {
+        var entity = plot.getId() == null
+                ? PlotPersistenceEntityFromPlotAssembler.toEntityFromAggregate(plot)
+                : springDataPlotRepository.findById(plot.getId().getValue())
+                .map(existingEntity ->
+                        PlotPersistenceEntityFromPlotAssembler.updateEntityFromAggregate(
+                                plot,
+                                existingEntity
+                        ))
+                .orElseGet(() -> PlotPersistenceEntityFromPlotAssembler.toEntityFromAggregate(plot));
+
+        var savedEntity = springDataPlotRepository.save(entity);
+        return PlotFromPlotPersistenceEntityAssembler.toAggregateFromEntity(savedEntity);
+    }
+
+    /**
+     * Checks whether a plot exists by ID.
+     *
+     * @param id The plot ID.
+     * @return true if the plot exists.
+     */
+    @Override
+    public boolean existsById(PlotId id) {
+        return springDataPlotRepository.existsById(id.getValue());
+    }
+
+    /**
+     * Checks whether a plot name exists for a user.
+     *
+     * @param name The plot name.
+     * @param userId The owner user ID.
+     * @return true if the plot name exists.
+     */
+    @Override
+    public boolean existsByNameAndUserId(PlotName name, UserId userId) {
+        return springDataPlotRepository.existsByNameAndUserId(
+                name.getValue(),
+                userId.getValue()
+        );
+    }
+
+    /**
+     * Checks whether another plot with the same name exists for the user.
+     *
+     * @param name The plot name.
+     * @param userId The owner user ID.
+     * @param id The plot ID to exclude.
+     * @return true if another plot with the same name exists.
+     */
+    @Override
+    public boolean existsByNameAndUserIdAndIdIsNot(
+            PlotName name,
+            UserId userId,
+            PlotId id
+    ) {
+        return springDataPlotRepository.existsByNameAndUserIdAndIdIsNot(
+                name.getValue(),
+                userId.getValue(),
+                id.getValue()
+        );
+    }
+
+    /**
+     * Checks whether the plot has related operational records.
+     *
+     * <p>
+     * Temporary implementation for Sprint 3. When monitoring summaries,
+     * IoT devices, nutrition plans, alerts or interventions are implemented,
+     * this method should validate those dependencies.
+     * </p>
+     *
+     * @param id The plot ID.
+     * @return true until all cross-context dependencies can be checked.
+     */
+    @Override
+    public boolean hasRelatedOperationalRecords(PlotId id) {
+        // Fail safe: preserve the aggregate until all dependent contexts are integrated.
+        return true;
+    }
+
+    /**
+     * Deletes a plot by ID.
+     *
+     * @param id The plot ID.
+     */
+    @Override
+    public void deleteById(PlotId id) {
+        springDataPlotRepository.deleteById(id.getValue());
     }
 }

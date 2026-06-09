@@ -4,6 +4,8 @@ import org.hibernate.boot.model.naming.Identifier;
 import org.hibernate.boot.model.naming.PhysicalNamingStrategy;
 import org.hibernate.engine.jdbc.env.spi.JdbcEnvironment;
 
+import java.util.Locale;
+
 import static io.github.encryptorcode.pluralize.Pluralize.pluralize;
 
 /**
@@ -13,7 +15,7 @@ import static io.github.encryptorcode.pluralize.Pluralize.pluralize;
  * @since 1.0
  * @see org.hibernate.boot.model.naming.PhysicalNamingStrategy
  */
-public class SnakeCasePhysicalNamingStrategy implements PhysicalNamingStrategy{
+public class SnakeCasePhysicalNamingStrategy implements PhysicalNamingStrategy {
 
     /**
      * Converts the Catalog Name to Snake Case
@@ -76,13 +78,15 @@ public class SnakeCasePhysicalNamingStrategy implements PhysicalNamingStrategy{
      * @return Snake Case Identifier
      */
     private Identifier toSnakeCase(final Identifier identifier) {
-        if (identifier == null) return null;
+        if (identifier == null) {
+            return null;
+        }
 
         final String regex = "([a-z])([A-Z])";
         final String replacement = "$1_$2";
         final String newName = identifier.getText()
                 .replaceAll(regex, replacement)
-                .toLowerCase();
+                .toLowerCase(Locale.ROOT);
         return Identifier.toIdentifier(newName);
     }
 

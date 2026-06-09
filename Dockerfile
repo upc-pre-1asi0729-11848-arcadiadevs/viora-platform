@@ -42,10 +42,8 @@ ENTRYPOINT ["java", "-jar", "app.jar"]
 # This Dockerfile is designed to be used in a CI/CD pipeline or for local development.
 # It is necessary to define the following environment variables in the hosting provider for the application to
 # run correctly in the Production environment:
-# - DATABASE_NAME: The name of the PostgreSQL database to connect to.
 # - DATABASE_USER: The username for the database connection.
 # - DATABASE_PASSWORD: The password for the database connection.
-# - DATABASE_URL: The URL of the database to connect to.
-# - DATABASE_PORT: The port of the database to connect to (default is 5432 for PostgreSQL).
+# - DATABASE_URL: The PostgreSQL JDBC URL, for example jdbc:postgresql://host:5432/viora.
 # - PORT: The port on which the application will run (default is 8080).
 # - SPRING_PROFILES_ACTIVE: The active Spring profile (Must be 'prod' to use the runtime configuration).

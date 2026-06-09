@@ -1,12 +1,13 @@
 package com.arcadiadevs.viora.platform.shared.application.result;
 
 import org.jspecify.annotations.NullMarked;
+import org.jspecify.annotations.Nullable;
 
 @NullMarked
 public record ApplicationError(
         String code,
         String message,
-        String details) {
+        @Nullable String details) {
 
     /**
      * Creates an ApplicationError with code and message only.
@@ -32,7 +33,7 @@ public record ApplicationError(
         return new ApplicationError(
                 "%s_NOT_FOUND".formatted(resourceType.toUpperCase()),
                 "%s not found: %s".formatted(resourceType, identifier),
-                null);
+                identifier);
     }
 
     /**
@@ -64,4 +65,5 @@ public record ApplicationError(
                 "Unexpected error in %s".formatted(context),
                 reason);
     }
+
 }
