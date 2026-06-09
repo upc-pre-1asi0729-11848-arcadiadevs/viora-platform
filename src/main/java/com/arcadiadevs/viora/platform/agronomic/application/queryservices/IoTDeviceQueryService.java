@@ -2,6 +2,8 @@ package com.arcadiadevs.viora.platform.agronomic.application.queryservices;
 
 import com.arcadiadevs.viora.platform.agronomic.domain.model.aggregates.IoTDevice;
 import com.arcadiadevs.viora.platform.agronomic.domain.model.queries.GetIoTDevicesByPlotIdQuery;
+import com.arcadiadevs.viora.platform.agronomic.domain.model.valueobjects.PlotId;
+import com.arcadiadevs.viora.platform.agronomic.domain.model.valueobjects.UserId;
 import com.arcadiadevs.viora.platform.agronomic.domain.repositories.IoTDeviceRepository;
 import com.arcadiadevs.viora.platform.agronomic.domain.repositories.PlotRepository;
 import com.arcadiadevs.viora.platform.shared.application.result.ApplicationError;
@@ -12,9 +14,11 @@ import java.util.List;
 
 /**
  * Application query service for IoTDevice.
+ *
  * <p>
  * (TS12-004) Handles {@link GetIoTDevicesByPlotIdQuery}, validating plot ownership
  * before delegating to the repository.
+ * </p>
  */
 @Service
 public class IoTDeviceQueryService {
@@ -33,16 +37,15 @@ public class IoTDeviceQueryService {
      * Returns all IoT devices for the given plot, provided the requesting user owns the plot.
      *
      * @param query the query containing plotId and authenticatedUserId
-     * @return Success with a list of devices, or Failure with FORBIDDEN if ownership check fails
+     * @return Success with a list of devices, or Failure if ownership check fails
      */
     public Result<List<IoTDevice>, ApplicationError> handle(GetIoTDevicesByPlotIdQuery query) {
-        boolean ownsPlot = plotRepository.existsByIdAndOwnerUserId(
-                query.plotId(), query.authenticatedUserId());
+        var plot = plotRepository.findById(new PlotId(query.plotId()));
 
-        if (!ownsPlot) {
+        if (plot.isEmpty() || !plot.get().belongsTo(new UserId(query.authenticatedUserId()))) {
             return Result.failure(ApplicationError.businessRuleViolation(
                     "plot-ownership",
-                    "User %s does not own plot %s".formatted(
+                    "User %d does not own plot %d".formatted(
                             query.authenticatedUserId(), query.plotId())));
         }
 
