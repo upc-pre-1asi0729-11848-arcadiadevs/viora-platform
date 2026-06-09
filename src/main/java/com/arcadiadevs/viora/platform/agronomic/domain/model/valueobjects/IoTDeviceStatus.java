@@ -5,15 +5,16 @@ package com.arcadiadevs.viora.platform.agronomic.domain.model.valueobjects;
  */
 public enum IoTDeviceStatus {
     ACTIVE,
-    INACTIVE,
-    MAINTENANCE;
+    WARNING,
+    CRITICAL,
+    INACTIVE;
 
     public static IoTDeviceStatus fromString(String value) {
         try {
             return IoTDeviceStatus.valueOf(value.toUpperCase());
         } catch (IllegalArgumentException e) {
             throw new IllegalArgumentException(
-                    "Invalid IoTDeviceStatus '%s'. Allowed: ACTIVE, INACTIVE, MAINTENANCE".formatted(value));
+                    "Invalid IoTDeviceStatus '%s'. Allowed: ACTIVE, WARNING, CRITICAL, INACTIVE".formatted(value));
         }
     }
 }
