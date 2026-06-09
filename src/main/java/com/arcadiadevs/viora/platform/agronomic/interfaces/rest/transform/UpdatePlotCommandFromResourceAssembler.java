@@ -3,10 +3,15 @@ package com.arcadiadevs.viora.platform.agronomic.interfaces.rest.transform;
 import com.arcadiadevs.viora.platform.agronomic.domain.model.commands.UpdatePlotCommand;
 import com.arcadiadevs.viora.platform.agronomic.interfaces.rest.resources.UpdatePlotResource;
 
+import java.util.Objects;
+
 /**
  * Assembler to convert UpdatePlotResource into UpdatePlotCommand.
  */
-public class UpdatePlotCommandFromResourceAssembler {
+public final class UpdatePlotCommandFromResourceAssembler {
+
+    private UpdatePlotCommandFromResourceAssembler() {
+    }
 
     /**
      * Converts an UpdatePlotResource into an UpdatePlotCommand.
@@ -16,9 +21,7 @@ public class UpdatePlotCommandFromResourceAssembler {
      * @return The UpdatePlotCommand.
      */
     public static UpdatePlotCommand toCommandFromResource(Long plotId, UpdatePlotResource resource) {
-        if (resource == null) {
-            throw new IllegalArgumentException("Update plot request body is required.");
-        }
+        Objects.requireNonNull(resource, "Update plot request body is required.");
 
         return new UpdatePlotCommand(
                 plotId,

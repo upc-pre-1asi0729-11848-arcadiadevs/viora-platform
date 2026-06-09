@@ -7,6 +7,7 @@ import jakarta.persistence.Converter;
 
 import java.util.Arrays;
 import java.util.List;
+import java.util.stream.Collectors;
 
 /**
  * PolygonCoordinates JPA attribute converter.
@@ -25,13 +26,14 @@ public class PolygonCoordinatesAttributeConverter implements AttributeConverter<
      */
     @Override
     public String convertToDatabaseColumn(PolygonCoordinates attribute) {
-        if (attribute == null) return null;
+        if (attribute == null) {
+            return null;
+        }
 
         return attribute.getPoints()
                 .stream()
                 .map(point -> point.getLatitude() + "," + point.getLongitude())
-                .reduce((current, next) -> current + ";" + next)
-                .orElse(null);
+                .collect(Collectors.joining(";"));
     }
 
     /**
@@ -41,7 +43,9 @@ public class PolygonCoordinatesAttributeConverter implements AttributeConverter<
      */
     @Override
     public PolygonCoordinates convertToEntityAttribute(String dbData) {
-        if (dbData == null || dbData.isBlank()) return null;
+        if (dbData == null || dbData.isBlank()) {
+            return null;
+        }
 
         List<GeoPoint> points = Arrays.stream(dbData.split(";"))
                 .map(this::toGeoPoint)

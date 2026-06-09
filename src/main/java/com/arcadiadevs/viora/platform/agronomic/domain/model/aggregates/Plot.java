@@ -1,13 +1,12 @@
 package com.arcadiadevs.viora.platform.agronomic.domain.model.aggregates;
 
 import com.arcadiadevs.viora.platform.agronomic.domain.model.valueobjects.AreaSize;
+import com.arcadiadevs.viora.platform.agronomic.domain.model.valueobjects.PlotId;
 import com.arcadiadevs.viora.platform.agronomic.domain.model.valueobjects.PlotName;
 import com.arcadiadevs.viora.platform.agronomic.domain.model.valueobjects.PolygonCoordinates;
 import com.arcadiadevs.viora.platform.agronomic.domain.model.valueobjects.UserId;
 import com.arcadiadevs.viora.platform.shared.domain.model.aggregates.AbstractDomainAggregateRoot;
 import lombok.Getter;
-import lombok.Setter;
-import org.apache.logging.log4j.util.Strings;
 
 /**
  * Plot aggregate root.
@@ -20,11 +19,13 @@ import org.apache.logging.log4j.util.Strings;
  */
 @Getter
 public class Plot extends AbstractDomainAggregateRoot<Plot> {
+    private static final int CROP_TYPE_MAX_LENGTH = 60;
+    private static final int VARIETY_MAX_LENGTH = 80;
+
     /**
      * The unique identifier for the plot.
      */
-    @Setter
-    private Long id;
+    private PlotId id;
 
     /**
      * The owner user identifier.
@@ -64,8 +65,10 @@ public class Plot extends AbstractDomainAggregateRoot<Plot> {
     /**
      * Default constructor for the Plot.
      */
-    public Plot() {
-        this.cropType = Strings.EMPTY;
+    protected Plot() {
+        this.cropType = "";
+        this.variety = "";
+        this.active = true;
     }
 
 
@@ -86,12 +89,13 @@ public class Plot extends AbstractDomainAggregateRoot<Plot> {
             String cropType,
             String variety
     ) {
+        validateRequiredFields(userId, name, polygonCoordinates, areaSize);
         this.userId = userId;
         this.name = name;
         this.polygonCoordinates = polygonCoordinates;
         this.areaSize = areaSize;
-        this.cropType = sanitizeText(cropType);
-        this.variety = sanitizeText(variety);
+        this.cropType = sanitizeText(cropType, CROP_TYPE_MAX_LENGTH, "Crop type");
+        this.variety = sanitizeText(variety, VARIETY_MAX_LENGTH, "Variety");
         this.active = true;
     }
 
@@ -110,10 +114,37 @@ public class Plot extends AbstractDomainAggregateRoot<Plot> {
             String cropType,
             String variety
     ) {
+        if (name == null) {
+            throw new IllegalArgumentException("Plot name is required.");
+        }
+        if (areaSize == null) {
+            throw new IllegalArgumentException("Area size is required.");
+        }
+
         this.name = name;
         this.areaSize = areaSize;
-        this.cropType = sanitizeText(cropType);
-        this.variety = sanitizeText(variety);
+        this.cropType = sanitizeText(cropType, CROP_TYPE_MAX_LENGTH, "Crop type");
+        this.variety = sanitizeText(variety, VARIETY_MAX_LENGTH, "Variety");
+        return this;
+    }
+
+    /**
+     * Updates the geographic boundary and its associated productive area.
+     *
+     * @param polygonCoordinates The new polygon coordinates.
+     * @param areaSize The new area size.
+     * @return The updated plot.
+     */
+    public Plot updateBoundary(PolygonCoordinates polygonCoordinates, AreaSize areaSize) {
+        if (polygonCoordinates == null) {
+            throw new IllegalArgumentException("Polygon coordinates are required.");
+        }
+        if (areaSize == null) {
+            throw new IllegalArgumentException("Area size is required.");
+        }
+
+        this.polygonCoordinates = polygonCoordinates;
+        this.areaSize = areaSize;
         return this;
     }
 
@@ -150,12 +181,55 @@ public class Plot extends AbstractDomainAggregateRoot<Plot> {
     }
 
     /**
+     * Restores the identity assigned by persistence.
+     *
+     * @param id The persisted plot identifier.
+     * @return The identified plot.
+     */
+    public Plot restoreIdentity(PlotId id) {
+        if (id == null) {
+            throw new IllegalArgumentException("Plot ID is required.");
+        }
+        if (this.id != null && !this.id.equals(id)) {
+            throw new IllegalStateException("Plot identity cannot be changed.");
+        }
+        this.id = id;
+        return this;
+    }
+
+    /**
      * Sanitizes optional text fields.
      * @param value The text value.
      * @return The sanitized value.
      */
-    private String sanitizeText(String value) {
-        return value == null ? Strings.EMPTY : value.trim();
+    private String sanitizeText(String value, int maxLength, String fieldName) {
+        var sanitizedValue = value == null ? "" : value.trim();
+        if (sanitizedValue.length() > maxLength) {
+            throw new IllegalArgumentException(
+                    "%s cannot exceed %d characters.".formatted(fieldName, maxLength)
+            );
+        }
+        return sanitizedValue;
+    }
+
+    private void validateRequiredFields(
+            UserId userId,
+            PlotName name,
+            PolygonCoordinates polygonCoordinates,
+            AreaSize areaSize
+    ) {
+        if (userId == null) {
+            throw new IllegalArgumentException("User ID is required.");
+        }
+        if (name == null) {
+            throw new IllegalArgumentException("Plot name is required.");
+        }
+        if (polygonCoordinates == null) {
+            throw new IllegalArgumentException("Polygon coordinates are required.");
+        }
+        if (areaSize == null) {
+            throw new IllegalArgumentException("Area size is required.");
+        }
     }
 
 }

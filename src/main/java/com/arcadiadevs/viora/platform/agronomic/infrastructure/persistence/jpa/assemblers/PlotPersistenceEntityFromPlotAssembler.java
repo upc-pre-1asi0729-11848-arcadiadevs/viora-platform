@@ -3,10 +3,15 @@ package com.arcadiadevs.viora.platform.agronomic.infrastructure.persistence.jpa.
 import com.arcadiadevs.viora.platform.agronomic.domain.model.aggregates.Plot;
 import com.arcadiadevs.viora.platform.agronomic.infrastructure.persistence.jpa.entities.PlotPersistenceEntity;
 
+import java.util.Objects;
+
 /**
  * Assembler to convert Plot domain aggregate into PlotPersistenceEntity.
  */
 public class PlotPersistenceEntityFromPlotAssembler {
+
+    private PlotPersistenceEntityFromPlotAssembler() {
+    }
 
     /**
      * Converts a Plot aggregate into a PlotPersistenceEntity.
@@ -15,11 +20,33 @@ public class PlotPersistenceEntityFromPlotAssembler {
      * @return The PlotPersistenceEntity.
      */
     public static PlotPersistenceEntity toEntityFromAggregate(Plot plot) {
-        if (plot == null) return null;
+        Objects.requireNonNull(plot, "Plot aggregate is required.");
 
         var entity = new PlotPersistenceEntity();
+        if (plot.getId() != null) {
+            entity.setId(plot.getId().getValue());
+        }
+        return updateEntityFromAggregate(plot, entity);
+    }
 
-        entity.setId(plot.getId());
+    /**
+     * Copies aggregate state into an existing persistence entity.
+     *
+     * @param plot The plot aggregate.
+     * @param entity The persistence entity to update.
+     * @return The updated persistence entity.
+     */
+    public static PlotPersistenceEntity updateEntityFromAggregate(
+            Plot plot,
+            PlotPersistenceEntity entity
+    ) {
+        if (plot == null) {
+            throw new IllegalArgumentException("Plot aggregate is required.");
+        }
+        if (entity == null) {
+            throw new IllegalArgumentException("Plot persistence entity is required.");
+        }
+
         entity.setUserId(plot.getUserId().getValue());
         entity.setName(plot.getName().getValue());
         entity.setPolygonCoordinates(plot.getPolygonCoordinates());

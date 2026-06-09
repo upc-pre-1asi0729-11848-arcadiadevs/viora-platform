@@ -4,25 +4,25 @@ import lombok.EqualsAndHashCode;
 import lombok.Getter;
 
 /**
- * PlotId value object.
+ * Plot identifier value object.
  *
- * <P>
- *     Represents the unique identifies of a plot in the agronomic bounded context.
- * </P>
+ * <p>
+ * Represents the unique identifier of a plot in the agronomic bounded context.
+ * </p>
  */
-
 @Getter
 @EqualsAndHashCode
 public class PlotId {
 
     /**
-     * The raw numeric identifies
+     * The raw numeric identifier.
      */
     private final Long value;
 
     /**
-     * Constructor for PlotId
-     * @param value the Plot identifies.
+     * Creates a plot identifier.
+     *
+     * @param value The plot identifier.
      */
     public PlotId(Long value) {
         if (value == null || value <= 0) {
@@ -30,5 +30,4 @@ public class PlotId {
         }
         this.value = value;
     }
-
 }

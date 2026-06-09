@@ -1,5 +1,10 @@
 package com.arcadiadevs.viora.platform.agronomic.interfaces.rest.resources;
 
+import jakarta.validation.constraints.DecimalMax;
+import jakarta.validation.constraints.Digits;
+import jakarta.validation.constraints.Positive;
+import jakarta.validation.constraints.Size;
+
 import java.math.BigDecimal;
 import java.util.List;
 
@@ -18,10 +23,12 @@ import java.util.List;
  * @param variety The updated crop variety.
  */
 public record UpdatePlotResource(
-        String name,
-        List<List<Double>> polygonCoordinates,
+        @Size(min = 3, max = 80) String name,
+        @Size(min = 4)
+        List<@Size(min = 2, max = 2) List<Double>> polygonCoordinates,
+        @Positive @DecimalMax("99999999.99") @Digits(integer = 8, fraction = 2)
         BigDecimal areaSizeHectares,
-        String cropType,
-        String variety
+        @Size(max = 60) String cropType,
+        @Size(max = 80) String variety
 ) {
 }

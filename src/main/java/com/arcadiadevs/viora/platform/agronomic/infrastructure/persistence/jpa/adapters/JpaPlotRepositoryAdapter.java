@@ -1,6 +1,9 @@
 package com.arcadiadevs.viora.platform.agronomic.infrastructure.persistence.jpa.adapters;
 
 import com.arcadiadevs.viora.platform.agronomic.domain.model.aggregates.Plot;
+import com.arcadiadevs.viora.platform.agronomic.domain.model.valueobjects.PlotId;
+import com.arcadiadevs.viora.platform.agronomic.domain.model.valueobjects.PlotName;
+import com.arcadiadevs.viora.platform.agronomic.domain.model.valueobjects.UserId;
 import com.arcadiadevs.viora.platform.agronomic.domain.repositories.PlotRepository;
 import com.arcadiadevs.viora.platform.agronomic.infrastructure.persistence.jpa.assemblers.PlotFromPlotPersistenceEntityAssembler;
 import com.arcadiadevs.viora.platform.agronomic.infrastructure.persistence.jpa.assemblers.PlotPersistenceEntityFromPlotAssembler;
@@ -34,8 +37,8 @@ public class JpaPlotRepositoryAdapter implements PlotRepository {
      * @return The plot if found.
      */
     @Override
-    public Optional<Plot> findById(Long id) {
-        return springDataPlotRepository.findById(id)
+    public Optional<Plot> findById(PlotId id) {
+        return springDataPlotRepository.findById(id.getValue())
                 .map(PlotFromPlotPersistenceEntityAssembler::toAggregateFromEntity);
     }
 
@@ -59,8 +62,8 @@ public class JpaPlotRepositoryAdapter implements PlotRepository {
      * @return The list of active plots.
      */
     @Override
-    public List<Plot> findByUserId(Long userId) {
-        return springDataPlotRepository.findByUserIdAndActiveTrue(userId)
+    public List<Plot> findByUserId(UserId userId) {
+        return springDataPlotRepository.findByUserIdAndActiveTrue(userId.getValue())
                 .stream()
                 .map(PlotFromPlotPersistenceEntityAssembler::toAggregateFromEntity)
                 .toList();
@@ -74,8 +77,8 @@ public class JpaPlotRepositoryAdapter implements PlotRepository {
      * @return The plot if found.
      */
     @Override
-    public Optional<Plot> findByNameAndUserId(String name, Long userId) {
-        return springDataPlotRepository.findByNameAndUserId(name, userId)
+    public Optional<Plot> findByNameAndUserId(PlotName name, UserId userId) {
+        return springDataPlotRepository.findByNameAndUserId(name.getValue(), userId.getValue())
                 .map(PlotFromPlotPersistenceEntityAssembler::toAggregateFromEntity);
     }
 
@@ -87,7 +90,16 @@ public class JpaPlotRepositoryAdapter implements PlotRepository {
      */
     @Override
     public Plot save(Plot plot) {
-        var entity = PlotPersistenceEntityFromPlotAssembler.toEntityFromAggregate(plot);
+        var entity = plot.getId() == null
+                ? PlotPersistenceEntityFromPlotAssembler.toEntityFromAggregate(plot)
+                : springDataPlotRepository.findById(plot.getId().getValue())
+                .map(existingEntity ->
+                        PlotPersistenceEntityFromPlotAssembler.updateEntityFromAggregate(
+                                plot,
+                                existingEntity
+                        ))
+                .orElseGet(() -> PlotPersistenceEntityFromPlotAssembler.toEntityFromAggregate(plot));
+
         var savedEntity = springDataPlotRepository.save(entity);
         return PlotFromPlotPersistenceEntityAssembler.toAggregateFromEntity(savedEntity);
     }
@@ -99,8 +111,8 @@ public class JpaPlotRepositoryAdapter implements PlotRepository {
      * @return true if the plot exists.
      */
     @Override
-    public boolean existsById(Long id) {
-        return springDataPlotRepository.existsById(id);
+    public boolean existsById(PlotId id) {
+        return springDataPlotRepository.existsById(id.getValue());
     }
 
     /**
@@ -111,8 +123,11 @@ public class JpaPlotRepositoryAdapter implements PlotRepository {
      * @return true if the plot name exists.
      */
     @Override
-    public boolean existsByNameAndUserId(String name, Long userId) {
-        return springDataPlotRepository.existsByNameAndUserId(name, userId);
+    public boolean existsByNameAndUserId(PlotName name, UserId userId) {
+        return springDataPlotRepository.existsByNameAndUserId(
+                name.getValue(),
+                userId.getValue()
+        );
     }
 
     /**
@@ -124,8 +139,16 @@ public class JpaPlotRepositoryAdapter implements PlotRepository {
      * @return true if another plot with the same name exists.
      */
     @Override
-    public boolean existsByNameAndUserIdAndIdIsNot(String name, Long userId, Long id) {
-        return springDataPlotRepository.existsByNameAndUserIdAndIdIsNot(name, userId, id);
+    public boolean existsByNameAndUserIdAndIdIsNot(
+            PlotName name,
+            UserId userId,
+            PlotId id
+    ) {
+        return springDataPlotRepository.existsByNameAndUserIdAndIdIsNot(
+                name.getValue(),
+                userId.getValue(),
+                id.getValue()
+        );
     }
 
     /**
@@ -138,11 +161,12 @@ public class JpaPlotRepositoryAdapter implements PlotRepository {
      * </p>
      *
      * @param id The plot ID.
-     * @return false for now.
+     * @return true until all cross-context dependencies can be checked.
      */
     @Override
-    public boolean hasRelatedOperationalRecords(Long id) {
-        return false;
+    public boolean hasRelatedOperationalRecords(PlotId id) {
+        // Fail safe: preserve the aggregate until all dependent contexts are integrated.
+        return true;
     }
 
     /**
@@ -151,7 +175,7 @@ public class JpaPlotRepositoryAdapter implements PlotRepository {
      * @param id The plot ID.
      */
     @Override
-    public void deleteById(Long id) {
-        springDataPlotRepository.deleteById(id);
+    public void deleteById(PlotId id) {
+        springDataPlotRepository.deleteById(id.getValue());
     }
 }

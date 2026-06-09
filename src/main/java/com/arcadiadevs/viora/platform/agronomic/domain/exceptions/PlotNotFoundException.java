@@ -1,19 +1,16 @@
 package com.arcadiadevs.viora.platform.agronomic.domain.exceptions;
 
 /**
- * Exeption thrown when a plot is not found
- *
- * @summary
- * This Exception is thrown when a request plot does not exist in the system.
- * @see RuntimeException
+ * Exception thrown when a requested plot does not exist.
  */
 public class PlotNotFoundException extends RuntimeException {
 
     /**
-     * Constructor for the exception.
-     * @param plotId the ID of the plot that was not found
+     * Creates the exception for the plot that was not found.
+     *
+     * @param plotId The plot identifier.
      */
-    public PlotNotFoundException(long plotId) {
-        super(String.format("Plot with ID %s not found.", plotId));
+    public PlotNotFoundException(Long plotId) {
+        super("Plot with ID %s was not found.".formatted(plotId));
     }
 }

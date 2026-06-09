@@ -2,16 +2,17 @@ package com.arcadiadevs.viora.platform.agronomic.application.commandservices;
 
 import com.arcadiadevs.viora.platform.agronomic.domain.exceptions.InvalidPolygonCoordinatesException;
 import com.arcadiadevs.viora.platform.agronomic.domain.model.aggregates.Plot;
+import com.arcadiadevs.viora.platform.agronomic.domain.model.commands.DeletePlotCommand;
 import com.arcadiadevs.viora.platform.agronomic.domain.model.commands.UpdatePlotCommand;
+import com.arcadiadevs.viora.platform.agronomic.domain.model.services.PlotDeletionPolicy;
 import com.arcadiadevs.viora.platform.agronomic.domain.model.valueobjects.AreaSize;
 import com.arcadiadevs.viora.platform.agronomic.domain.model.valueobjects.GeoPoint;
+import com.arcadiadevs.viora.platform.agronomic.domain.model.valueobjects.PlotId;
 import com.arcadiadevs.viora.platform.agronomic.domain.model.valueobjects.PlotName;
 import com.arcadiadevs.viora.platform.agronomic.domain.model.valueobjects.PolygonCoordinates;
 import com.arcadiadevs.viora.platform.agronomic.domain.repositories.PlotRepository;
 import com.arcadiadevs.viora.platform.shared.application.result.ApplicationError;
 import com.arcadiadevs.viora.platform.shared.application.result.Result;
-import com.arcadiadevs.viora.platform.agronomic.domain.model.commands.DeletePlotCommand;
-import com.arcadiadevs.viora.platform.agronomic.domain.model.services.PlotDeletionPolicy;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -48,7 +49,8 @@ public class PlotCommandService {
      */
     @Transactional
     public Result<Plot, ApplicationError> handle(UpdatePlotCommand command) {
-        var plotOptional = plotRepository.findById(command.plotId());
+        var plotId = new PlotId(command.plotId());
+        var plotOptional = plotRepository.findById(plotId);
 
         if (plotOptional.isEmpty()) {
             return Result.failure(ApplicationError.notFound("plot", command.plotId().toString()));
@@ -124,8 +126,8 @@ public class PlotCommandService {
         }
 
         return plotRepository.existsByNameAndUserIdAndIdIsNot(
-                updatedName.getValue(),
-                plot.getUserId().getValue(),
+                updatedName,
+                plot.getUserId(),
                 plot.getId()
         );
     }
@@ -170,7 +172,8 @@ public class PlotCommandService {
      */
     @Transactional
     public Result<String, ApplicationError> handle(DeletePlotCommand command) {
-        var plotOptional = plotRepository.findById(command.plotId());
+        var plotId = new PlotId(command.plotId());
+        var plotOptional = plotRepository.findById(plotId);
 
         if (plotOptional.isEmpty()) {
             return Result.failure(ApplicationError.notFound("plot", command.plotId().toString()));
@@ -185,13 +188,13 @@ public class PlotCommandService {
             ));
         }
 
-        var hasRelatedOperationalRecords = plotRepository.hasRelatedOperationalRecords(command.plotId());
+        var hasRelatedOperationalRecords = plotRepository.hasRelatedOperationalRecords(plotId);
 
         if (plotDeletionPolicy.requiresLogicalDeletion(hasRelatedOperationalRecords)) {
             plot.deactivate();
             plotRepository.save(plot);
         } else {
-            plotRepository.deleteById(command.plotId());
+            plotRepository.deleteById(plotId);
         }
 
         return Result.success("Plot deleted successfully.");

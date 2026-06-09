@@ -1,6 +1,9 @@
 package com.arcadiadevs.viora.platform.agronomic.domain.repositories;
 
 import com.arcadiadevs.viora.platform.agronomic.domain.model.aggregates.Plot;
+import com.arcadiadevs.viora.platform.agronomic.domain.model.valueobjects.PlotId;
+import com.arcadiadevs.viora.platform.agronomic.domain.model.valueobjects.PlotName;
+import com.arcadiadevs.viora.platform.agronomic.domain.model.valueobjects.UserId;
 
 import java.util.List;
 import java.util.Optional;
@@ -19,7 +22,7 @@ public interface PlotRepository {
      * @param id The plot ID.
      * @return The plot if found.
      */
-    Optional<Plot> findById(Long id);
+    Optional<Plot> findById(PlotId id);
 
     /**
      * Finds all plots.
@@ -32,7 +35,7 @@ public interface PlotRepository {
      * @param userId The owner user ID.
      * @return The list of plots owned by the user.
      */
-    List<Plot> findByUserId(Long userId);
+    List<Plot> findByUserId(UserId userId);
 
     /**
      * Finds a plot by name and owner user ID.
@@ -40,7 +43,7 @@ public interface PlotRepository {
      * @param userId The owner user ID.
      * @return The plot if found.
      */
-    Optional<Plot> findByNameAndUserId(String name, Long userId);
+    Optional<Plot> findByNameAndUserId(PlotName name, UserId userId);
 
     /**
      * Saves a plot.
@@ -54,7 +57,7 @@ public interface PlotRepository {
      * @param id The plot ID.
      * @return true if the plot exists, false otherwise.
      */
-    boolean existsById(Long id);
+    boolean existsById(PlotId id);
 
     /**
      * Checks whether a plot name already exists for a specific user.
@@ -62,7 +65,7 @@ public interface PlotRepository {
      * @param userId The owner user ID.
      * @return true if the plot name exists for the user, false otherwise.
      */
-    boolean existsByNameAndUserId(String name, Long userId);
+    boolean existsByNameAndUserId(PlotName name, UserId userId);
 
     /**
      * Checks whether a plot name already exists for a specific user excluding a plot ID.
@@ -71,7 +74,7 @@ public interface PlotRepository {
      * @param id The plot ID to exclude.
      * @return true if another plot with the same name exists, false otherwise.
      */
-    boolean existsByNameAndUserIdAndIdIsNot(String name, Long userId, Long id);
+    boolean existsByNameAndUserIdAndIdIsNot(PlotName name, UserId userId, PlotId id);
 
     /**
      * Checks whether the plot has related operational records.
@@ -84,11 +87,11 @@ public interface PlotRepository {
      * @param id The plot ID.
      * @return true if the plot has related records, false otherwise.
      */
-    boolean hasRelatedOperationalRecords(Long id);
+    boolean hasRelatedOperationalRecords(PlotId id);
 
     /**
      * Deletes a plot by ID.
      * @param id The plot ID.
      */
-    void deleteById(Long id);
+    void deleteById(PlotId id);
 }

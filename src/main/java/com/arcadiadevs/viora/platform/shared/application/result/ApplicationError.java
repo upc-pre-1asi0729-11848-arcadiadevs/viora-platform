@@ -33,7 +33,7 @@ public record ApplicationError(
         return new ApplicationError(
                 "%s_NOT_FOUND".formatted(resourceType.toUpperCase()),
                 "%s not found: %s".formatted(resourceType, identifier),
-                null);
+                identifier);
     }
 
     /**
@@ -65,4 +65,5 @@ public record ApplicationError(
                 "Unexpected error in %s".formatted(context),
                 reason);
     }
+
 }

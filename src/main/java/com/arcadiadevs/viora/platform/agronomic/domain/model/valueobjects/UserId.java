@@ -24,8 +24,9 @@ public class UserId {
      * @param value The user identifies
      */
     public UserId(Long value) {
-        if (value == null)
+        if (value == null || value <= 0) {
             throw new IllegalArgumentException("User ID must be a positive number.");
+        }
         this.value = value;
     }
 

@@ -15,6 +15,7 @@ import java.math.BigDecimal;
 @Getter
 @EqualsAndHashCode
 public class AreaSize {
+    private static final BigDecimal MAX_HECTARES = new BigDecimal("99999999.99");
 
     /**
      * The area size in hectares.
@@ -32,6 +33,14 @@ public class AreaSize {
 
         if (hectares.compareTo(BigDecimal.ZERO) <= 0) {
             throw new IllegalArgumentException("Area size must be greater than zero.");
+        }
+
+        if (hectares.compareTo(MAX_HECTARES) > 0) {
+            throw new IllegalArgumentException("Area size cannot exceed 99999999.99 hectares.");
+        }
+
+        if (hectares.stripTrailingZeros().scale() > 2) {
+            throw new IllegalArgumentException("Area size cannot have more than 2 decimal places.");
         }
 
         this.hectares = hectares;

@@ -6,7 +6,9 @@ import com.arcadiadevs.viora.platform.shared.infrastructure.persistence.jpa.enti
 import jakarta.persistence.Column;
 import jakarta.persistence.Convert;
 import jakarta.persistence.Entity;
+import jakarta.persistence.Index;
 import jakarta.persistence.Table;
+import jakarta.persistence.UniqueConstraint;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
@@ -23,7 +25,17 @@ import java.math.BigDecimal;
  * </p>
  */
 @Entity
-@Table(name = "plots")
+@Table(
+        name = "plots",
+        uniqueConstraints = @UniqueConstraint(
+                name = "uk_plots_user_name",
+                columnNames = {"user_id", "name"}
+        ),
+        indexes = @Index(
+                name = "idx_plots_user_active",
+                columnList = "user_id, active"
+        )
+)
 @Getter
 @Setter
 @NoArgsConstructor

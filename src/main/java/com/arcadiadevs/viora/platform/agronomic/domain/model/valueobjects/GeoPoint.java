@@ -34,6 +34,10 @@ public class GeoPoint {
             throw new IllegalArgumentException("Latitude and longitude are required.");
         }
 
+        if (!Double.isFinite(latitude) || !Double.isFinite(longitude)) {
+            throw new IllegalArgumentException("Latitude and longitude must be finite numbers.");
+        }
+
         if (latitude < -90 || latitude > 90) {
             throw new IllegalArgumentException("Latitude must be between -90 and 90.");
         }

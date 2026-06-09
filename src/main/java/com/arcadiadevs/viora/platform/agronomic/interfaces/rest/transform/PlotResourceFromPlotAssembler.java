@@ -5,11 +5,15 @@ import com.arcadiadevs.viora.platform.agronomic.domain.model.valueobjects.GeoPoi
 import com.arcadiadevs.viora.platform.agronomic.interfaces.rest.resources.PlotResource;
 
 import java.util.List;
+import java.util.Objects;
 
 /**
  * Assembler to convert Plot aggregate into PlotResource.
  */
-public class PlotResourceFromPlotAssembler {
+public final class PlotResourceFromPlotAssembler {
+
+    private PlotResourceFromPlotAssembler() {
+    }
 
     /**
      * Converts a Plot aggregate into a PlotResource.
@@ -18,10 +22,10 @@ public class PlotResourceFromPlotAssembler {
      * @return The PlotResource.
      */
     public static PlotResource toResourceFromAggregate(Plot plot) {
-        if (plot == null) return null;
+        Objects.requireNonNull(plot, "Plot aggregate is required.");
 
         return new PlotResource(
-                plot.getId(),
+                plot.getId().getValue(),
                 plot.getUserId().getValue(),
                 plot.getName().getValue(),
                 toCoordinateResource(plot.getPolygonCoordinates().getPoints()),

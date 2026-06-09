@@ -2,14 +2,20 @@ package com.arcadiadevs.viora.platform.agronomic.infrastructure.persistence.jpa.
 
 import com.arcadiadevs.viora.platform.agronomic.domain.model.aggregates.Plot;
 import com.arcadiadevs.viora.platform.agronomic.domain.model.valueobjects.AreaSize;
+import com.arcadiadevs.viora.platform.agronomic.domain.model.valueobjects.PlotId;
 import com.arcadiadevs.viora.platform.agronomic.domain.model.valueobjects.PlotName;
 import com.arcadiadevs.viora.platform.agronomic.domain.model.valueobjects.UserId;
 import com.arcadiadevs.viora.platform.agronomic.infrastructure.persistence.jpa.entities.PlotPersistenceEntity;
+
+import java.util.Objects;
 
 /**
  * Assembler to convert PlotPersistenceEntity into Plot domain aggregate.
  */
 public class PlotFromPlotPersistenceEntityAssembler {
+
+    private PlotFromPlotPersistenceEntityAssembler() {
+    }
 
     /**
      * Converts a PlotPersistenceEntity into a Plot aggregate.
@@ -17,7 +23,7 @@ public class PlotFromPlotPersistenceEntityAssembler {
      * @return The Plot aggregate.
      */
     public static Plot toAggregateFromEntity(PlotPersistenceEntity entity) {
-        if (entity == null) return null;
+        Objects.requireNonNull(entity, "Plot persistence entity is required.");
 
         var plot = new Plot(
                 new UserId(entity.getUserId()),
@@ -28,7 +34,7 @@ public class PlotFromPlotPersistenceEntityAssembler {
                 entity.getVariety()
         );
 
-        plot.setId(entity.getId());
+        plot.restoreIdentity(new PlotId(entity.getId()));
 
         if (Boolean.FALSE.equals(entity.getActive())) {
             plot.deactivate();
