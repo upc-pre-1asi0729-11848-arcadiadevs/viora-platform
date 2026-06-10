@@ -2,6 +2,7 @@ package com.arcadiadevs.viora.platform.agronomic.application.commandservices;
 
 import com.arcadiadevs.viora.platform.agronomic.domain.exceptions.InvalidPolygonCoordinatesException;
 import com.arcadiadevs.viora.platform.agronomic.domain.model.aggregates.Plot;
+import com.arcadiadevs.viora.platform.agronomic.domain.model.commands.CreatePlotCommand;
 import com.arcadiadevs.viora.platform.agronomic.domain.model.commands.DeletePlotCommand;
 import com.arcadiadevs.viora.platform.agronomic.domain.model.commands.UpdatePlotCommand;
 import com.arcadiadevs.viora.platform.agronomic.domain.model.services.PlotDeletionPolicy;
@@ -10,6 +11,7 @@ import com.arcadiadevs.viora.platform.agronomic.domain.model.valueobjects.GeoPoi
 import com.arcadiadevs.viora.platform.agronomic.domain.model.valueobjects.PlotId;
 import com.arcadiadevs.viora.platform.agronomic.domain.model.valueobjects.PlotName;
 import com.arcadiadevs.viora.platform.agronomic.domain.model.valueobjects.PolygonCoordinates;
+import com.arcadiadevs.viora.platform.agronomic.domain.model.valueobjects.UserId;
 import com.arcadiadevs.viora.platform.agronomic.domain.repositories.PlotRepository;
 import com.arcadiadevs.viora.platform.shared.application.result.ApplicationError;
 import com.arcadiadevs.viora.platform.shared.application.result.Result;
@@ -40,6 +42,43 @@ public class PlotCommandService {
      * Plot deletion policy.
      */
     private final PlotDeletionPolicy plotDeletionPolicy = new PlotDeletionPolicy();
+
+    /**
+     * Handles plot registration.
+     *
+     * @param command The command containing the new plot data.
+     * @return A successful result with the persisted plot, or an application error.
+     */
+    @Transactional
+    public Result<Plot, ApplicationError> handle(CreatePlotCommand command) {
+        try {
+            var userId = new UserId(command.userId());
+            var plotName = new PlotName(command.name());
+
+            if (plotRepository.existsByNameAndUserId(plotName, userId)) {
+                return Result.failure(ApplicationError.conflict(
+                        "plot",
+                        "A plot with the same name already exists for this user."
+                ));
+            }
+
+            var plot = new Plot(
+                    userId,
+                    plotName,
+                    toPolygonCoordinates(command.polygonCoordinates()),
+                    new AreaSize(command.areaSizeHectares()),
+                    command.cropType(),
+                    command.variety()
+            );
+
+            return Result.success(plotRepository.save(plot));
+        } catch (IllegalArgumentException | InvalidPolygonCoordinatesException exception) {
+            return Result.failure(ApplicationError.validationError(
+                    "plot",
+                    exception.getMessage()
+            ));
+        }
+    }
 
     /**
      * Handles the UpdatePlot command.
