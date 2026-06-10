@@ -1,48 +1,41 @@
 package com.arcadiadevs.viora.platform.shared.application.result;
 
-import java.util.Optional;
-import java.util.function.Function;
+import org.junit.jupiter.api.Test;
 
-class Result<T, E> {
-    private final T value;
-    private final E error;
-    private final boolean isSuccess;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
-    private Result(T value, E error, boolean isSuccess) {
-        this.value = value;
-        this.error = error;
-        this.isSuccess = isSuccess;
+class ResultTest {
+
+    @Test
+    void exposesSuccessfulValue() {
+        Result<String, ApplicationError> result = Result.success("ok");
+
+        assertTrue(result.isSuccess());
+        assertEquals("ok", result.success().orElseThrow());
     }
 
-    public static <T, E> Result<T, E> success(T value) {
-        return new Result<>(value, null, true);
+    @Test
+    void exposesFailureValue() {
+        var error = ApplicationError.notFound("plot", "1");
+        Result<String, ApplicationError> result = Result.failure(error);
+
+        assertTrue(result.isFailure());
+        assertEquals(error, result.failure().orElseThrow());
     }
 
-    public static <T, E> Result<T, E> failure(E error) {
-        return new Result<>(null, error, false);
-    }
+    @Test
+    void foldsBothResultBranches() {
+        Result<Integer, String> success = Result.success(4);
+        Result<Integer, String> failure = Result.failure("failed");
 
-    public boolean isSuccess() {
-        return isSuccess;
-    }
-
-    public boolean isFailure() {
-        return !isSuccess;
-    }
-
-    public Optional<T> success() {
-        return Optional.ofNullable(value);
-    }
-
-    public Optional<E> failure() {
-        return Optional.ofNullable(error);
-    }
-
-    public <R> R fold(Function<? super T, ? extends R> onSuccess, Function<? super E, ? extends R> onFailure) {
-        if (this.isSuccess) {
-            return onSuccess.apply(value);
-        } else {
-            return onFailure.apply(error);
-        }
+        assertEquals("value:4", success.fold(
+                value -> "value:" + value,
+                error -> "error:" + error
+        ));
+        assertEquals("error:failed", failure.fold(
+                value -> "value:" + value,
+                error -> "error:" + error
+        ));
     }
 }

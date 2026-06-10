@@ -63,14 +63,14 @@ public class IoTDevicesController {
     @PostMapping(consumes = APPLICATION_JSON_VALUE)
     @Operation(
             summary = "Create IoT device",
-            description = "Registers a new IoT device associated with a plot. Requires plot ownership.")
+            description = "Registers a new IoT device associated with an active plot.")
     @ApiResponses({
             @ApiResponse(
                     responseCode = "201",
                     description = "IoT device created successfully",
                     content = @Content(schema = @Schema(implementation = IoTDeviceResource.class))),
             @ApiResponse(responseCode = "400", description = "Invalid request body"),
-            @ApiResponse(responseCode = "403", description = "Authenticated user does not own the plot")
+            @ApiResponse(responseCode = "404", description = "Plot not found")
     })
     public ResponseEntity<?> createIoTDevice(
             @Parameter(description = "Plot identifier", required = true)

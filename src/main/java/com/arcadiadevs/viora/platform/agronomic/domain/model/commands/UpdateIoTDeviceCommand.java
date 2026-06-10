@@ -17,9 +17,9 @@ public record UpdateIoTDeviceCommand(
         IoTDeviceStatus status
 ) {
     public UpdateIoTDeviceCommand {
-        if (plotId == null)
+        if (plotId == null || plotId <= 0)
             throw new IllegalArgumentException("UpdateIoTDeviceCommand requires a valid plotId");
-        if (deviceId == null)
+        if (deviceId == null || deviceId <= 0)
             throw new IllegalArgumentException("UpdateIoTDeviceCommand requires a valid deviceId");
         if (deviceName == null || deviceName.isBlank())
             throw new IllegalArgumentException("UpdateIoTDeviceCommand requires a non-blank deviceName");

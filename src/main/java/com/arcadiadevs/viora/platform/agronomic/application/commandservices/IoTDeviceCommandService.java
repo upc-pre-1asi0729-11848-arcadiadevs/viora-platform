@@ -11,6 +11,7 @@ import com.arcadiadevs.viora.platform.agronomic.domain.repositories.PlotReposito
 import com.arcadiadevs.viora.platform.shared.application.result.ApplicationError;
 import com.arcadiadevs.viora.platform.shared.application.result.Result;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 /**
  * Application service for commands over the IoTDevice aggregate.
@@ -36,11 +37,12 @@ public class IoTDeviceCommandService {
      * @param command the creation command with plotId, deviceName and status
      * @return Success with the created IoTDevice, or Failure if plot not found
      */
+    @Transactional
     public Result<IoTDevice, ApplicationError> handle(CreateIoTDeviceCommand command) {
         var plotId = new PlotId(command.plotId());
 
         var plot = plotRepository.findById(plotId);
-        if (plot.isEmpty()) {
+        if (plot.isEmpty() || !plot.get().isActive()) {
             return Result.failure(ApplicationError.notFound(
                     "Plot",
                     String.valueOf(command.plotId())));
@@ -62,11 +64,12 @@ public class IoTDeviceCommandService {
      * @param command the update command with plotId, deviceId, deviceName and status
      * @return Success with the updated IoTDevice, or Failure if plot or device not found
      */
+    @Transactional
     public Result<IoTDevice, ApplicationError> handle(UpdateIoTDeviceCommand command) {
         var plotId = new PlotId(command.plotId());
 
         var plot = plotRepository.findById(plotId);
-        if (plot.isEmpty()) {
+        if (plot.isEmpty() || !plot.get().isActive()) {
             return Result.failure(ApplicationError.notFound(
                     "Plot",
                     String.valueOf(command.plotId())));
@@ -90,11 +93,12 @@ public class IoTDeviceCommandService {
      * @param command the delete command with plotId and deviceId
      * @return Success with Void if deleted, or Failure if plot or device not found
      */
-    public Result<Void, ApplicationError> handle(DeleteIoTDeviceCommand command) {
+    @Transactional
+    public Result<Boolean, ApplicationError> handle(DeleteIoTDeviceCommand command) {
         var plotId = new PlotId(command.plotId());
 
         var plot = plotRepository.findById(plotId);
-        if (plot.isEmpty()) {
+        if (plot.isEmpty() || !plot.get().isActive()) {
             return Result.failure(ApplicationError.notFound(
                     "Plot",
                     String.valueOf(command.plotId())));
@@ -107,6 +111,6 @@ public class IoTDeviceCommandService {
 
         ioTDeviceRepository.delete(device.get());
 
-        return Result.success(null);
+        return Result.success(true);
     }
 }
