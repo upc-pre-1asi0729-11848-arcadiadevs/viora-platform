@@ -1,85 +1,94 @@
 package com.arcadiadevs.viora.platform.agronomic.application.queryservices;
 
-import com.arcadiadevs.viora.platform.agronomic.application.internal.PlotOwnershipValidator;
 import com.arcadiadevs.viora.platform.agronomic.domain.model.aggregates.AgronomicStatistic;
 import com.arcadiadevs.viora.platform.agronomic.domain.model.queries.GetAgronomicStatisticsQuery;
-import com.arcadiadevs.viora.platform.agronomic.domain.model.valueobjects.DateRange;
 import com.arcadiadevs.viora.platform.agronomic.domain.model.valueobjects.PlotId;
+import com.arcadiadevs.viora.platform.agronomic.domain.model.valueobjects.UserId;
 import com.arcadiadevs.viora.platform.agronomic.domain.repositories.AgronomicStatisticRepository;
+import com.arcadiadevs.viora.platform.agronomic.domain.repositories.PlotRepository;
+import com.arcadiadevs.viora.platform.shared.application.result.ApplicationError;
+import com.arcadiadevs.viora.platform.shared.application.result.Result;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
 import java.util.List;
 
 /**
- * Application service for agronomic statistic read queries.
+ * Agronomic statistic query service.
  *
  * <p>
- * Handles the retrieval of agronomic statistics by user, optional plot and time range.
- * It validates user ownership and plot ownership before querying the repository.
+ * Handles read operations related to agronomic statistics,
+ * validating user ownership and resolving time ranges into date ranges.
  * </p>
  */
 @Service
+@RequiredArgsConstructor
 public class AgronomicStatisticQueryService {
 
     private final AgronomicStatisticRepository agronomicStatisticRepository;
-    private final PlotOwnershipValidator plotOwnershipValidator;
 
-    /**
-     * Creates a new AgronomicStatisticQueryService.
-     *
-     * @param agronomicStatisticRepository The agronomic statistic repository.
-     * @param plotOwnershipValidator The plot ownership validator.
-     */
-    public AgronomicStatisticQueryService(
-            AgronomicStatisticRepository agronomicStatisticRepository,
-            PlotOwnershipValidator plotOwnershipValidator
+    private final PlotRepository plotRepository;
+
+    @Transactional(readOnly = true)
+    public Result<List<AgronomicStatistic>, ApplicationError> handle(
+            GetAgronomicStatisticsQuery query
     ) {
-        this.agronomicStatisticRepository = agronomicStatisticRepository;
-        this.plotOwnershipValidator = plotOwnershipValidator;
-    }
+        try {
+            var userId = new UserId(query.userId());
+            var authenticatedUserId = new UserId(query.authenticatedUserId());
 
-    /**
-     * Handles the query to get agronomic statistics.
-     *
-     * <p>
-     * If the query has a plot id, the result is filtered by plot.
-     * If the query does not have a plot id, the result is consolidated by user.
-     * </p>
-     *
-     * @param query The query to get agronomic statistics.
-     * @return A list of agronomic statistics.
-     */
-    public List<AgronomicStatistic> handle(GetAgronomicStatisticsQuery query) {
-        this.validateAuthenticatedUser(query);
+            if (!userId.equals(authenticatedUserId)) {
+                return Result.failure(ApplicationError.forbidden(
+                        "agronomic-statistics-access",
+                        "Authenticated user cannot access statistics from another user."
+                ));
+            }
 
-        DateRange dateRange = query.timeRange().toDateRange();
+            var dateRange = query.timeRange().toDateRange(LocalDate.now());
 
-        if (query.plotId().isPresent()) {
-            PlotId plotId = query.plotId().get();
+            if (query.plotId() == null) {
+                var statistics = agronomicStatisticRepository
+                        .findAllByUserIdAndMeasurementDateBetween(userId, dateRange);
 
-            this.plotOwnershipValidator.validateOwnership(plotId, query.userId());
+                return Result.success(statistics);
+            }
 
-            return this.agronomicStatisticRepository.findAllByUserIdAndPlotIdAndMeasurementDateBetween(
-                    query.userId(),
-                    plotId,
-                    dateRange
-            );
-        }
+            var plotId = new PlotId(query.plotId());
+            var plot = plotRepository.findById(plotId);
 
-        return this.agronomicStatisticRepository.findAllByUserIdAndMeasurementDateBetween(
-                query.userId(),
-                dateRange
-        );
-    }
+            if (plot.isEmpty() || !plot.get().isActive()) {
+                return Result.failure(ApplicationError.validationError(
+                        "plotId",
+                        "The selected plot does not exist or is inactive."
+                ));
+            }
 
-    /**
-     * Validates that the authenticated user owns the requested data.
-     *
-     * @param query The query to validate.
-     */
-    private void validateAuthenticatedUser(GetAgronomicStatisticsQuery query) {
-        if (!query.userId().equals(query.authenticatedUserId())) {
-            throw new SecurityException("You are not allowed to access these agronomic statistics.");
+            if (!plot.get().belongsTo(userId)) {
+                return Result.failure(ApplicationError.forbidden(
+                        "plot-ownership",
+                        "User %d does not own plot %d.".formatted(
+                                query.userId(),
+                                query.plotId()
+                        )
+                ));
+            }
+
+            var statistics = agronomicStatisticRepository
+                    .findAllByUserIdAndPlotIdAndMeasurementDateBetween(
+                            userId,
+                            plotId,
+                            dateRange
+                    );
+
+            return Result.success(statistics);
+
+        } catch (IllegalArgumentException exception) {
+            return Result.failure(ApplicationError.validationError(
+                    "agronomic-statistics-query",
+                    exception.getMessage()
+            ));
         }
     }
 }
