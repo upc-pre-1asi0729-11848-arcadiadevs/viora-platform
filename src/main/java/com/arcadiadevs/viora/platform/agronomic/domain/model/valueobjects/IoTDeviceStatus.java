@@ -10,8 +10,11 @@ public enum IoTDeviceStatus {
     INACTIVE;
 
     public static IoTDeviceStatus fromString(String value) {
+        if (value == null || value.isBlank()) {
+            throw new IllegalArgumentException("IoTDeviceStatus is required");
+        }
         try {
-            return IoTDeviceStatus.valueOf(value.toUpperCase());
+            return IoTDeviceStatus.valueOf(value.trim().toUpperCase());
         } catch (IllegalArgumentException e) {
             throw new IllegalArgumentException(
                     "Invalid IoTDeviceStatus '%s'. Allowed: ACTIVE, WARNING, CRITICAL, INACTIVE".formatted(value));
