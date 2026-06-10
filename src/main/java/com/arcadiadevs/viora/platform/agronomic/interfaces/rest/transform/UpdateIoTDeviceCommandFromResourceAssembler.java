@@ -1,7 +1,6 @@
 package com.arcadiadevs.viora.platform.agronomic.interfaces.rest.transform;
 
-import com.arcadiadevs.viora.platform.agronomic.application.commands.UpdateIoTDeviceCommand;
-import com.arcadiadevs.viora.platform.agronomic.domain.model.valueobjects.DeviceName;
+import com.arcadiadevs.viora.platform.agronomic.domain.model.commands.UpdateIoTDeviceCommand;
 import com.arcadiadevs.viora.platform.agronomic.domain.model.valueobjects.IoTDeviceStatus;
 import com.arcadiadevs.viora.platform.agronomic.interfaces.rest.resources.UpdateIoTDeviceResource;
 import org.jspecify.annotations.NullMarked;
@@ -15,25 +14,22 @@ public final class UpdateIoTDeviceCommandFromResourceAssembler {
     private UpdateIoTDeviceCommandFromResourceAssembler() {}
 
     /**
-     * Converts a REST resource plus path variables and auth context into a command.
+     * Converts a REST resource plus path variables into a command.
      *
-     * @param resource          the PATCH request body
-     * @param plotId            the plot identifier from the path
-     * @param deviceId          the device identifier from the path
-     * @param authenticatedUserId the authenticated user identifier
+     * @param resource the PATCH request body
+     * @param plotId   the plot identifier from the path
+     * @param deviceId the device identifier from the path
      * @return the assembled command
      */
-    public static UpdateIoTDeviceCommand toCommand(
+    public static UpdateIoTDeviceCommand toCommandFromResource(
             UpdateIoTDeviceResource resource,
             Long plotId,
-            Long deviceId,
-            Long authenticatedUserId) {
+            Long deviceId) {
 
         return new UpdateIoTDeviceCommand(
                 plotId,
                 deviceId,
-                authenticatedUserId,
-                new DeviceName(resource.deviceName()),
+                resource.deviceName(),
                 IoTDeviceStatus.fromString(resource.iotDeviceStatus())
         );
     }
