@@ -16,7 +16,7 @@ public record CreateIoTDeviceCommand(
         IoTDeviceStatus status
 ) {
     public CreateIoTDeviceCommand {
-        if (plotId == null)
+        if (plotId == null || plotId <= 0)
             throw new IllegalArgumentException("CreateIoTDeviceCommand requires a valid plotId");
         if (deviceName == null || deviceName.isBlank())
             throw new IllegalArgumentException("CreateIoTDeviceCommand requires a non-blank deviceName");
