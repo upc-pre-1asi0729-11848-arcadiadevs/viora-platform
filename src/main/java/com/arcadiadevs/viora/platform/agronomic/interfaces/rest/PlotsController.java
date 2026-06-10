@@ -2,9 +2,12 @@ package com.arcadiadevs.viora.platform.agronomic.interfaces.rest;
 
 import com.arcadiadevs.viora.platform.agronomic.application.commandservices.PlotCommandService;
 import com.arcadiadevs.viora.platform.agronomic.application.queryservices.PlotQueryService;
+import com.arcadiadevs.viora.platform.agronomic.domain.model.queries.GetPlotsByUserIdQuery;
 import com.arcadiadevs.viora.platform.agronomic.domain.model.commands.DeletePlotCommand;
 import com.arcadiadevs.viora.platform.agronomic.domain.model.queries.GetPlotByIdQuery;
+import com.arcadiadevs.viora.platform.agronomic.interfaces.rest.resources.CreatePlotResource;
 import com.arcadiadevs.viora.platform.agronomic.interfaces.rest.resources.UpdatePlotResource;
+import com.arcadiadevs.viora.platform.agronomic.interfaces.rest.transform.CreatePlotCommandFromResourceAssembler;
 import com.arcadiadevs.viora.platform.agronomic.interfaces.rest.transform.PlotResourceFromPlotAssembler;
 import com.arcadiadevs.viora.platform.agronomic.interfaces.rest.transform.UpdatePlotCommandFromResourceAssembler;
 import com.arcadiadevs.viora.platform.shared.interfaces.rest.resources.MessageResource;
@@ -43,6 +46,62 @@ public class PlotsController {
      * Plot command service.
      */
     private final PlotCommandService plotCommandService;
+
+    /**
+     * Registers a productive agricultural plot.
+     *
+     * @param resource The new plot request body.
+     * @return The persisted plot resource.
+     */
+    @PostMapping(consumes = MediaType.APPLICATION_JSON_VALUE)
+    @Operation(
+            summary = "Create plot",
+            description = "Registers a productive agricultural plot and its geographic boundary."
+    )
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "201", description = "Plot created"),
+            @ApiResponse(responseCode = "400", description = "Invalid request data"),
+            @ApiResponse(responseCode = "409", description = "Plot name conflict"),
+            @ApiResponse(responseCode = "500", description = "Unexpected error")
+    })
+    public ResponseEntity<?> createPlot(@Valid @RequestBody CreatePlotResource resource) {
+        var command = CreatePlotCommandFromResourceAssembler.toCommandFromResource(resource);
+        var result = plotCommandService.handle(command);
+
+        return ResponseEntityAssembler.toResponseEntityFromResult(
+                result,
+                PlotResourceFromPlotAssembler::toResourceFromAggregate,
+                HttpStatus.CREATED
+        );
+    }
+
+    /**
+     * Gets all active plots owned by a user.
+     *
+     * @param userId The owner user identifier.
+     * @return The active plot resources.
+     */
+    @GetMapping
+    @Operation(
+            summary = "Get plots by user",
+            description = "Gets all active plots owned by a user."
+    )
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Plots retrieved"),
+            @ApiResponse(responseCode = "400", description = "Invalid user ID"),
+            @ApiResponse(responseCode = "500", description = "Unexpected error")
+    })
+    public ResponseEntity<?> getPlotsByUserId(@RequestParam Long userId) {
+        var result = plotQueryService.handle(new GetPlotsByUserIdQuery(userId));
+
+        return ResponseEntityAssembler.toResponseEntityFromResult(
+                result,
+                plots -> plots.stream()
+                        .map(PlotResourceFromPlotAssembler::toResourceFromAggregate)
+                        .toList(),
+                HttpStatus.OK
+        );
+    }
 
     /**
      * Gets a plot by its ID.

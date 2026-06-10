@@ -2,13 +2,17 @@ package com.arcadiadevs.viora.platform.agronomic.application.queryservices;
 
 import com.arcadiadevs.viora.platform.agronomic.domain.model.aggregates.Plot;
 import com.arcadiadevs.viora.platform.agronomic.domain.model.queries.GetPlotByIdQuery;
+import com.arcadiadevs.viora.platform.agronomic.domain.model.queries.GetPlotsByUserIdQuery;
 import com.arcadiadevs.viora.platform.agronomic.domain.model.valueobjects.PlotId;
+import com.arcadiadevs.viora.platform.agronomic.domain.model.valueobjects.UserId;
 import com.arcadiadevs.viora.platform.agronomic.domain.repositories.PlotRepository;
 import com.arcadiadevs.viora.platform.shared.application.result.ApplicationError;
 import com.arcadiadevs.viora.platform.shared.application.result.Result;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.util.List;
 
 /**
  * Plot query service.
@@ -43,5 +47,16 @@ public class PlotQueryService {
         }
 
         return Result.success(plot.get());
+    }
+
+    /**
+     * Handles the query for all active plots owned by a user.
+     *
+     * @param query The query containing the owner user identifier.
+     * @return A successful result with the active plots.
+     */
+    @Transactional(readOnly = true)
+    public Result<List<Plot>, ApplicationError> handle(GetPlotsByUserIdQuery query) {
+        return Result.success(plotRepository.findByUserId(new UserId(query.userId())));
     }
 }

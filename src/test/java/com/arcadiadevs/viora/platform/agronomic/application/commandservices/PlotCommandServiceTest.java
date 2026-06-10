@@ -1,0 +1,196 @@
+package com.arcadiadevs.viora.platform.agronomic.application.commandservices;
+
+import com.arcadiadevs.viora.platform.agronomic.domain.model.aggregates.Plot;
+import com.arcadiadevs.viora.platform.agronomic.domain.model.commands.DeletePlotCommand;
+import com.arcadiadevs.viora.platform.agronomic.domain.model.commands.UpdatePlotCommand;
+import com.arcadiadevs.viora.platform.agronomic.domain.model.valueobjects.AreaSize;
+import com.arcadiadevs.viora.platform.agronomic.domain.model.valueobjects.GeoPoint;
+import com.arcadiadevs.viora.platform.agronomic.domain.model.valueobjects.PlotId;
+import com.arcadiadevs.viora.platform.agronomic.domain.model.valueobjects.PlotName;
+import com.arcadiadevs.viora.platform.agronomic.domain.model.valueobjects.PolygonCoordinates;
+import com.arcadiadevs.viora.platform.agronomic.domain.model.valueobjects.UserId;
+import com.arcadiadevs.viora.platform.agronomic.domain.repositories.PlotRepository;
+import org.junit.jupiter.api.Test;
+
+import java.math.BigDecimal;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Optional;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
+class PlotCommandServiceTest {
+
+    @Test
+    void updatesPlotAfterAllInputIsValidated() {
+        var repository = new InMemoryPlotRepository();
+        repository.plot = createPlot();
+        var service = new PlotCommandService(repository);
+        var result = service.handle(new UpdatePlotCommand(
+                1L,
+                "North field",
+                validCoordinates(),
+                new BigDecimal("12.50"),
+                "Coffee",
+                "Typica"
+        ));
+
+        assertTrue(result.isSuccess());
+        assertEquals("North field", repository.plot.getName().getValue());
+        assertEquals(new BigDecimal("12.50"), repository.plot.getAreaSize().getHectares());
+        assertEquals(1, repository.saveCount);
+    }
+
+    @Test
+    void invalidPolygonDoesNotMutatePlot() {
+        var repository = new InMemoryPlotRepository();
+        repository.plot = createPlot();
+        var service = new PlotCommandService(repository);
+
+        var result = service.handle(new UpdatePlotCommand(
+                1L,
+                "Changed name",
+                List.of(List.of(-12.0, -77.0)),
+                null,
+                null,
+                null
+        ));
+
+        assertTrue(result.isFailure());
+        assertEquals("Original plot", repository.plot.getName().getValue());
+        assertEquals(0, repository.saveCount);
+    }
+
+    @Test
+    void duplicateNameReturnsConflict() {
+        var repository = new InMemoryPlotRepository();
+        repository.plot = createPlot();
+        repository.duplicateName = true;
+        var service = new PlotCommandService(repository);
+
+        var result = service.handle(new UpdatePlotCommand(
+                1L,
+                "Existing plot",
+                null,
+                null,
+                null,
+                null
+        ));
+
+        assertTrue(result.isFailure());
+        assertEquals("PLOT_CONFLICT", result.failure().orElseThrow().code());
+        assertEquals(0, repository.saveCount);
+    }
+
+    @Test
+    void deleteUsesLogicalDeletionWhenRelatedRecordsExist() {
+        var repository = new InMemoryPlotRepository();
+        repository.plot = createPlot();
+        repository.relatedRecords = true;
+        var service = new PlotCommandService(repository);
+
+        var result = service.handle(new DeletePlotCommand(1L));
+
+        assertTrue(result.isSuccess());
+        assertFalse(repository.plot.isActive());
+        assertEquals(1, repository.saveCount);
+        assertEquals(0, repository.deleteCount);
+    }
+
+    private Plot createPlot() {
+        var pointA = new GeoPoint(-12.0, -77.0);
+        var polygon = new PolygonCoordinates(List.of(
+                pointA,
+                new GeoPoint(-12.0, -76.9),
+                new GeoPoint(-12.1, -76.9),
+                pointA
+        ));
+        var plot = new Plot(
+                new UserId(10L),
+                new PlotName("Original plot"),
+                polygon,
+                new AreaSize(new BigDecimal("10.00")),
+                "Cacao",
+                "Criollo"
+        );
+        plot.restoreIdentity(new PlotId(1L));
+        return plot;
+    }
+
+    private List<List<Double>> validCoordinates() {
+        return List.of(
+                List.of(-12.0, -77.0),
+                List.of(-12.0, -76.9),
+                List.of(-12.1, -76.9),
+                List.of(-12.0, -77.0)
+        );
+    }
+
+    private static final class InMemoryPlotRepository implements PlotRepository {
+        private Plot plot;
+        private boolean duplicateName;
+        private boolean relatedRecords;
+        private int saveCount;
+        private int deleteCount;
+
+        @Override
+        public Optional<Plot> findById(PlotId id) {
+            return Optional.ofNullable(plot)
+                    .filter(existingPlot -> existingPlot.getId().equals(id));
+        }
+
+        @Override
+        public List<Plot> findAll() {
+            return plot == null ? List.of() : List.of(plot);
+        }
+
+        @Override
+        public List<Plot> findByUserId(UserId userId) {
+            return new ArrayList<>(findAll());
+        }
+
+        @Override
+        public Optional<Plot> findByNameAndUserId(PlotName name, UserId userId) {
+            return Optional.empty();
+        }
+
+        @Override
+        public Plot save(Plot plot) {
+            this.plot = plot;
+            saveCount++;
+            return plot;
+        }
+
+        @Override
+        public boolean existsById(PlotId id) {
+            return findById(id).isPresent();
+        }
+
+        @Override
+        public boolean existsByNameAndUserId(PlotName name, UserId userId) {
+            return duplicateName;
+        }
+
+        @Override
+        public boolean existsByNameAndUserIdAndIdIsNot(
+                PlotName name,
+                UserId userId,
+                PlotId id
+        ) {
+            return duplicateName;
+        }
+
+        @Override
+        public boolean hasRelatedOperationalRecords(PlotId id) {
+            return relatedRecords;
+        }
+
+        @Override
+        public void deleteById(PlotId id) {
+            plot = null;
+            deleteCount++;
+        }
+    }
+}
