@@ -1,6 +1,6 @@
 package com.arcadiadevs.viora.platform.agronomic.infrastructure.persistence.jpa.repositories;
 
-import com.arcadiadevs.viora.platform.agronomic.domain.model.aggregates.AgronomicStatistic;
+import com.arcadiadevs.viora.platform.agronomic.infrastructure.persistence.jpa.entities.AgronomicStatisticEntity;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -10,7 +10,7 @@ import java.time.LocalDate;
 import java.util.List;
 
 /**
- * Spring Data repository for agronomic statistic aggregate root.
+ * Spring Data repository for agronomic statistic entity.
  *
  * <p>
  * This repository is responsible for querying agronomic statistics
@@ -18,7 +18,7 @@ import java.util.List;
  * </p>
  */
 @Repository
-public interface SpringDataAgronomicStatisticRepository extends JpaRepository<AgronomicStatistic, Long> {
+public interface SpringDataAgronomicStatisticRepository extends JpaRepository<AgronomicStatisticEntity, Long> {
 
     /**
      * Finds all agronomic statistics by user id and measurement date range.
@@ -30,12 +30,12 @@ public interface SpringDataAgronomicStatisticRepository extends JpaRepository<Ag
      */
     @Query("""
             SELECT statistic
-            FROM AgronomicStatistic statistic
-            WHERE statistic.userId.userId = :userId
-            AND statistic.measurementDate.measurementDate BETWEEN :startDate AND :endDate
-            ORDER BY statistic.measurementDate.measurementDate ASC
+            FROM AgronomicStatisticEntity statistic
+            WHERE statistic.userId = :userId
+            AND statistic.measurementDate BETWEEN :startDate AND :endDate
+            ORDER BY statistic.measurementDate ASC
             """)
-    List<AgronomicStatistic> findAllByUserIdAndMeasurementDateBetween(
+    List<AgronomicStatisticEntity> findAllByUserIdAndMeasurementDateBetween(
             @Param("userId") Long userId,
             @Param("startDate") LocalDate startDate,
             @Param("endDate") LocalDate endDate
@@ -52,13 +52,13 @@ public interface SpringDataAgronomicStatisticRepository extends JpaRepository<Ag
      */
     @Query("""
             SELECT statistic
-            FROM AgronomicStatistic statistic
-            WHERE statistic.userId.userId = :userId
-            AND statistic.plotId.plotId = :plotId
-            AND statistic.measurementDate.measurementDate BETWEEN :startDate AND :endDate
-            ORDER BY statistic.measurementDate.measurementDate ASC
+            FROM AgronomicStatisticEntity statistic
+            WHERE statistic.userId = :userId
+            AND statistic.plotId = :plotId
+            AND statistic.measurementDate BETWEEN :startDate AND :endDate
+            ORDER BY statistic.measurementDate ASC
             """)
-    List<AgronomicStatistic> findAllByUserIdAndPlotIdAndMeasurementDateBetween(
+    List<AgronomicStatisticEntity> findAllByUserIdAndPlotIdAndMeasurementDateBetween(
             @Param("userId") Long userId,
             @Param("plotId") Long plotId,
             @Param("startDate") LocalDate startDate,
