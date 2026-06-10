@@ -2,6 +2,7 @@ package com.arcadiadevs.viora.platform.agronomic.application.commandservices;
 
 import com.arcadiadevs.viora.platform.agronomic.domain.model.aggregates.IoTDevice;
 import com.arcadiadevs.viora.platform.agronomic.domain.model.commands.CreateIoTDeviceCommand;
+import com.arcadiadevs.viora.platform.agronomic.domain.model.commands.DeleteIoTDeviceCommand;
 import com.arcadiadevs.viora.platform.agronomic.domain.model.commands.UpdateIoTDeviceCommand;
 import com.arcadiadevs.viora.platform.agronomic.domain.model.valueobjects.DeviceName;
 import com.arcadiadevs.viora.platform.agronomic.domain.model.valueobjects.PlotId;
@@ -14,7 +15,7 @@ import org.springframework.stereotype.Service;
 /**
  * Application service for commands over the IoTDevice aggregate.
  * (TS13-004) Handles CreateIoTDeviceCommand.
- * (TS014) Handles UpdateIoTDeviceCommand.
+ * (TS014) Handles UpdateIoTDeviceCommand and DeleteIoTDeviceCommand.
  */
 @Service
 public class IoTDeviceCommandService {
@@ -81,5 +82,31 @@ public class IoTDeviceCommandService {
         IoTDevice saved = ioTDeviceRepository.save(iotDevice);
 
         return Result.success(saved);
+    }
+
+    /**
+     * Deletes an existing IoT device from the specified plot.
+     *
+     * @param command the delete command with plotId and deviceId
+     * @return Success with Void if deleted, or Failure if plot or device not found
+     */
+    public Result<Void, ApplicationError> handle(DeleteIoTDeviceCommand command) {
+        var plotId = new PlotId(command.plotId());
+
+        var plot = plotRepository.findById(plotId);
+        if (plot.isEmpty()) {
+            return Result.failure(ApplicationError.notFound(
+                    "Plot",
+                    String.valueOf(command.plotId())));
+        }
+
+        var device = ioTDeviceRepository.findByIdAndPlotId(command.deviceId(), command.plotId());
+        if (device.isEmpty()) {
+            return Result.failure(ApplicationError.notFound("IoT_device", String.valueOf(command.deviceId())));
+        }
+
+        ioTDeviceRepository.delete(device.get());
+
+        return Result.success(null);
     }
 }

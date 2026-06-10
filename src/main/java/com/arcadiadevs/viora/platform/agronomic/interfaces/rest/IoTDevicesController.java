@@ -1,6 +1,6 @@
 package com.arcadiadevs.viora.platform.agronomic.interfaces.rest;
 
-import com.arcadiadevs.viora.platform.agronomic.application.commands.DeleteIoTDeviceCommand;
+import com.arcadiadevs.viora.platform.agronomic.domain.model.commands.DeleteIoTDeviceCommand;
 import com.arcadiadevs.viora.platform.agronomic.application.commandservices.IoTDeviceCommandService;
 import com.arcadiadevs.viora.platform.agronomic.application.queryservices.IoTDeviceQueryService;
 import com.arcadiadevs.viora.platform.agronomic.domain.model.queries.GetIoTDevicesByPlotIdQuery;
@@ -10,6 +10,7 @@ import com.arcadiadevs.viora.platform.agronomic.interfaces.rest.resources.Update
 import com.arcadiadevs.viora.platform.agronomic.interfaces.rest.transform.CreateIoTDeviceCommandFromResourceAssembler;
 import com.arcadiadevs.viora.platform.agronomic.interfaces.rest.transform.IoTDeviceResourceFromIoTDeviceAssembler;
 import com.arcadiadevs.viora.platform.agronomic.interfaces.rest.transform.UpdateIoTDeviceCommandFromResourceAssembler;
+import com.arcadiadevs.viora.platform.shared.interfaces.rest.transform.ErrorResponseAssembler;
 import com.arcadiadevs.viora.platform.shared.interfaces.rest.transform.ResponseEntityAssembler;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -167,26 +168,22 @@ public class IoTDevicesController {
      *
      * @param plotId   the plot identifier (path variable)
      * @param deviceId the device identifier (path variable)
-     * @param userId   the authenticated user identifier (query parameter)
-     * @return 204 No Content on success, or 403/404 on error
+     * @return 204 No Content on success, or 404 on error
      */
     @DeleteMapping("/{deviceId}")
     @Operation(summary = "Delete an IoT device",
-            description = "Removes an IoT device from a plot. Requires plot ownership.")
+            description = "Removes an IoT device from a plot.")
     @ApiResponses({
             @ApiResponse(responseCode = "204", description = "Device deleted successfully"),
-            @ApiResponse(responseCode = "403", description = "Authenticated user does not own the plot"),
             @ApiResponse(responseCode = "404", description = "Plot or device not found")
     })
     public ResponseEntity<?> deleteIoTDevice(
             @Parameter(description = "Plot identifier", required = true)
             @PathVariable Long plotId,
             @Parameter(description = "Device identifier", required = true)
-            @PathVariable Long deviceId,
-            @Parameter(description = "Authenticated user identifier", required = true)
-            @RequestParam Long userId) {
+            @PathVariable Long deviceId) {
 
-        var command = new DeleteIoTDeviceCommand(plotId, deviceId, userId);
+        var command = new DeleteIoTDeviceCommand(plotId, deviceId);
         var result = ioTDeviceCommandService.handle(command);
 
         if (result.isSuccess()) {
@@ -194,6 +191,6 @@ public class IoTDevicesController {
         }
 
         return ErrorResponseAssembler.toErrorResponseFromApplicationError(
-                result.failure().orElseThrow().error());
+                result.failure().orElseThrow());
     }
 }
