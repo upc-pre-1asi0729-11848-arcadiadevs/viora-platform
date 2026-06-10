@@ -2,6 +2,7 @@ package com.arcadiadevs.viora.platform.agronomic.application.commandservices;
 
 import com.arcadiadevs.viora.platform.agronomic.domain.model.aggregates.IoTDevice;
 import com.arcadiadevs.viora.platform.agronomic.domain.model.commands.CreateIoTDeviceCommand;
+import com.arcadiadevs.viora.platform.agronomic.domain.model.commands.UpdateIoTDeviceCommand;
 import com.arcadiadevs.viora.platform.agronomic.domain.model.valueobjects.DeviceName;
 import com.arcadiadevs.viora.platform.agronomic.domain.model.valueobjects.PlotId;
 import com.arcadiadevs.viora.platform.agronomic.domain.repositories.IoTDeviceRepository;
@@ -13,6 +14,7 @@ import org.springframework.stereotype.Service;
 /**
  * Application service for commands over the IoTDevice aggregate.
  * (TS13-004) Handles CreateIoTDeviceCommand.
+ * (TS014) Handles UpdateIoTDeviceCommand.
  */
 @Service
 public class IoTDeviceCommandService {
@@ -38,9 +40,9 @@ public class IoTDeviceCommandService {
 
         var plot = plotRepository.findById(plotId);
         if (plot.isEmpty()) {
-            return Result.failure(ApplicationError.businessRuleViolation(
-                    "plot-not-found",
-                    "Plot %d does not exist".formatted(command.plotId())));
+            return Result.failure(ApplicationError.notFound(
+                    "Plot",
+                    String.valueOf(command.plotId())));
         }
 
         var device = new IoTDevice(
@@ -50,6 +52,34 @@ public class IoTDeviceCommandService {
         );
 
         var saved = ioTDeviceRepository.save(device);
+        return Result.success(saved);
+    }
+
+    /**
+     * Updates an existing IoT device's metadata under the specified plot.
+     *
+     * @param command the update command with plotId, deviceId, deviceName and status
+     * @return Success with the updated IoTDevice, or Failure if plot or device not found
+     */
+    public Result<IoTDevice, ApplicationError> handle(UpdateIoTDeviceCommand command) {
+        var plotId = new PlotId(command.plotId());
+
+        var plot = plotRepository.findById(plotId);
+        if (plot.isEmpty()) {
+            return Result.failure(ApplicationError.notFound(
+                    "Plot",
+                    String.valueOf(command.plotId())));
+        }
+
+        var device = ioTDeviceRepository.findByIdAndPlotId(command.deviceId(), command.plotId());
+        if (device.isEmpty()) {
+            return Result.failure(ApplicationError.notFound("IoT_device", String.valueOf(command.deviceId())));
+        }
+
+        IoTDevice iotDevice = device.get();
+        iotDevice.update(new DeviceName(command.deviceName()), command.status());
+        IoTDevice saved = ioTDeviceRepository.save(iotDevice);
+
         return Result.success(saved);
     }
 }

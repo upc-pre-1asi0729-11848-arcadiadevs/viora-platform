@@ -5,8 +5,10 @@ import com.arcadiadevs.viora.platform.agronomic.application.queryservices.IoTDev
 import com.arcadiadevs.viora.platform.agronomic.domain.model.queries.GetIoTDevicesByPlotIdQuery;
 import com.arcadiadevs.viora.platform.agronomic.interfaces.rest.resources.CreateIoTDeviceResource;
 import com.arcadiadevs.viora.platform.agronomic.interfaces.rest.resources.IoTDeviceResource;
+import com.arcadiadevs.viora.platform.agronomic.interfaces.rest.resources.UpdateIoTDeviceResource;
 import com.arcadiadevs.viora.platform.agronomic.interfaces.rest.transform.CreateIoTDeviceCommandFromResourceAssembler;
 import com.arcadiadevs.viora.platform.agronomic.interfaces.rest.transform.IoTDeviceResourceFromIoTDeviceAssembler;
+import com.arcadiadevs.viora.platform.agronomic.interfaces.rest.transform.UpdateIoTDeviceCommandFromResourceAssembler;
 import com.arcadiadevs.viora.platform.shared.interfaces.rest.transform.ResponseEntityAssembler;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -20,14 +22,17 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
+
 import static org.springframework.http.MediaType.APPLICATION_JSON_VALUE;
 
 /**
  * REST controller that exposes IoT device endpoints.
  *
  * <p>
- * (TS12-005) GET  /api/v1/plots/{plotId}/iot-devices — list all devices belonging to a plot.<br>
- * (TS13-004) POST /api/v1/plots/{plotId}/iot-devices — register a new IoT device for a plot.
+ * (TS12-005) GET    /api/v1/plots/{plotId}/iot-devices — list all devices belonging to a plot.<br>
+ * (TS13-004) POST   /api/v1/plots/{plotId}/iot-devices — register a new IoT device for a plot.<br>
+ * (TS014)    PATCH  /api/v1/plots/{plotId}/iot-devices/{deviceId} — update an existing IoT device.
  * </p>
  */
 @RestController
@@ -113,6 +118,43 @@ public class IoTDevicesController {
                 devices -> devices.stream()
                         .map(IoTDeviceResourceFromIoTDeviceAssembler::toResourceFromEntity)
                         .toList(),
+                HttpStatus.OK
+        );
+    }
+
+    /**
+     * Updates an existing IoT device's metadata under the specified plot.
+     *
+     * @param plotId   the plot identifier (path variable)
+     * @param deviceId the device identifier (path variable)
+     * @param resource the request body with deviceName and status
+     * @return 200 OK with updated IoTDeviceResource, or 400/404
+     */
+    @PatchMapping(value = "/{deviceId}", consumes = APPLICATION_JSON_VALUE)
+    @Operation(
+            summary = "Update IoT device",
+            description = "Updates device name and status. Both fields are required.")
+    @ApiResponses({
+            @ApiResponse(
+                    responseCode = "200",
+                    description = "Device updated successfully",
+                    content = @Content(schema = @Schema(implementation = IoTDeviceResource.class))),
+            @ApiResponse(responseCode = "400", description = "Invalid request body"),
+            @ApiResponse(responseCode = "404", description = "Plot or device not found")
+    })
+    public ResponseEntity<?> updateIoTDevice(
+            @Parameter(description = "Plot identifier", required = true)
+            @PathVariable Long plotId,
+            @Parameter(description = "Device identifier", required = true)
+            @PathVariable Long deviceId,
+            @Valid @RequestBody UpdateIoTDeviceResource resource) {
+
+        var command = UpdateIoTDeviceCommandFromResourceAssembler.toCommandFromResource(resource, plotId, deviceId);
+        var result = ioTDeviceCommandService.handle(command);
+
+        return ResponseEntityAssembler.toResponseEntityFromResult(
+                result,
+                IoTDeviceResourceFromIoTDeviceAssembler::toResourceFromEntity,
                 HttpStatus.OK
         );
     }
