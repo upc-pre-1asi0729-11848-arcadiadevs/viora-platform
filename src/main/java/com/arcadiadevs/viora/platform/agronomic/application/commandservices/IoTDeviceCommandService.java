@@ -4,7 +4,6 @@ import com.arcadiadevs.viora.platform.agronomic.domain.model.aggregates.IoTDevic
 import com.arcadiadevs.viora.platform.agronomic.domain.model.commands.CreateIoTDeviceCommand;
 import com.arcadiadevs.viora.platform.agronomic.domain.model.valueobjects.DeviceName;
 import com.arcadiadevs.viora.platform.agronomic.domain.model.valueobjects.PlotId;
-import com.arcadiadevs.viora.platform.agronomic.domain.model.valueobjects.UserId;
 import com.arcadiadevs.viora.platform.agronomic.domain.repositories.IoTDeviceRepository;
 import com.arcadiadevs.viora.platform.agronomic.domain.repositories.PlotRepository;
 import com.arcadiadevs.viora.platform.shared.application.result.ApplicationError;
@@ -30,21 +29,18 @@ public class IoTDeviceCommandService {
 
     /**
      * Registers a new IoT device under the specified plot.
-     * The requesting user must own the plot.
      *
-     * @param command the creation command with plotId, userId, deviceName and status
-     * @return Success with the created IoTDevice, or Failure if ownership check fails
+     * @param command the creation command with plotId, deviceName and status
+     * @return Success with the created IoTDevice, or Failure if plot not found
      */
     public Result<IoTDevice, ApplicationError> handle(CreateIoTDeviceCommand command) {
         var plotId = new PlotId(command.plotId());
-        var userId = new UserId(command.authenticatedUserId());
 
         var plot = plotRepository.findById(plotId);
-        if (plot.isEmpty() || !plot.get().belongsTo(userId)) {
+        if (plot.isEmpty()) {
             return Result.failure(ApplicationError.businessRuleViolation(
-                    "plot-ownership",
-                    "User %d does not own plot %d".formatted(
-                            command.authenticatedUserId(), command.plotId())));
+                    "plot-not-found",
+                    "Plot %d does not exist".formatted(command.plotId())));
         }
 
         var device = new IoTDevice(
