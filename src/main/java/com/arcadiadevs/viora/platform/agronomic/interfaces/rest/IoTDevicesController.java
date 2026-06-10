@@ -1,8 +1,11 @@
 package com.arcadiadevs.viora.platform.agronomic.interfaces.rest;
 
+import com.arcadiadevs.viora.platform.agronomic.application.commandservices.IoTDeviceCommandService;
 import com.arcadiadevs.viora.platform.agronomic.application.queryservices.IoTDeviceQueryService;
 import com.arcadiadevs.viora.platform.agronomic.domain.model.queries.GetIoTDevicesByPlotIdQuery;
+import com.arcadiadevs.viora.platform.agronomic.interfaces.rest.resources.CreateIoTDeviceResource;
 import com.arcadiadevs.viora.platform.agronomic.interfaces.rest.resources.IoTDeviceResource;
+import com.arcadiadevs.viora.platform.agronomic.interfaces.rest.transform.CreateIoTDeviceCommandFromResourceAssembler;
 import com.arcadiadevs.viora.platform.agronomic.interfaces.rest.transform.IoTDeviceResourceFromIoTDeviceAssembler;
 import com.arcadiadevs.viora.platform.shared.interfaces.rest.transform.ResponseEntityAssembler;
 import io.swagger.v3.oas.annotations.Operation;
@@ -12,6 +15,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -22,7 +26,8 @@ import static org.springframework.http.MediaType.APPLICATION_JSON_VALUE;
  * REST controller that exposes IoT device endpoints.
  *
  * <p>
- * (TS12-005) GET /api/v1/plots/{plotId}/iot-devices — list all devices belonging to a plot.
+ * (TS12-005) GET  /api/v1/plots/{plotId}/iot-devices — list all devices belonging to a plot.<br>
+ * (TS13-004) POST /api/v1/plots/{plotId}/iot-devices — register a new IoT device for a plot.
  * </p>
  */
 @RestController
@@ -30,10 +35,49 @@ import static org.springframework.http.MediaType.APPLICATION_JSON_VALUE;
 @Tag(name = "IoT Devices", description = "IoT Device management endpoints")
 public class IoTDevicesController {
 
+    private final IoTDeviceCommandService ioTDeviceCommandService;
     private final IoTDeviceQueryService ioTDeviceQueryService;
 
-    public IoTDevicesController(IoTDeviceQueryService ioTDeviceQueryService) {
+    public IoTDevicesController(
+            IoTDeviceCommandService ioTDeviceCommandService,
+            IoTDeviceQueryService ioTDeviceQueryService) {
+        this.ioTDeviceCommandService = ioTDeviceCommandService;
         this.ioTDeviceQueryService = ioTDeviceQueryService;
+    }
+
+    /**
+     * Registers a new IoT device under the specified plot.
+     * The requesting user must be the plot owner.
+     *
+     * @param plotId   the plot identifier (path variable)
+     * @param resource the request body with userId, deviceName and optional status
+     * @return 201 Created with IoTDeviceResource, or 403 Forbidden
+     */
+    @PostMapping(consumes = APPLICATION_JSON_VALUE)
+    @Operation(
+            summary = "Create IoT device",
+            description = "Registers a new IoT device associated with a plot. Requires plot ownership.")
+    @ApiResponses({
+            @ApiResponse(
+                    responseCode = "201",
+                    description = "IoT device created successfully",
+                    content = @Content(schema = @Schema(implementation = IoTDeviceResource.class))),
+            @ApiResponse(responseCode = "400", description = "Invalid request body"),
+            @ApiResponse(responseCode = "403", description = "Authenticated user does not own the plot")
+    })
+    public ResponseEntity<?> createIoTDevice(
+            @Parameter(description = "Plot identifier", required = true)
+            @PathVariable Long plotId,
+            @Valid @RequestBody CreateIoTDeviceResource resource) {
+
+        var command = CreateIoTDeviceCommandFromResourceAssembler.toCommandFromResource(resource, plotId);
+        var result = ioTDeviceCommandService.handle(command);
+
+        return ResponseEntityAssembler.toResponseEntityFromResult(
+                result,
+                IoTDeviceResourceFromIoTDeviceAssembler::toResourceFromEntity,
+                HttpStatus.CREATED
+        );
     }
 
     /**
