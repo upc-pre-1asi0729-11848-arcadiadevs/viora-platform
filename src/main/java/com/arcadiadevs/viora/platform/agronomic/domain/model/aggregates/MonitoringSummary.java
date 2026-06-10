@@ -2,14 +2,21 @@ package com.arcadiadevs.viora.platform.agronomic.domain.model.aggregates;
 
 import com.arcadiadevs.viora.platform.agronomic.domain.exceptions.InvalidAgronomicMetricException;
 import com.arcadiadevs.viora.platform.agronomic.domain.model.valueobjects.AccumulatedChillHours;
+import com.arcadiadevs.viora.platform.agronomic.domain.model.valueobjects.ClimateRiskLevel;
 import com.arcadiadevs.viora.platform.agronomic.domain.model.valueobjects.GeneralHealthStatus;
 import com.arcadiadevs.viora.platform.agronomic.domain.model.valueobjects.MeasurementDate;
+import com.arcadiadevs.viora.platform.agronomic.domain.model.valueobjects.MitigationRecommendation;
 import com.arcadiadevs.viora.platform.agronomic.domain.model.valueobjects.MonitoringSummaryId;
 import com.arcadiadevs.viora.platform.agronomic.domain.model.valueobjects.NdviValue;
 import com.arcadiadevs.viora.platform.agronomic.domain.model.valueobjects.UserId;
+import com.arcadiadevs.viora.platform.agronomic.domain.model.valueobjects.WeatherSnapshot;
 import com.arcadiadevs.viora.platform.agronomic.domain.model.valueobjects.YieldForecast;
 import com.arcadiadevs.viora.platform.shared.domain.model.aggregates.AbstractDomainAggregateRoot;
 import lombok.Getter;
+
+import java.util.Collections;
+import java.util.List;
+import java.util.Objects;
 
 /**
  * MonitoringSummary aggregate root.
@@ -35,10 +42,15 @@ public class MonitoringSummary extends AbstractDomainAggregateRoot<MonitoringSum
 
     private MeasurementDate measurementDate;
 
+    private WeatherSnapshot weatherSnapshot; // New field
+    private ClimateRiskLevel climateRiskLevel; // New field
+    private List<MitigationRecommendation> mitigationRecommendations; // New field
+
     /**
      * Default constructor.
      */
     protected MonitoringSummary() {
+        this.mitigationRecommendations = Collections.emptyList(); // Initialize empty list
     }
 
     /**
@@ -50,6 +62,9 @@ public class MonitoringSummary extends AbstractDomainAggregateRoot<MonitoringSum
      * @param accumulatedChillHours The accumulated chill hours value.
      * @param yieldForecast The yield forecast value.
      * @param measurementDate The measurement date.
+     * @param weatherSnapshot The weather snapshot.
+     * @param climateRiskLevel The climate risk level.
+     * @param mitigationRecommendations The list of mitigation recommendations.
      */
     public MonitoringSummary(
             UserId userId,
@@ -57,9 +72,15 @@ public class MonitoringSummary extends AbstractDomainAggregateRoot<MonitoringSum
             NdviValue ndviValue,
             AccumulatedChillHours accumulatedChillHours,
             YieldForecast yieldForecast,
-            MeasurementDate measurementDate
+            MeasurementDate measurementDate,
+            WeatherSnapshot weatherSnapshot, // New parameter
+            ClimateRiskLevel climateRiskLevel, // New parameter
+            List<MitigationRecommendation> mitigationRecommendations // New parameter
     ) {
-        validateRequiredFields(userId, generalHealthStatus, ndviValue, accumulatedChillHours, yieldForecast, measurementDate);
+        validateRequiredFields(
+                userId, generalHealthStatus, ndviValue, accumulatedChillHours, yieldForecast, measurementDate,
+                weatherSnapshot, climateRiskLevel, mitigationRecommendations
+        );
         validateNumericMetrics(ndviValue, accumulatedChillHours, yieldForecast);
 
         this.userId = userId;
@@ -68,6 +89,9 @@ public class MonitoringSummary extends AbstractDomainAggregateRoot<MonitoringSum
         this.accumulatedChillHours = accumulatedChillHours;
         this.yieldForecast = yieldForecast;
         this.measurementDate = measurementDate;
+        this.weatherSnapshot = weatherSnapshot; // Assign new field
+        this.climateRiskLevel = climateRiskLevel; // Assign new field
+        this.mitigationRecommendations = Objects.requireNonNullElse(mitigationRecommendations, Collections.emptyList()); // Assign new field
     }
 
     /**
@@ -94,7 +118,10 @@ public class MonitoringSummary extends AbstractDomainAggregateRoot<MonitoringSum
             NdviValue ndviValue,
             AccumulatedChillHours accumulatedChillHours,
             YieldForecast yieldForecast,
-            MeasurementDate measurementDate
+            MeasurementDate measurementDate,
+            WeatherSnapshot weatherSnapshot, // New parameter
+            ClimateRiskLevel climateRiskLevel, // New parameter
+            List<MitigationRecommendation> mitigationRecommendations // New parameter
     ) {
         if (userId == null) {
             throw new IllegalArgumentException("User ID is required.");
@@ -114,6 +141,14 @@ public class MonitoringSummary extends AbstractDomainAggregateRoot<MonitoringSum
         if (measurementDate == null) {
             throw new IllegalArgumentException("Measurement date is required.");
         }
+        if (weatherSnapshot == null) { // New validation
+            throw new IllegalArgumentException("Weather snapshot is required.");
+        }
+        if (climateRiskLevel == null) { // New validation
+            throw new IllegalArgumentException("Climate risk level is required.");
+        }
+        // Mitigation recommendations can be an empty list, so no null check needed for the list itself,
+        // but the parameter should not be null. Handled by Objects.requireNonNullElse.
     }
 
     private void validateNumericMetrics(
@@ -121,11 +156,6 @@ public class MonitoringSummary extends AbstractDomainAggregateRoot<MonitoringSum
             AccumulatedChillHours accumulatedChillHours,
             YieldForecast yieldForecast
     ) {
-        // NdviValue and YieldForecast already have their own validation for negative values
-        // in their constructors, so we just need to check AccumulatedChillHours here.
-        // However, to be explicit and consistent with the task description,
-        // we can add checks here if their internal validation was not sufficient.
-        // For now, assuming their constructors handle the negative checks.
         if (ndviValue.getValue() < 0) {
             throw new InvalidAgronomicMetricException("NDVI value cannot be negative.");
         }
