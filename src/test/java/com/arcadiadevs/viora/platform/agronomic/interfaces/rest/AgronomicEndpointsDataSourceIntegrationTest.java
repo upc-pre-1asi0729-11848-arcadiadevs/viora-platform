@@ -44,10 +44,10 @@ class AgronomicEndpointsDataSourceIntegrationTest {
                                   "userId": 20,
                                   "name": "IoT integration plot",
                                   "polygonCoordinates": [
-                                    [-12.0, -77.0],
-                                    [-12.0, -76.9],
-                                    [-12.1, -76.9],
-                                    [-12.0, -77.0]
+                                    [-77.0, -12.0],
+                                    [-76.9, -12.0],
+                                    [-76.9, -12.1],
+                                    [-77.0, -12.0]
                                   ],
                                   "areaSizeHectares": 8.50,
                                   "cropType": "Olive",

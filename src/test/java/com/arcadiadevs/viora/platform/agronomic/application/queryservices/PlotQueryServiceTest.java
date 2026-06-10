@@ -2,16 +2,19 @@ package com.arcadiadevs.viora.platform.agronomic.application.queryservices;
 
 import com.arcadiadevs.viora.platform.agronomic.domain.model.aggregates.Plot;
 import com.arcadiadevs.viora.platform.agronomic.domain.model.queries.GetPlotByIdQuery;
+import com.arcadiadevs.viora.platform.agronomic.domain.model.queries.GetPlotsWithCurrentImageryQuery;
 import com.arcadiadevs.viora.platform.agronomic.domain.model.valueobjects.AreaSize;
 import com.arcadiadevs.viora.platform.agronomic.domain.model.valueobjects.GeoPoint;
 import com.arcadiadevs.viora.platform.agronomic.domain.model.valueobjects.PlotId;
 import com.arcadiadevs.viora.platform.agronomic.domain.model.valueobjects.PlotName;
 import com.arcadiadevs.viora.platform.agronomic.domain.model.valueobjects.PolygonCoordinates;
+import com.arcadiadevs.viora.platform.agronomic.domain.model.valueobjects.SatelliteImagery;
 import com.arcadiadevs.viora.platform.agronomic.domain.model.valueobjects.UserId;
 import com.arcadiadevs.viora.platform.agronomic.domain.repositories.PlotRepository;
 import org.junit.jupiter.api.Test;
 
 import java.math.BigDecimal;
+import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 
@@ -23,7 +26,10 @@ class PlotQueryServiceTest {
     @Test
     void getsActivePlotById() {
         var plot = createPlot();
-        var service = new PlotQueryService(new QueryPlotRepository(plot));
+        var service = new PlotQueryService(
+                new QueryPlotRepository(plot),
+                ignored -> Optional.empty()
+        );
 
         var result = service.handle(new GetPlotByIdQuery(1L));
 
@@ -34,12 +40,38 @@ class PlotQueryServiceTest {
     @Test
     void hidesInactivePlotById() {
         var plot = createPlot().deactivate();
-        var service = new PlotQueryService(new QueryPlotRepository(plot));
+        var service = new PlotQueryService(
+                new QueryPlotRepository(plot),
+                ignored -> Optional.empty()
+        );
 
         var result = service.handle(new GetPlotByIdQuery(1L));
 
         assertTrue(result.isFailure());
         assertEquals("PLOT_NOT_FOUND", result.failure().orElseThrow().code());
+    }
+
+    @Test
+    void getsActivePlotsWithCurrentImagery() {
+        var plot = createPlot();
+        var imagery = new SatelliteImagery(
+                "image-1",
+                "https://api.agromonitoring.com/tile/{z}/{x}/{y}?appid=test",
+                Instant.parse("2026-05-02T00:00:00Z"),
+                0.62,
+                2.5
+        );
+        var service = new PlotQueryService(
+                new QueryPlotRepository(plot),
+                ignored -> Optional.of(imagery)
+        );
+
+        var result = service.handle(new GetPlotsWithCurrentImageryQuery(10L));
+
+        assertTrue(result.isSuccess());
+        var readModel = result.success().orElseThrow().getFirst();
+        assertEquals(plot, readModel.plot());
+        assertEquals(imagery, readModel.currentImagery().orElseThrow());
     }
 
     private Plot createPlot() {

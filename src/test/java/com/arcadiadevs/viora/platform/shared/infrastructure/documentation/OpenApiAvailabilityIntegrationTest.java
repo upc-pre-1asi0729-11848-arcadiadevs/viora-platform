@@ -27,6 +27,11 @@ class OpenApiAvailabilityIntegrationTest {
         mockMvc.perform(get("/v3/api-docs"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.paths['/api/v1/plots']").exists())
+                .andExpect(jsonPath(
+                        "$.paths['/api/v1/plots'].get.parameters[?(@.name == 'includeCurrentImagery')]"
+                ).exists())
+                .andExpect(jsonPath("$.components.schemas.PlotWithCurrentImageryResource").exists())
+                .andExpect(jsonPath("$.components.schemas.SatelliteImageryResource").exists())
                 .andExpect(jsonPath("$.paths['/api/v1/plots/{plotId}']").exists())
                 .andExpect(jsonPath("$.paths['/api/v1/plots/{plotId}/iot-devices']").exists())
                 .andExpect(jsonPath("$.paths['/api/v1/agronomic-statistics']").exists());

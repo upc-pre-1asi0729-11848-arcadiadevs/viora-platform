@@ -49,10 +49,10 @@ class PlotsDataSourceIntegrationTest {
                                   "userId": 10,
                                   "name": "Original plot",
                                   "polygonCoordinates": [
-                                    [-12.0, -77.0],
-                                    [-12.0, -76.9],
-                                    [-12.1, -76.9],
-                                    [-12.0, -77.0]
+                                    [-77.0, -12.0],
+                                    [-76.9, -12.0],
+                                    [-76.9, -12.1],
+                                    [-77.0, -12.0]
                                   ],
                                   "areaSizeHectares": 10.00,
                                   "cropType": "Olive",
@@ -77,6 +77,16 @@ class PlotsDataSourceIntegrationTest {
         mockMvc.perform(get("/api/v1/plots").param("userId", "10"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].id").value(plotId));
+
+        mockMvc.perform(get("/api/v1/plots")
+                        .param("userId", "10")
+                        .param("includeCurrentImagery", "true"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].id").value(plotId))
+                .andExpect(jsonPath("$[0].areaSize").value(10.00))
+                .andExpect(jsonPath("$[0].polygonCoordinates[0][0]").value(-77.0))
+                .andExpect(jsonPath("$[0].polygonCoordinates[0][1]").value(-12.0))
+                .andExpect(jsonPath("$[0].currentImagery").isEmpty());
 
         mockMvc.perform(patch("/api/v1/plots/{plotId}", plotId)
                         .contentType(MediaType.APPLICATION_JSON)

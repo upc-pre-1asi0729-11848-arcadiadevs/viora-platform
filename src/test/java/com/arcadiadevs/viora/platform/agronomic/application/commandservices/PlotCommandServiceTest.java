@@ -121,10 +121,10 @@ class PlotCommandServiceTest {
 
     private List<List<Double>> validCoordinates() {
         return List.of(
-                List.of(-12.0, -77.0),
-                List.of(-12.0, -76.9),
-                List.of(-12.1, -76.9),
-                List.of(-12.0, -77.0)
+                List.of(-77.0, -12.0),
+                List.of(-76.9, -12.0),
+                List.of(-76.9, -12.1),
+                List.of(-77.0, -12.0)
         );
     }
 
