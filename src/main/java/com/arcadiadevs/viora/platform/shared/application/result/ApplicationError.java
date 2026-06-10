@@ -57,6 +57,16 @@ public record ApplicationError(
     }
 
     /**
+     * Forbidden error: the authenticated actor cannot access the resource.
+     */
+    public static ApplicationError forbidden(String resource, String reason) {
+        return new ApplicationError(
+                "%s_FORBIDDEN".formatted(resource.toUpperCase().replace('-', '_')),
+                "Access forbidden: %s".formatted(resource),
+                reason);
+    }
+
+    /**
      * Unexpected error: something went wrong that shouldn't have
      */
     public static ApplicationError unexpected(String context, String reason) {
