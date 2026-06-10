@@ -197,10 +197,12 @@ public class PlotCommandService {
      */
     private GeoPoint toGeoPoint(List<Double> rawPoint) {
         if (rawPoint == null || rawPoint.size() != 2) {
-            throw new IllegalArgumentException("Each polygon coordinate must contain latitude and longitude.");
+            throw new IllegalArgumentException(
+                    "Each polygon coordinate must use GeoJSON order: longitude and latitude."
+            );
         }
 
-        return new GeoPoint(rawPoint.get(0), rawPoint.get(1));
+        return new GeoPoint(rawPoint.get(1), rawPoint.get(0));
     }
 
     /**

@@ -1,8 +1,11 @@
 package com.arcadiadevs.viora.platform.agronomic.application.queryservices;
 
+import com.arcadiadevs.viora.platform.agronomic.application.internal.outboundservices.AgroMonitoringImageryService;
+import com.arcadiadevs.viora.platform.agronomic.application.readmodels.PlotWithCurrentImagery;
 import com.arcadiadevs.viora.platform.agronomic.domain.model.aggregates.Plot;
 import com.arcadiadevs.viora.platform.agronomic.domain.model.queries.GetPlotByIdQuery;
 import com.arcadiadevs.viora.platform.agronomic.domain.model.queries.GetPlotsByUserIdQuery;
+import com.arcadiadevs.viora.platform.agronomic.domain.model.queries.GetPlotsWithCurrentImageryQuery;
 import com.arcadiadevs.viora.platform.agronomic.domain.model.valueobjects.PlotId;
 import com.arcadiadevs.viora.platform.agronomic.domain.model.valueobjects.UserId;
 import com.arcadiadevs.viora.platform.agronomic.domain.repositories.PlotRepository;
@@ -33,6 +36,11 @@ public class PlotQueryService {
     private final PlotRepository plotRepository;
 
     /**
+     * Satellite imagery outbound service.
+     */
+    private final AgroMonitoringImageryService agroMonitoringImageryService;
+
+    /**
      * Handles the GetPlotById query.
      *
      * @param query The query containing the plot identifier.
@@ -58,5 +66,26 @@ public class PlotQueryService {
     @Transactional(readOnly = true)
     public Result<List<Plot>, ApplicationError> handle(GetPlotsByUserIdQuery query) {
         return Result.success(plotRepository.findByUserId(new UserId(query.userId())));
+    }
+
+    /**
+     * Handles the query for active plots enriched with their latest imagery.
+     *
+     * @param query Query containing the owner user identifier.
+     * @return Plot imagery read models. Missing provider data is represented by an empty imagery value.
+     */
+    @Transactional
+    public Result<List<PlotWithCurrentImagery>, ApplicationError> handle(
+            GetPlotsWithCurrentImageryQuery query
+    ) {
+        var plots = plotRepository.findByUserId(new UserId(query.userId()));
+        var readModels = plots.stream()
+                .map(plot -> new PlotWithCurrentImagery(
+                        plot,
+                        agroMonitoringImageryService.findCurrentImagery(plot)
+                ))
+                .toList();
+
+        return Result.success(readModels);
     }
 }

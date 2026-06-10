@@ -3,16 +3,22 @@ package com.arcadiadevs.viora.platform.agronomic.interfaces.rest;
 import com.arcadiadevs.viora.platform.agronomic.application.commandservices.PlotCommandService;
 import com.arcadiadevs.viora.platform.agronomic.application.queryservices.PlotQueryService;
 import com.arcadiadevs.viora.platform.agronomic.domain.model.queries.GetPlotsByUserIdQuery;
+import com.arcadiadevs.viora.platform.agronomic.domain.model.queries.GetPlotsWithCurrentImageryQuery;
 import com.arcadiadevs.viora.platform.agronomic.domain.model.commands.DeletePlotCommand;
 import com.arcadiadevs.viora.platform.agronomic.domain.model.queries.GetPlotByIdQuery;
 import com.arcadiadevs.viora.platform.agronomic.interfaces.rest.resources.CreatePlotResource;
+import com.arcadiadevs.viora.platform.agronomic.interfaces.rest.resources.PlotWithCurrentImageryResource;
 import com.arcadiadevs.viora.platform.agronomic.interfaces.rest.resources.UpdatePlotResource;
 import com.arcadiadevs.viora.platform.agronomic.interfaces.rest.transform.CreatePlotCommandFromResourceAssembler;
 import com.arcadiadevs.viora.platform.agronomic.interfaces.rest.transform.PlotResourceFromPlotAssembler;
+import com.arcadiadevs.viora.platform.agronomic.interfaces.rest.transform.PlotWithCurrentImageryResourceAssembler;
 import com.arcadiadevs.viora.platform.agronomic.interfaces.rest.transform.UpdatePlotCommandFromResourceAssembler;
 import com.arcadiadevs.viora.platform.shared.interfaces.rest.resources.MessageResource;
 import com.arcadiadevs.viora.platform.shared.interfaces.rest.transform.ResponseEntityAssembler;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.media.ArraySchema;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
@@ -56,7 +62,8 @@ public class PlotsController {
     @PostMapping(consumes = MediaType.APPLICATION_JSON_VALUE)
     @Operation(
             summary = "Create plot",
-            description = "Registers a productive agricultural plot and its geographic boundary."
+            description = "Registers a productive agricultural plot and its geographic boundary. "
+                    + "Polygon points use GeoJSON order: [longitude, latitude]."
     )
     @ApiResponses(value = {
             @ApiResponse(responseCode = "201", description = "Plot created"),
@@ -79,19 +86,48 @@ public class PlotsController {
      * Gets all active plots owned by a user.
      *
      * @param userId The owner user identifier.
+     * @param includeCurrentImagery Whether current satellite imagery should be included.
      * @return The active plot resources.
      */
     @GetMapping
     @Operation(
             summary = "Get plots by user",
-            description = "Gets all active plots owned by a user."
+            description = "Gets all active plots owned by a user. When includeCurrentImagery is true, "
+                    + "the response is enriched with current satellite imagery for the Viora dashboard."
     )
     @ApiResponses(value = {
-            @ApiResponse(responseCode = "200", description = "Plots retrieved"),
+            @ApiResponse(
+                    responseCode = "200",
+                    description = "Plots retrieved",
+                    content = @Content(
+                            array = @ArraySchema(
+                                    schema = @Schema(
+                                            implementation = PlotWithCurrentImageryResource.class
+                                    )
+                            )
+                    )
+            ),
             @ApiResponse(responseCode = "400", description = "Invalid user ID"),
             @ApiResponse(responseCode = "500", description = "Unexpected error")
     })
-    public ResponseEntity<?> getPlotsByUserId(@RequestParam Long userId) {
+    public ResponseEntity<?> getPlotsByUserId(
+            @RequestParam Long userId,
+            @RequestParam(defaultValue = "false") boolean includeCurrentImagery
+    ) {
+        if (includeCurrentImagery) {
+            var imageryResult = plotQueryService.handle(
+                    new GetPlotsWithCurrentImageryQuery(userId)
+            );
+
+            return ResponseEntityAssembler.toResponseEntityFromResult(
+                    imageryResult,
+                    plots -> plots.stream()
+                            .map(PlotWithCurrentImageryResourceAssembler::toResourceFromReadModel)
+                            .toList(),
+                    HttpStatus.OK
+            );
+        }
+
         var result = plotQueryService.handle(new GetPlotsByUserIdQuery(userId));
 
         return ResponseEntityAssembler.toResponseEntityFromResult(

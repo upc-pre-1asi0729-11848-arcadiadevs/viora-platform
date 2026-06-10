@@ -44,7 +44,7 @@ public final class PlotResourceFromPlotAssembler {
      */
     private static List<List<Double>> toCoordinateResource(List<GeoPoint> points) {
         return points.stream()
-                .map(point -> List.of(point.getLatitude(), point.getLongitude()))
+                .map(point -> List.of(point.getLongitude(), point.getLatitude()))
                 .toList();
     }
 
