@@ -9,6 +9,7 @@ import com.arcadiadevs.viora.platform.agronomic.domain.repositories.PlotReposito
 import com.arcadiadevs.viora.platform.shared.application.result.ApplicationError;
 import com.arcadiadevs.viora.platform.shared.application.result.Result;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
@@ -39,11 +40,19 @@ public class IoTDeviceQueryService {
      * @param query the query containing plotId and authenticatedUserId
      * @return Success with a list of devices, or Failure if ownership check fails
      */
+    @Transactional(readOnly = true)
     public Result<List<IoTDevice>, ApplicationError> handle(GetIoTDevicesByPlotIdQuery query) {
         var plot = plotRepository.findById(new PlotId(query.plotId()));
 
-        if (plot.isEmpty() || !plot.get().belongsTo(new UserId(query.authenticatedUserId()))) {
-            return Result.failure(ApplicationError.businessRuleViolation(
+        if (plot.isEmpty() || !plot.get().isActive()) {
+            return Result.failure(ApplicationError.notFound(
+                    "Plot",
+                    String.valueOf(query.plotId())
+            ));
+        }
+
+        if (!plot.get().belongsTo(new UserId(query.authenticatedUserId()))) {
+            return Result.failure(ApplicationError.forbidden(
                     "plot-ownership",
                     "User %d does not own plot %d".formatted(
                             query.authenticatedUserId(), query.plotId())));
