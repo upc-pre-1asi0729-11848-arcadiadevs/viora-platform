@@ -1,27 +1,23 @@
 package com.arcadiadevs.viora.platform.agronomic.domain.model.valueobjects;
 
+import lombok.EqualsAndHashCode;
+import lombok.Getter;
+
 import java.time.LocalDate;
 
 /**
- * Value object representing the measurement date.
- *
- * <p>
- * This value object stores the date when an agronomic statistic was measured.
- * </p>
- *
- * @param measurementDate The measurement date. It cannot be null.
+ * Measurement date value object.
  */
-public record MeasurementDate(LocalDate measurementDate) {
+@Getter
+@EqualsAndHashCode
+public class MeasurementDate {
 
-    /**
-     * Compact constructor for MeasurementDate.
-     * Validates that the measurementDate is not null.
-     *
-     * @throws IllegalArgumentException if the measurementDate is null.
-     */
-    public MeasurementDate {
-        if (measurementDate == null) {
-            throw new IllegalArgumentException("Measurement date cannot be null");
+    private final LocalDate value;
+
+    public MeasurementDate(LocalDate value) {
+        if (value == null) {
+            throw new IllegalArgumentException("Measurement date is required.");
         }
+        this.value = value;
     }
 }

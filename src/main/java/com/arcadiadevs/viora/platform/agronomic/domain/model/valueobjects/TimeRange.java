@@ -3,64 +3,52 @@ package com.arcadiadevs.viora.platform.agronomic.domain.model.valueobjects;
 import java.time.LocalDate;
 
 /**
- * Enumeration representing the supported time ranges for agronomic statistics.
+ * Time range value object.
  *
  * <p>
- * This enumeration is used to transform a selected time range into a date range.
+ * Represents predefined time ranges used to query agronomic statistics.
  * </p>
  */
 public enum TimeRange {
-    /**
-     * Last 7 days.
-     */
-    LAST_7_DAYS,
 
-    /**
-     * Last 30 days.
-     */
-    LAST_30_DAYS,
+    LAST_7_DAYS(7),
+    LAST_30_DAYS(30),
+    LAST_90_DAYS(90),
+    LAST_180_DAYS(180),
+    LAST_365_DAYS(365);
 
-    /**
-     * Last 90 days.
-     */
-    LAST_90_DAYS,
+    private final int days;
 
-    /**
-     * Last 12 months.
-     */
-    LAST_12_MONTHS;
-
-    /**
-     * Converts the time range into a DateRange.
-     *
-     * @return The equivalent DateRange.
-     */
-    public DateRange toDateRange() {
-        var endDate = LocalDate.now();
-
-        return switch (this) {
-            case LAST_7_DAYS -> new DateRange(endDate.minusDays(7), endDate);
-            case LAST_30_DAYS -> new DateRange(endDate.minusDays(30), endDate);
-            case LAST_90_DAYS -> new DateRange(endDate.minusDays(90), endDate);
-            case LAST_12_MONTHS -> new DateRange(endDate.minusMonths(12), endDate);
-        };
+    TimeRange(int days) {
+        this.days = days;
     }
 
-    /**
-     * Creates a TimeRange from a string value.
-     *
-     * @param value The string value.
-     * @return The TimeRange.
-     */
+    public DateRange toDateRange(LocalDate referenceDate) {
+        if (referenceDate == null) {
+            throw new IllegalArgumentException("Reference date is required.");
+        }
+
+        return new DateRange(
+                referenceDate.minusDays(days - 1L),
+                referenceDate
+        );
+    }
+
     public static TimeRange from(String value) {
         if (value == null || value.isBlank()) {
-            throw new IllegalArgumentException("Time range cannot be null or empty");
+            throw new IllegalArgumentException("Time range is required.");
         }
 
         try {
-            return TimeRange.valueOf(value.trim().toUpperCase().replace("-", "_"));
-        } catch (Exception exception) {
-            throw new IllegalArgumentException("Unsupported time range");
+            return TimeRange.valueOf(
+                    value.trim()
+                            .toUpperCase()
+                            .replace("-", "_")
+            );
+        } catch (IllegalArgumentException exception) {
+            throw new IllegalArgumentException(
+                    "Invalid time range. Allowed values are: LAST_7_DAYS, LAST_30_DAYS, LAST_90_DAYS, LAST_180_DAYS, LAST_365_DAYS."
+            );
         }
     }
 }

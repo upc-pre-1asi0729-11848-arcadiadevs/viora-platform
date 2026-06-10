@@ -1,32 +1,25 @@
 package com.arcadiadevs.viora.platform.agronomic.domain.model.valueobjects;
 
-import java.math.BigDecimal;
+import com.arcadiadevs.viora.platform.agronomic.domain.exceptions.InvalidAgronomicMetricException;
+import lombok.EqualsAndHashCode;
+import lombok.Getter;
 
 /**
- * Value object representing the NDVI value.
- *
- * <p>
- * NDVI is used to measure vegetation health.
- * Its value must be between -1 and 1.
- * </p>
- *
- * @param ndviValue The NDVI value. It cannot be null and must be between -1 and 1.
+ * NDVI value object.
  */
-public record NdviValue(BigDecimal ndviValue) {
+@Getter
+@EqualsAndHashCode
+public class NdviValue {
 
-    /**
-     * Compact constructor for NdviValue.
-     * Validates that the NDVI value is between -1 and 1.
-     *
-     * @throws IllegalArgumentException if the ndviValue is null or outside the valid range.
-     */
-    public NdviValue {
-        if (ndviValue == null) {
-            throw new IllegalArgumentException("NDVI value cannot be null");
-        }
+    private final Double value;
 
-        if (ndviValue.compareTo(BigDecimal.valueOf(-1)) < 0 || ndviValue.compareTo(BigDecimal.ONE) > 0) {
-            throw new IllegalArgumentException("NDVI value must be between -1 and 1");
+    public NdviValue(Double value) {
+        if (value == null) {
+            throw new InvalidAgronomicMetricException("NDVI value is required.");
         }
+        if (value < -1.0 || value > 1.0) {
+            throw new InvalidAgronomicMetricException("NDVI value must be between -1.0 and 1.0.");
+        }
+        this.value = value;
     }
 }

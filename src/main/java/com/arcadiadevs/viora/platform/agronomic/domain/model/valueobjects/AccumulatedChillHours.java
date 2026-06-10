@@ -5,20 +5,20 @@ import lombok.EqualsAndHashCode;
 import lombok.Getter;
 
 /**
- * Chill portions value object.
+ * Accumulated chill hours value object.
  */
 @Getter
 @EqualsAndHashCode
-public class ChillPortions {
+public class AccumulatedChillHours {
 
     private final Double value;
 
-    public ChillPortions(Double value) {
+    public AccumulatedChillHours(Double value) {
         if (value == null) {
-            throw new InvalidAgronomicMetricException("Chill portions value is required.");
+            throw new InvalidAgronomicMetricException("Chill hours value is required.");
         }
         if (value < 0) {
-            throw new InvalidAgronomicMetricException("Chill portions cannot be negative.");
+            throw new InvalidAgronomicMetricException("Chill hours cannot be negative.");
         }
         this.value = value;
     }
