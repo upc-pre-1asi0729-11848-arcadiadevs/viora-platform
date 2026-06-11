@@ -28,6 +28,7 @@ public class MonitoringSummaryEntityFromMonitoringSummaryAssembler {
             entity.setWeatherStatus(aggregate.getWeatherSnapshot().getWeatherStatus().name());
             entity.setWeatherMeasurementDate(aggregate.getWeatherSnapshot().getMeasurementDate().getValue());
             entity.setWeatherClimateRiskLevel(aggregate.getWeatherSnapshot().getClimateRiskLevel().name());
+            entity.setWeatherTemperature(aggregate.getWeatherSnapshot().getTemperature()); // New field
         }
 
         // New field for ClimateRiskLevel
