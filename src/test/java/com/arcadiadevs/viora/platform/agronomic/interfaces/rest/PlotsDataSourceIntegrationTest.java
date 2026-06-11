@@ -96,6 +96,45 @@ class PlotsDataSourceIntegrationTest {
                 .andExpect(jsonPath("$.plots[0].healthStatus").value("UNKNOWN"))
                 .andExpect(jsonPath("$.plots[0].climateMonitoring").value("NOT_LINKED"));
 
+        mockMvc.perform(get("/api/v1/plots/{plotId}/detail", plotId)
+                        .param("userId", "10"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value(plotId))
+                .andExpect(jsonPath("$.boundaryPointCount").value(3))
+                .andExpect(jsonPath("$.boundaryStatus").value("VALIDATED"))
+                .andExpect(jsonPath("$.registeredAt").isString())
+                .andExpect(jsonPath("$.monitoringLinks.climateMonitoring")
+                        .value("NOT_LINKED"))
+                .andExpect(jsonPath("$.monitoringLinks.satelliteNdvi")
+                        .value("NOT_LINKED"))
+                .andExpect(jsonPath("$.iot.status").value("NOT_LINKED"))
+                .andExpect(jsonPath("$.iot.linkedDeviceCount").value(0))
+                .andExpect(jsonPath("$.recentConfigurationActivity[0].type")
+                        .value("PLOT_REGISTERED"));
+
+        mockMvc.perform(post("/api/v1/plots/{plotId}/iot-devices", plotId)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "deviceName": "Soil moisture sensor",
+                                  "status": "ACTIVE"
+                                }
+                                """))
+                .andExpect(status().isCreated());
+
+        mockMvc.perform(get("/api/v1/plots/{plotId}/detail", plotId)
+                        .param("userId", "10"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.iot.status").value("ACTIVE"))
+                .andExpect(jsonPath("$.iot.linkedDeviceCount").value(1))
+                .andExpect(jsonPath("$.iot.onlineDeviceCount").value(1))
+                .andExpect(jsonPath("$.iot.lastActivityAt").isString())
+                .andExpect(jsonPath("$.devices[0].name").value("Soil moisture sensor"))
+                .andExpect(jsonPath("$.devices[0].status").value("ACTIVE"))
+                .andExpect(jsonPath("$.devices[0].linkedAt").isString())
+                .andExpect(jsonPath("$.recentConfigurationActivity[0].type")
+                        .value("IOT_DEVICE_LINKED"));
+
         mockMvc.perform(get("/api/v1/plots").param("userId", "10"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].id").value(plotId));

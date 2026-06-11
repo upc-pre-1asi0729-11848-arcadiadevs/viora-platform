@@ -1,10 +1,12 @@
 package com.arcadiadevs.viora.platform.agronomic.interfaces.rest;
 
 import com.arcadiadevs.viora.platform.agronomic.application.commandservices.PlotCommandService;
+import com.arcadiadevs.viora.platform.agronomic.application.queryservices.PlotDetailQueryService;
 import com.arcadiadevs.viora.platform.agronomic.application.queryservices.PlotQueryService;
 import com.arcadiadevs.viora.platform.agronomic.application.readmodels.IntegrationLinkStatus;
 import com.arcadiadevs.viora.platform.agronomic.application.readmodels.MyPlotsOverview;
 import com.arcadiadevs.viora.platform.agronomic.application.readmodels.PlotMonitoringOverview;
+import com.arcadiadevs.viora.platform.agronomic.application.readmodels.PlotDetail;
 import com.arcadiadevs.viora.platform.agronomic.application.readmodels.PlotRegistration;
 import com.arcadiadevs.viora.platform.agronomic.application.readmodels.PlotWithCurrentImagery;
 import com.arcadiadevs.viora.platform.agronomic.domain.model.aggregates.Plot;
@@ -13,6 +15,7 @@ import com.arcadiadevs.viora.platform.agronomic.domain.model.commands.DeletePlot
 import com.arcadiadevs.viora.platform.agronomic.domain.model.commands.UpdatePlotCommand;
 import com.arcadiadevs.viora.platform.agronomic.domain.model.queries.GetMyPlotsOverviewQuery;
 import com.arcadiadevs.viora.platform.agronomic.domain.model.queries.GetPlotByIdQuery;
+import com.arcadiadevs.viora.platform.agronomic.domain.model.queries.GetPlotDetailQuery;
 import com.arcadiadevs.viora.platform.agronomic.domain.model.queries.GetPlotsWithCurrentImageryQuery;
 import com.arcadiadevs.viora.platform.agronomic.domain.model.valueobjects.AreaSize;
 import com.arcadiadevs.viora.platform.agronomic.domain.model.valueobjects.GeoPoint;
@@ -54,6 +57,9 @@ class PlotsControllerTest {
 
     @MockitoBean
     private PlotCommandService plotCommandService;
+
+    @MockitoBean
+    private PlotDetailQueryService plotDetailQueryService;
 
     @Test
     void createsPlotWithEstimatedAreaAndInitialLinks() throws Exception {
@@ -172,6 +178,44 @@ class PlotsControllerTest {
                 .andExpect(jsonPath("$.plots[0].currentNdvi").value(0.68))
                 .andExpect(jsonPath("$.plots[0].chillPortions").value(72.0))
                 .andExpect(jsonPath("$.plots[0].healthStatus").value("HEALTHY"));
+    }
+
+    @Test
+    void getsPlotDetail() throws Exception {
+        var plot = createPlot();
+        var detail = new PlotDetail(
+                plot,
+                Instant.parse("2026-05-01T15:00:00Z"),
+                Instant.parse("2026-05-03T12:00:00Z"),
+                "VALIDATED",
+                IntegrationLinkStatus.ACTIVE,
+                IntegrationLinkStatus.INITIALIZING,
+                Instant.parse("2026-06-11T11:00:00Z"),
+                Instant.parse("2026-06-11T11:00:00Z"),
+                IntegrationLinkStatus.NOT_LINKED,
+                0,
+                null,
+                List.of(),
+                List.of(new PlotDetail.ConfigurationActivity(
+                        "PLOT_REGISTERED",
+                        "Plot boundary registered.",
+                        Instant.parse("2026-05-01T15:00:00Z")
+                ))
+        );
+        when(plotDetailQueryService.handle(any(GetPlotDetailQuery.class)))
+                .thenReturn(Result.success(detail));
+
+        mockMvc.perform(get("/api/v1/plots/1/detail").param("userId", "10"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value(1))
+                .andExpect(jsonPath("$.name").value("North field"))
+                .andExpect(jsonPath("$.boundaryPointCount").value(3))
+                .andExpect(jsonPath("$.boundaryStatus").value("VALIDATED"))
+                .andExpect(jsonPath("$.monitoringLinks.climateMonitoring").value("ACTIVE"))
+                .andExpect(jsonPath("$.monitoringLinks.satelliteNdvi").value("INITIALIZING"))
+                .andExpect(jsonPath("$.iot.status").value("NOT_LINKED"))
+                .andExpect(jsonPath("$.recentConfigurationActivity[0].type")
+                        .value("PLOT_REGISTERED"));
     }
 
     @Test
