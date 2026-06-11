@@ -3,6 +3,8 @@ package com.arcadiadevs.viora.platform.agronomic.domain.model.valueobjects;
 import com.arcadiadevs.viora.platform.agronomic.domain.exceptions.InvalidPolygonCoordinatesException;
 import lombok.EqualsAndHashCode;
 
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -39,6 +41,33 @@ public class PolygonCoordinates {
      */
     public List<GeoPoint> getPoints() {
         return Collections.unmodifiableList(points);
+    }
+
+    /**
+     * Estimates the enclosed geodesic area of the polygon in hectares.
+     *
+     * <p>
+     *     Uses the Chamberlain-Duquette spherical excess approximation (the same
+     *     formula used by common web-map libraries), which is accurate for
+     *     field-scale polygons. The result is rounded to two decimals.
+     * </p>
+     *
+     * @return The estimated area in hectares.
+     */
+    public BigDecimal estimatedAreaHectares() {
+        final double earthRadiusMeters = 6_371_008.8;
+        double sum = 0.0;
+
+        for (int i = 0; i < points.size() - 1; i++) {
+            var current = points.get(i);
+            var next = points.get(i + 1);
+            sum += Math.toRadians(next.getLongitude() - current.getLongitude())
+                    * (2 + Math.sin(Math.toRadians(current.getLatitude()))
+                    + Math.sin(Math.toRadians(next.getLatitude())));
+        }
+
+        double squareMeters = Math.abs(sum * earthRadiusMeters * earthRadiusMeters / 2.0);
+        return BigDecimal.valueOf(squareMeters / 10_000.0).setScale(2, RoundingMode.HALF_UP);
     }
 
     /**

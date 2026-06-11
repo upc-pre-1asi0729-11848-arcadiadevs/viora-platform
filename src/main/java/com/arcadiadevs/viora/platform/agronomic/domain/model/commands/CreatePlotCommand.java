@@ -17,6 +17,9 @@ import java.util.List;
  * @param areaSizeHectares   The productive area size in hectares. Cannot be null or negative.
  * @param cropType           The crop type associated with the plot. Can be null or blank (optional).
  * @param variety            The crop variety associated with the plot. Can be null or blank (optional).
+ * @param location           The human-readable plot location. Can be null or blank (optional).
+ * @param campaign           The production campaign. Can be null or blank (optional).
+ * @param notes              Free-form grower notes. Can be null or blank (optional).
  */
 public record CreatePlotCommand(
         Long userId,
@@ -24,7 +27,10 @@ public record CreatePlotCommand(
         List<List<Double>> polygonCoordinates,
         BigDecimal areaSizeHectares,
         String cropType,
-        String variety
+        String variety,
+        String location,
+        String campaign,
+        String notes
 ) {
     /**
      * Compact constructor for CreatePlotCommand.

@@ -79,6 +79,24 @@ public class PlotPersistenceEntity extends AuditableAbstractPersistenceEntity {
     private String variety;
 
     /**
+     * The human-readable location of the plot.
+     */
+    @Column(length = 120)
+    private String location;
+
+    /**
+     * The production campaign the plot is enrolled in.
+     */
+    @Column(length = 60)
+    private String campaign;
+
+    /**
+     * Free-form grower notes about the plot.
+     */
+    @Column(length = 500)
+    private String notes;
+
+    /**
      * Indicates whether the plot is active.
      */
     @Column(nullable = false)

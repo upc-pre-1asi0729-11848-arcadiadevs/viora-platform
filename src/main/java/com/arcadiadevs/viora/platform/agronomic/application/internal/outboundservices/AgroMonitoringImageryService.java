@@ -11,6 +11,26 @@ import java.util.Optional;
 public interface AgroMonitoringImageryService {
 
     /**
+     * Indicates whether the satellite imagery integration is configured and enabled.
+     *
+     * <p>
+     * Used to derive integration link statuses for plots: when disabled, plots
+     * cannot be linked to climate or satellite monitoring.
+     * </p>
+     *
+     * @return True when the provider integration is enabled with credentials.
+     */
+    boolean isIntegrationEnabled();
+
+    /**
+     * Indicates whether the current plot boundary is registered with the provider.
+     *
+     * @param plot Plot whose integration state is requested.
+     * @return True when the current boundary has a provider correlation.
+     */
+    boolean isPlotLinked(Plot plot);
+
+    /**
      * Finds the most recent usable imagery for a plot.
      *
      * <p>Provider failures must degrade to an empty result so plot listing remains available.</p>

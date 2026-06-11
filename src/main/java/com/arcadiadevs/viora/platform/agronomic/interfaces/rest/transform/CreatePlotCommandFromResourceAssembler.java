@@ -22,7 +22,10 @@ public final class CreatePlotCommandFromResourceAssembler {
                 resource.polygonCoordinates(),
                 resource.areaSizeHectares(),
                 resource.cropType(),
-                resource.variety()
+                resource.variety(),
+                resource.location(),
+                resource.campaign(),
+                resource.notes()
         );
     }
 }

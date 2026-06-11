@@ -27,6 +27,9 @@ public record CreatePlotResource(
         @NotNull @Positive @DecimalMax("99999999.99") @Digits(integer = 8, fraction = 2)
         BigDecimal areaSizeHectares,
         @Size(max = 60) String cropType,
-        @Size(max = 80) String variety
+        @Size(max = 80) String variety,
+        @Size(max = 120) String location,
+        @Size(max = 60) String campaign,
+        @Size(max = 500) String notes
 ) {
 }

@@ -22,6 +22,9 @@ import java.util.List;
  * @param areaSizeHectares The updated area size in hectares.
  * @param cropType The updated crop type.
  * @param variety The updated crop variety.
+ * @param location The updated plot location.
+ * @param campaign The updated production campaign.
+ * @param notes The updated grower notes.
  */
 public record UpdatePlotResource(
         @Size(min = 3, max = 80) String name,
@@ -33,6 +36,9 @@ public record UpdatePlotResource(
         @Positive @DecimalMax("99999999.99") @Digits(integer = 8, fraction = 2)
         BigDecimal areaSizeHectares,
         @Size(max = 60) String cropType,
-        @Size(max = 80) String variety
+        @Size(max = 80) String variety,
+        @Size(max = 120) String location,
+        @Size(max = 60) String campaign,
+        @Size(max = 500) String notes
 ) {
 }

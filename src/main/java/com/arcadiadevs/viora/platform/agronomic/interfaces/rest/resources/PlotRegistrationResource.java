@@ -1,43 +1,42 @@
 package com.arcadiadevs.viora.platform.agronomic.interfaces.rest.resources;
 
 import java.math.BigDecimal;
-import java.time.Instant;
 import java.util.List;
 
 /**
- * Plot list item shaped for the Viora dashboard and Mapbox adapter.
+ * Plot registration response used by the creation confirmation screen.
  *
  * @param id Plot identifier.
  * @param userId Owner user identifier.
  * @param name Plot name.
- * @param polygonCoordinates GeoJSON-compatible coordinates in [longitude, latitude] order.
- * @param areaSize Productive area in hectares.
- * @param lastUpdate Last satellite capture instant.
+ * @param polygonCoordinates Boundary coordinates in GeoJSON order.
+ * @param areaSizeHectares Productive area submitted by the user.
+ * @param estimatedAreaHectares Area calculated from the geographic boundary.
  * @param cropType Crop type.
  * @param variety Crop variety.
  * @param location Human-readable location.
  * @param campaign Production campaign.
  * @param notes Grower notes.
  * @param state Plot activity state.
- * @param healthStatus Current health classification when available.
- * @param phenologicalRisk Current phenological risk when available.
- * @param currentImagery Latest satellite imagery when available.
+ * @param climateMonitoring Initial climate integration state.
+ * @param satelliteNdvi Initial satellite NDVI integration state.
+ * @param iotDevices Initial IoT integration state.
  */
-public record PlotWithCurrentImageryResource(
+public record PlotRegistrationResource(
         Long id,
         Long userId,
         String name,
         List<List<Double>> polygonCoordinates,
-        BigDecimal areaSize,
-        Instant lastUpdate,
+        BigDecimal areaSizeHectares,
+        BigDecimal estimatedAreaHectares,
         String cropType,
         String variety,
         String location,
         String campaign,
         String notes,
         String state,
-        String healthStatus,
-        String phenologicalRisk,
-        SatelliteImageryResource currentImagery
+        String climateMonitoring,
+        String satelliteNdvi,
+        String iotDevices
 ) {
 }

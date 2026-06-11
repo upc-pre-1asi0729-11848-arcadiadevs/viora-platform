@@ -17,6 +17,9 @@ import java.util.List;
  * @param areaSizeHectares The new area size in hectares.
  * @param cropType The new crop type.
  * @param variety The new crop variety.
+ * @param location The new plot location.
+ * @param campaign The new production campaign.
+ * @param notes The new grower notes.
  */
 public record UpdatePlotCommand(
         Long plotId,
@@ -24,8 +27,35 @@ public record UpdatePlotCommand(
         List<List<Double>> polygonCoordinates,
         BigDecimal areaSizeHectares,
         String cropType,
-        String variety
+        String variety,
+        String location,
+        String campaign,
+        String notes
 ) {
+    /**
+     * Backwards-compatible constructor for updates without descriptive metadata.
+     */
+    public UpdatePlotCommand(
+            Long plotId,
+            String name,
+            List<List<Double>> polygonCoordinates,
+            BigDecimal areaSizeHectares,
+            String cropType,
+            String variety
+    ) {
+        this(
+                plotId,
+                name,
+                polygonCoordinates,
+                areaSizeHectares,
+                cropType,
+                variety,
+                null,
+                null,
+                null
+        );
+    }
+
     /**
      * Compact constructor for UpdatePlotCommand.
      */
@@ -38,7 +68,10 @@ public record UpdatePlotCommand(
                 && polygonCoordinates == null
                 && areaSizeHectares == null
                 && cropType == null
-                && variety == null) {
+                && variety == null
+                && location == null
+                && campaign == null
+                && notes == null) {
             throw new IllegalArgumentException("At least one plot field must be provided.");
         }
     }

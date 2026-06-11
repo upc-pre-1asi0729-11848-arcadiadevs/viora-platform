@@ -21,6 +21,9 @@ import lombok.Getter;
 public class Plot extends AbstractDomainAggregateRoot<Plot> {
     private static final int CROP_TYPE_MAX_LENGTH = 60;
     private static final int VARIETY_MAX_LENGTH = 80;
+    private static final int LOCATION_MAX_LENGTH = 120;
+    private static final int CAMPAIGN_MAX_LENGTH = 60;
+    private static final int NOTES_MAX_LENGTH = 500;
 
     /**
      * The unique identifier for the plot.
@@ -58,6 +61,21 @@ public class Plot extends AbstractDomainAggregateRoot<Plot> {
     private String variety;
 
     /**
+     * The human-readable location of the plot (e.g. "Tacna, Peru").
+     */
+    private String location;
+
+    /**
+     * The production campaign the plot is enrolled in (e.g. "2026 campaign").
+     */
+    private String campaign;
+
+    /**
+     * Free-form grower notes about the plot.
+     */
+    private String notes;
+
+    /**
      * Indicates whether the plot is active.
      */
     private Boolean active;
@@ -68,12 +86,15 @@ public class Plot extends AbstractDomainAggregateRoot<Plot> {
     protected Plot() {
         this.cropType = "";
         this.variety = "";
+        this.location = "";
+        this.campaign = "";
+        this.notes = "";
         this.active = true;
     }
 
 
     /**
-     * Constructor for Plot
+     * Constructor for Plot without descriptive metadata.
      * @param userId The owner user identifies.
      * @param name The plot name.
      * @param polygonCoordinates The plot polygon coordinates.
@@ -89,6 +110,32 @@ public class Plot extends AbstractDomainAggregateRoot<Plot> {
             String cropType,
             String variety
     ) {
+        this(userId, name, polygonCoordinates, areaSize, cropType, variety, null, null, null);
+    }
+
+    /**
+     * Constructor for Plot.
+     * @param userId The owner user identifies.
+     * @param name The plot name.
+     * @param polygonCoordinates The plot polygon coordinates.
+     * @param areaSize The plot area size.
+     * @param cropType The crop type.
+     * @param variety The crop variety.
+     * @param location The human-readable plot location.
+     * @param campaign The production campaign.
+     * @param notes Free-form grower notes.
+     */
+    public Plot(
+            UserId userId,
+            PlotName name,
+            PolygonCoordinates polygonCoordinates,
+            AreaSize areaSize,
+            String cropType,
+            String variety,
+            String location,
+            String campaign,
+            String notes
+    ) {
         validateRequiredFields(userId, name, polygonCoordinates, areaSize);
         this.userId = userId;
         this.name = name;
@@ -96,6 +143,9 @@ public class Plot extends AbstractDomainAggregateRoot<Plot> {
         this.areaSize = areaSize;
         this.cropType = sanitizeText(cropType, CROP_TYPE_MAX_LENGTH, "Crop type");
         this.variety = sanitizeText(variety, VARIETY_MAX_LENGTH, "Variety");
+        this.location = sanitizeText(location, LOCATION_MAX_LENGTH, "Location");
+        this.campaign = sanitizeText(campaign, CAMPAIGN_MAX_LENGTH, "Campaign");
+        this.notes = sanitizeText(notes, NOTES_MAX_LENGTH, "Notes");
         this.active = true;
     }
 
@@ -114,6 +164,29 @@ public class Plot extends AbstractDomainAggregateRoot<Plot> {
             String cropType,
             String variety
     ) {
+        return updateInformation(name, areaSize, cropType, variety, this.location, this.campaign, this.notes);
+    }
+
+    /**
+     * Updates the general information of the plot, including descriptive metadata.
+     * @param name The new plot name.
+     * @param areaSize The new area size.
+     * @param cropType The new crop type.
+     * @param variety The new crop variety.
+     * @param location The new plot location.
+     * @param campaign The new production campaign.
+     * @param notes The new grower notes.
+     * @return The updated plot.
+     */
+    public Plot updateInformation(
+            PlotName name,
+            AreaSize areaSize,
+            String cropType,
+            String variety,
+            String location,
+            String campaign,
+            String notes
+    ) {
         if (name == null) {
             throw new IllegalArgumentException("Plot name is required.");
         }
@@ -125,6 +198,9 @@ public class Plot extends AbstractDomainAggregateRoot<Plot> {
         this.areaSize = areaSize;
         this.cropType = sanitizeText(cropType, CROP_TYPE_MAX_LENGTH, "Crop type");
         this.variety = sanitizeText(variety, VARIETY_MAX_LENGTH, "Variety");
+        this.location = sanitizeText(location, LOCATION_MAX_LENGTH, "Location");
+        this.campaign = sanitizeText(campaign, CAMPAIGN_MAX_LENGTH, "Campaign");
+        this.notes = sanitizeText(notes, NOTES_MAX_LENGTH, "Notes");
         return this;
     }
 

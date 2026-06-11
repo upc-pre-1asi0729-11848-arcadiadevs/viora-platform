@@ -31,7 +31,10 @@ public class PlotFromPlotPersistenceEntityAssembler {
                 entity.getPolygonCoordinates(),
                 new AreaSize(entity.getAreaSize()),
                 entity.getCropType(),
-                entity.getVariety()
+                entity.getVariety(),
+                entity.getLocation(),
+                entity.getCampaign(),
+                entity.getNotes()
         );
 
         plot.restoreIdentity(new PlotId(entity.getId()));

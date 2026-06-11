@@ -48,6 +48,25 @@ public class AgroMonitoringImageryServiceAdapter implements AgroMonitoringImager
     }
 
     @Override
+    public boolean isIntegrationEnabled() {
+        return properties.isConfigured();
+    }
+
+    @Override
+    public boolean isPlotLinked(Plot plot) {
+        if (!properties.isConfigured() || plot == null || plot.getId() == null) {
+            return false;
+        }
+
+        var expectedFingerprint = boundaryFingerprint(plot);
+        return integrationRepository.findByPlotId(plot.getId().getValue())
+                .filter(integration ->
+                        expectedFingerprint.equals(integration.getBoundaryFingerprint())
+                )
+                .isPresent();
+    }
+
+    @Override
     @Transactional
     public Optional<SatelliteImagery> findCurrentImagery(Plot plot) {
         if (!properties.isConfigured()) {

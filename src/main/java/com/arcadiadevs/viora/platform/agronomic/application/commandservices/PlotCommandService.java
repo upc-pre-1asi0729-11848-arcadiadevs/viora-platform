@@ -1,5 +1,8 @@
 package com.arcadiadevs.viora.platform.agronomic.application.commandservices;
 
+import com.arcadiadevs.viora.platform.agronomic.application.internal.outboundservices.AgroMonitoringImageryService;
+import com.arcadiadevs.viora.platform.agronomic.application.readmodels.IntegrationLinkStatus;
+import com.arcadiadevs.viora.platform.agronomic.application.readmodels.PlotRegistration;
 import com.arcadiadevs.viora.platform.agronomic.domain.exceptions.InvalidPolygonCoordinatesException;
 import com.arcadiadevs.viora.platform.agronomic.domain.model.aggregates.Plot;
 import com.arcadiadevs.viora.platform.agronomic.domain.model.commands.CreatePlotCommand;
@@ -11,6 +14,7 @@ import com.arcadiadevs.viora.platform.agronomic.domain.model.valueobjects.GeoPoi
 import com.arcadiadevs.viora.platform.agronomic.domain.model.valueobjects.PlotId;
 import com.arcadiadevs.viora.platform.agronomic.domain.model.valueobjects.PlotName;
 import com.arcadiadevs.viora.platform.agronomic.domain.model.valueobjects.PolygonCoordinates;
+import com.arcadiadevs.viora.platform.agronomic.domain.model.valueobjects.SatelliteImagery;
 import com.arcadiadevs.viora.platform.agronomic.domain.model.valueobjects.UserId;
 import com.arcadiadevs.viora.platform.agronomic.domain.repositories.PlotRepository;
 import com.arcadiadevs.viora.platform.shared.application.result.ApplicationError;
@@ -20,6 +24,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Optional;
 
 /**
  * Plot command service.
@@ -39,6 +44,11 @@ public class PlotCommandService {
     private final PlotRepository plotRepository;
 
     /**
+     * Satellite and climate provider integration.
+     */
+    private final AgroMonitoringImageryService agroMonitoringImageryService;
+
+    /**
      * Plot deletion policy.
      */
     private final PlotDeletionPolicy plotDeletionPolicy = new PlotDeletionPolicy();
@@ -47,10 +57,11 @@ public class PlotCommandService {
      * Handles plot registration.
      *
      * @param command The command containing the new plot data.
-     * @return A successful result with the persisted plot, or an application error.
+     * @return A successful result with the persisted plot and initial integration
+     *         states, or an application error.
      */
     @Transactional
-    public Result<Plot, ApplicationError> handle(CreatePlotCommand command) {
+    public Result<PlotRegistration, ApplicationError> handle(CreatePlotCommand command) {
         try {
             var userId = new UserId(command.userId());
             var plotName = new PlotName(command.name());
@@ -62,16 +73,41 @@ public class PlotCommandService {
                 ));
             }
 
+            var polygonCoordinates = toPolygonCoordinates(command.polygonCoordinates());
             var plot = new Plot(
                     userId,
                     plotName,
-                    toPolygonCoordinates(command.polygonCoordinates()),
+                    polygonCoordinates,
                     new AreaSize(command.areaSizeHectares()),
                     command.cropType(),
-                    command.variety()
+                    command.variety(),
+                    command.location(),
+                    command.campaign(),
+                    command.notes()
             );
 
-            return Result.success(plotRepository.save(plot));
+            var savedPlot = plotRepository.save(plot);
+            var imagery = agroMonitoringImageryService.isIntegrationEnabled()
+                    ? agroMonitoringImageryService.findCurrentImagery(savedPlot)
+                    : Optional.<SatelliteImagery>empty();
+
+            var linkedToProvider = agroMonitoringImageryService.isPlotLinked(savedPlot);
+            var climateMonitoring = linkedToProvider
+                    ? IntegrationLinkStatus.ACTIVE
+                    : IntegrationLinkStatus.NOT_LINKED;
+            var satelliteNdvi = imagery.isPresent()
+                    ? IntegrationLinkStatus.ACTIVE
+                    : linkedToProvider
+                    ? IntegrationLinkStatus.INITIALIZING
+                    : IntegrationLinkStatus.NOT_LINKED;
+
+            return Result.success(new PlotRegistration(
+                    savedPlot,
+                    polygonCoordinates.estimatedAreaHectares(),
+                    climateMonitoring,
+                    satelliteNdvi,
+                    IntegrationLinkStatus.NOT_LINKED
+            ));
         } catch (IllegalArgumentException | InvalidPolygonCoordinatesException exception) {
             return Result.failure(ApplicationError.validationError(
                     "plot",
@@ -121,6 +157,18 @@ public class PlotCommandService {
                     ? command.variety()
                     : plot.getVariety();
 
+            var updatedLocation = command.location() != null
+                    ? command.location()
+                    : plot.getLocation();
+
+            var updatedCampaign = command.campaign() != null
+                    ? command.campaign()
+                    : plot.getCampaign();
+
+            var updatedNotes = command.notes() != null
+                    ? command.notes()
+                    : plot.getNotes();
+
             var updatedPolygonCoordinates = command.polygonCoordinates() != null
                     ? toPolygonCoordinates(command.polygonCoordinates())
                     : plot.getPolygonCoordinates();
@@ -136,7 +184,10 @@ public class PlotCommandService {
                     updatedName,
                     updatedAreaSize,
                     updatedCropType,
-                    updatedVariety
+                    updatedVariety,
+                    updatedLocation,
+                    updatedCampaign,
+                    updatedNotes
             );
 
             plot.updateBoundary(updatedPolygonCoordinates, updatedAreaSize);
