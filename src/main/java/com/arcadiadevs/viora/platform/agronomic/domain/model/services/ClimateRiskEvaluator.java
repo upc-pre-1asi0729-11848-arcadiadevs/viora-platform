@@ -2,6 +2,7 @@ package com.arcadiadevs.viora.platform.agronomic.domain.model.services;
 
 import com.arcadiadevs.viora.platform.agronomic.domain.model.valueobjects.AccumulatedChillHours;
 import com.arcadiadevs.viora.platform.agronomic.domain.model.valueobjects.ClimateRiskLevel;
+import com.arcadiadevs.viora.platform.agronomic.domain.model.valueobjects.DynamicNutritionPolicy;
 import com.arcadiadevs.viora.platform.agronomic.domain.model.valueobjects.NdviValue;
 import com.arcadiadevs.viora.platform.agronomic.domain.model.valueobjects.WeatherSnapshot;
 import org.springframework.stereotype.Service;
@@ -17,6 +18,36 @@ import org.springframework.stereotype.Service;
  */
 @Service
 public class ClimateRiskEvaluator {
+
+    /**
+     * Evaluates dynamic nutrition risk using current provider-backed signals.
+     *
+     * @param ndviValue Latest satellite NDVI.
+     * @param weatherSnapshot Current weather.
+     * @param policy Configured agronomic thresholds.
+     * @return The classified risk level.
+     */
+    public ClimateRiskLevel evaluateDynamicNutritionRisk(
+            NdviValue ndviValue,
+            WeatherSnapshot weatherSnapshot,
+            DynamicNutritionPolicy policy
+    ) {
+        if (weatherSnapshot.getClimateRiskLevel() == ClimateRiskLevel.EXTREME
+                || weatherSnapshot.getClimateRiskLevel() == ClimateRiskLevel.HIGH) {
+            return weatherSnapshot.getClimateRiskLevel();
+        }
+
+        if (ndviValue.getValue() < policy.highRiskNdviThreshold()) {
+            return ClimateRiskLevel.HIGH;
+        }
+
+        if (ndviValue.getValue() < policy.moderateRiskNdviThreshold()
+                || weatherSnapshot.getClimateRiskLevel() == ClimateRiskLevel.MODERATE) {
+            return ClimateRiskLevel.MODERATE;
+        }
+
+        return ClimateRiskLevel.LOW;
+    }
 
     /**
      * Evaluates the climate risk level based on provided agronomic data.
