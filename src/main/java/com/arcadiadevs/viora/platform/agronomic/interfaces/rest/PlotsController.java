@@ -1,19 +1,23 @@
 package com.arcadiadevs.viora.platform.agronomic.interfaces.rest;
 
 import com.arcadiadevs.viora.platform.agronomic.application.commandservices.PlotCommandService;
+import com.arcadiadevs.viora.platform.agronomic.application.queryservices.PlotDetailQueryService;
 import com.arcadiadevs.viora.platform.agronomic.application.queryservices.PlotQueryService;
 import com.arcadiadevs.viora.platform.agronomic.domain.model.queries.GetMyPlotsOverviewQuery;
+import com.arcadiadevs.viora.platform.agronomic.domain.model.queries.GetPlotDetailQuery;
 import com.arcadiadevs.viora.platform.agronomic.domain.model.queries.GetPlotsByUserIdQuery;
 import com.arcadiadevs.viora.platform.agronomic.domain.model.queries.GetPlotsWithCurrentImageryQuery;
 import com.arcadiadevs.viora.platform.agronomic.domain.model.commands.DeletePlotCommand;
 import com.arcadiadevs.viora.platform.agronomic.domain.model.queries.GetPlotByIdQuery;
 import com.arcadiadevs.viora.platform.agronomic.interfaces.rest.resources.CreatePlotResource;
 import com.arcadiadevs.viora.platform.agronomic.interfaces.rest.resources.MyPlotsOverviewResource;
+import com.arcadiadevs.viora.platform.agronomic.interfaces.rest.resources.PlotDetailResource;
 import com.arcadiadevs.viora.platform.agronomic.interfaces.rest.resources.PlotRegistrationResource;
 import com.arcadiadevs.viora.platform.agronomic.interfaces.rest.resources.PlotWithCurrentImageryResource;
 import com.arcadiadevs.viora.platform.agronomic.interfaces.rest.resources.UpdatePlotResource;
 import com.arcadiadevs.viora.platform.agronomic.interfaces.rest.transform.CreatePlotCommandFromResourceAssembler;
 import com.arcadiadevs.viora.platform.agronomic.interfaces.rest.transform.MyPlotsOverviewResourceAssembler;
+import com.arcadiadevs.viora.platform.agronomic.interfaces.rest.transform.PlotDetailResourceAssembler;
 import com.arcadiadevs.viora.platform.agronomic.interfaces.rest.transform.PlotResourceFromPlotAssembler;
 import com.arcadiadevs.viora.platform.agronomic.interfaces.rest.transform.PlotRegistrationResourceAssembler;
 import com.arcadiadevs.viora.platform.agronomic.interfaces.rest.transform.PlotWithCurrentImageryResourceAssembler;
@@ -52,6 +56,11 @@ public class PlotsController {
      * Plot query service.
      */
     private final PlotQueryService plotQueryService;
+
+    /**
+     * Plot Detail query service.
+     */
+    private final PlotDetailQueryService plotDetailQueryService;
 
     /**
      * Plot command service.
@@ -122,6 +131,45 @@ public class PlotsController {
         return ResponseEntityAssembler.toResponseEntityFromResult(
                 result,
                 MyPlotsOverviewResourceAssembler::toResourceFromReadModel,
+                HttpStatus.OK
+        );
+    }
+
+    /**
+     * Gets the configuration and monitoring detail for one plot.
+     *
+     * @param plotId Plot identifier.
+     * @param userId Owner user identifier.
+     * @return Plot detail projection.
+     */
+    @GetMapping("/{plotId}/detail")
+    @Operation(
+            summary = "Get plot detail",
+            description = "Returns plot configuration, boundary status, monitoring links, "
+                    + "IoT activity and recent persisted configuration activity."
+    )
+    @ApiResponses(value = {
+            @ApiResponse(
+                    responseCode = "200",
+                    description = "Plot detail retrieved",
+                    content = @Content(schema = @Schema(
+                            implementation = PlotDetailResource.class
+                    ))
+            ),
+            @ApiResponse(responseCode = "400", description = "Invalid request parameters"),
+            @ApiResponse(responseCode = "403", description = "User does not own the plot"),
+            @ApiResponse(responseCode = "404", description = "Plot not found"),
+            @ApiResponse(responseCode = "500", description = "Unexpected error")
+    })
+    public ResponseEntity<?> getPlotDetail(
+            @PathVariable Long plotId,
+            @RequestParam Long userId
+    ) {
+        var result = plotDetailQueryService.handle(new GetPlotDetailQuery(userId, plotId));
+
+        return ResponseEntityAssembler.toResponseEntityFromResult(
+                result,
+                PlotDetailResourceAssembler::toResourceFromReadModel,
                 HttpStatus.OK
         );
     }
