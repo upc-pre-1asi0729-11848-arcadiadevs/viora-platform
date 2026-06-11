@@ -22,7 +22,8 @@ public class MonitoringSummaryResourceFromMonitoringSummaryAssembler {
             weatherSnapshotResource = new WeatherSnapshotResource(
                     aggregate.getWeatherSnapshot().getWeatherStatus().name(),
                     aggregate.getWeatherSnapshot().getMeasurementDate().getValue(),
-                    aggregate.getWeatherSnapshot().getClimateRiskLevel().name()
+                    aggregate.getWeatherSnapshot().getClimateRiskLevel().name(),
+                    aggregate.getWeatherSnapshot().getTemperature()
             );
         }
 
