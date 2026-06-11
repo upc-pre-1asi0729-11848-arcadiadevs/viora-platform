@@ -63,6 +63,9 @@ public class MonitoringSummaryEntity extends AuditableAbstractPersistenceEntity 
     @Column(name = "weather_climate_risk_level", nullable = false)
     private String weatherClimateRiskLevel;
 
+    @Column(name = "weather_temperature", nullable = false) // New field for temperature
+    private Double weatherTemperature;
+
     // New field for ClimateRiskLevel (direct from aggregate)
     @Enumerated(EnumType.STRING)
     @Column(name = "climate_risk_level", nullable = false)
