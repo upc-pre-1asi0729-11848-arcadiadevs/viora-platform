@@ -4,6 +4,7 @@ import com.arcadiadevs.viora.platform.agronomic.domain.model.valueobjects.Accumu
 import com.arcadiadevs.viora.platform.agronomic.domain.model.valueobjects.ClimateRiskLevel;
 import com.arcadiadevs.viora.platform.agronomic.domain.model.valueobjects.NdviValue;
 import com.arcadiadevs.viora.platform.agronomic.domain.model.valueobjects.WeatherSnapshot;
+import org.springframework.stereotype.Service;
 
 /**
  * Domain service for evaluating and classifying climate risk levels.
@@ -14,6 +15,7 @@ import com.arcadiadevs.viora.platform.agronomic.domain.model.valueobjects.Weathe
  * related to olive cultivation.
  * </p>
  */
+@Service
 public class ClimateRiskEvaluator {
 
     /**
