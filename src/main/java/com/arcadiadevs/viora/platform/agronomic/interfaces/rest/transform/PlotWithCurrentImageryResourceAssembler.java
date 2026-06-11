@@ -13,6 +13,13 @@ import java.util.Objects;
  */
 public final class PlotWithCurrentImageryResourceAssembler {
 
+    /**
+     * Tile URL template served to web map clients. Tiles are streamed through the
+     * platform proxy so the imagery provider API key never reaches the client.
+     */
+    private static final String TILE_PROXY_URL_TEMPLATE =
+            "/api/v1/plots/%d/imagery/tile/{z}/{x}/{y}?userId=%d";
+
     private PlotWithCurrentImageryResourceAssembler() {
     }
 
@@ -26,7 +33,10 @@ public final class PlotWithCurrentImageryResourceAssembler {
                 .map(value -> new SatelliteImageryResource(
                         value.id(),
                         plot.getId().getValue(),
-                        value.tileUrl(),
+                        TILE_PROXY_URL_TEMPLATE.formatted(
+                                plot.getId().getValue(),
+                                plot.getUserId().getValue()
+                        ),
                         value.captureDate(),
                         value.ndviMean(),
                         value.cloudPercentage()
