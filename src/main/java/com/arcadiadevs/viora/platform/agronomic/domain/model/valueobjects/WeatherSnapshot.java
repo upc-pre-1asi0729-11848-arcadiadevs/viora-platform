@@ -14,24 +14,28 @@ public class WeatherSnapshot {
     private final WeatherStatus weatherStatus;
     private final MeasurementDate measurementDate;
     private final ClimateRiskLevel climateRiskLevel;
+    private final Double temperature; // New field
 
     public WeatherSnapshot(
             WeatherStatus weatherStatus,
             MeasurementDate measurementDate,
-            ClimateRiskLevel climateRiskLevel
+            ClimateRiskLevel climateRiskLevel,
+            Double temperature // New parameter
     ) {
-        validateRequiredFields(weatherStatus, measurementDate, climateRiskLevel);
-        validateConsistency(weatherStatus, climateRiskLevel);
+        validateRequiredFields(weatherStatus, measurementDate, climateRiskLevel, temperature);
+        validateConsistency(weatherStatus, climateRiskLevel); // Consistency rules might also involve temperature
 
         this.weatherStatus = weatherStatus;
         this.measurementDate = measurementDate;
         this.climateRiskLevel = climateRiskLevel;
+        this.temperature = temperature; // Assign new field
     }
 
     private void validateRequiredFields(
             WeatherStatus weatherStatus,
             MeasurementDate measurementDate,
-            ClimateRiskLevel climateRiskLevel
+            ClimateRiskLevel climateRiskLevel,
+            Double temperature // New parameter
     ) {
         if (weatherStatus == null) {
             throw new IllegalArgumentException("Weather status is required.");
@@ -42,6 +46,10 @@ public class WeatherSnapshot {
         if (climateRiskLevel == null) {
             throw new IllegalArgumentException("Climate risk level is required.");
         }
+        if (temperature == null) { // New validation
+            throw new IllegalArgumentException("Temperature is required.");
+        }
+        // Add more specific temperature validations if needed (e.g., range)
     }
 
     private void validateConsistency(
