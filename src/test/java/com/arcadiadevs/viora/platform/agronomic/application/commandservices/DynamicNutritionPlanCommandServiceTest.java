@@ -204,6 +204,11 @@ class DynamicNutritionPlanCommandServiceTest {
         public Optional<SatelliteImagery> findCurrentImagery(Plot plot) {
             return Optional.ofNullable(imagery);
         }
+
+        @Override
+        public Optional<byte[]> fetchCurrentNdviTile(Plot plot, int zoom, int x, int y) {
+            return Optional.empty();
+        }
     }
 
     private static final class StubWeatherDataService implements WeatherDataService {

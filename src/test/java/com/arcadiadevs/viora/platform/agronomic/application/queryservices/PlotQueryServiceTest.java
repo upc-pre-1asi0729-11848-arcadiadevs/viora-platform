@@ -1,7 +1,9 @@
 package com.arcadiadevs.viora.platform.agronomic.application.queryservices;
 
+import com.arcadiadevs.viora.platform.agronomic.application.internal.outboundservices.AgroMonitoringImageryService;
 import com.arcadiadevs.viora.platform.agronomic.domain.model.aggregates.Plot;
 import com.arcadiadevs.viora.platform.agronomic.domain.model.queries.GetPlotByIdQuery;
+import com.arcadiadevs.viora.platform.agronomic.domain.model.queries.GetPlotNdviTileQuery;
 import com.arcadiadevs.viora.platform.agronomic.domain.model.queries.GetPlotsWithCurrentImageryQuery;
 import com.arcadiadevs.viora.platform.agronomic.domain.model.valueobjects.AreaSize;
 import com.arcadiadevs.viora.platform.agronomic.domain.model.valueobjects.GeoPoint;
@@ -18,7 +20,9 @@ import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 
+import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class PlotQueryServiceTest {
@@ -28,7 +32,7 @@ class PlotQueryServiceTest {
         var plot = createPlot();
         var service = new PlotQueryService(
                 new QueryPlotRepository(plot),
-                ignored -> Optional.empty()
+                new StubImageryService(null, null)
         );
 
         var result = service.handle(new GetPlotByIdQuery(1L));
@@ -42,7 +46,7 @@ class PlotQueryServiceTest {
         var plot = createPlot().deactivate();
         var service = new PlotQueryService(
                 new QueryPlotRepository(plot),
-                ignored -> Optional.empty()
+                new StubImageryService(null, null)
         );
 
         var result = service.handle(new GetPlotByIdQuery(1L));
@@ -56,14 +60,14 @@ class PlotQueryServiceTest {
         var plot = createPlot();
         var imagery = new SatelliteImagery(
                 "image-1",
-                "https://api.agromonitoring.com/tile/{z}/{x}/{y}?appid=test",
+                "https://api.agromonitoring.com/tile/{z}/{x}/{y}",
                 Instant.parse("2026-05-02T00:00:00Z"),
                 0.62,
                 2.5
         );
         var service = new PlotQueryService(
                 new QueryPlotRepository(plot),
-                ignored -> Optional.of(imagery)
+                new StubImageryService(imagery, null)
         );
 
         var result = service.handle(new GetPlotsWithCurrentImageryQuery(10L));
@@ -72,6 +76,57 @@ class PlotQueryServiceTest {
         var readModel = result.success().orElseThrow().getFirst();
         assertEquals(plot, readModel.plot());
         assertEquals(imagery, readModel.currentImagery().orElseThrow());
+    }
+
+    @Test
+    void streamsNdviTileForOwnedPlot() {
+        var plot = createPlot();
+        var tileBytes = new byte[]{(byte) 0x89, 'P', 'N', 'G'};
+        var service = new PlotQueryService(
+                new QueryPlotRepository(plot),
+                new StubImageryService(null, tileBytes)
+        );
+
+        var result = service.handle(new GetPlotNdviTileQuery(10L, 1L, 12, 1180, 2122));
+
+        assertTrue(result.isSuccess());
+        assertArrayEquals(tileBytes, result.success().orElseThrow());
+    }
+
+    @Test
+    void returnsForbiddenTileWhenPlotIsNotOwnedByUser() {
+        var plot = createPlot();
+        var service = new PlotQueryService(
+                new QueryPlotRepository(plot),
+                new StubImageryService(null, new byte[]{1})
+        );
+
+        var result = service.handle(new GetPlotNdviTileQuery(99L, 1L, 12, 1180, 2122));
+
+        assertTrue(result.isFailure());
+        assertEquals("PLOT_OWNERSHIP_FORBIDDEN", result.failure().orElseThrow().code());
+    }
+
+    @Test
+    void returnsNotFoundTileWhenNoImageryIsAvailable() {
+        var plot = createPlot();
+        var service = new PlotQueryService(
+                new QueryPlotRepository(plot),
+                new StubImageryService(null, null)
+        );
+
+        var result = service.handle(new GetPlotNdviTileQuery(10L, 1L, 12, 1180, 2122));
+
+        assertTrue(result.isFailure());
+        assertEquals("PLOT_IMAGERY_TILE_NOT_FOUND", result.failure().orElseThrow().code());
+    }
+
+    @Test
+    void rejectsTileCoordinatesOutsideZoomRange() {
+        assertThrows(
+                IllegalArgumentException.class,
+                () -> new GetPlotNdviTileQuery(10L, 1L, 2, 4, 0)
+        );
     }
 
     private Plot createPlot() {
@@ -90,6 +145,22 @@ class PlotQueryServiceTest {
                 "Typica"
         );
         return plot.restoreIdentity(new PlotId(1L));
+    }
+
+    private record StubImageryService(
+            SatelliteImagery imagery,
+            byte[] tileBytes
+    ) implements AgroMonitoringImageryService {
+
+        @Override
+        public Optional<SatelliteImagery> findCurrentImagery(Plot plot) {
+            return Optional.ofNullable(imagery);
+        }
+
+        @Override
+        public Optional<byte[]> fetchCurrentNdviTile(Plot plot, int zoom, int x, int y) {
+            return Optional.ofNullable(tileBytes);
+        }
     }
 
     private record QueryPlotRepository(Plot plot) implements PlotRepository {

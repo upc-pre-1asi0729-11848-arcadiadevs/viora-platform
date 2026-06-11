@@ -81,6 +81,9 @@ class PlotsControllerTest {
                 .andExpect(jsonPath("$[0].polygonCoordinates[0][0]").value(-77.0))
                 .andExpect(jsonPath("$[0].polygonCoordinates[0][1]").value(-12.0))
                 .andExpect(jsonPath("$[0].currentImagery.plotId").value(1))
+                .andExpect(jsonPath("$[0].currentImagery.tileUrl").value(
+                        "/api/v1/plots/1/imagery/tile/{z}/{x}/{y}?userId=10"
+                ))
                 .andExpect(jsonPath("$[0].currentImagery.ndviMean").value(0.62))
                 .andExpect(jsonPath("$[0].currentImagery.cloudPercentage").value(2.5));
     }

@@ -33,6 +33,9 @@ class OpenApiAvailabilityIntegrationTest {
                 .andExpect(jsonPath("$.components.schemas.PlotWithCurrentImageryResource").exists())
                 .andExpect(jsonPath("$.components.schemas.SatelliteImageryResource").exists())
                 .andExpect(jsonPath("$.paths['/api/v1/plots/{plotId}']").exists())
+                .andExpect(jsonPath(
+                        "$.paths['/api/v1/plots/{plotId}/imagery/tile/{zoom}/{x}/{y}']"
+                ).exists())
                 .andExpect(jsonPath("$.paths['/api/v1/plots/{plotId}/iot-devices']").exists())
                 .andExpect(jsonPath("$.paths['/api/v1/agronomic-statistics']").exists());
 

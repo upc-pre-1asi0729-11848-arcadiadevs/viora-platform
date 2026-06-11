@@ -18,7 +18,9 @@ import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 
+import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -142,9 +144,79 @@ class AgroMonitoringImageryServiceAdapterTest {
         assertEquals(0.64, result.ndviMean());
         assertEquals(3.2, result.cloudPercentage());
         assertTrue(result.tileUrl().startsWith("https://api.agromonitoring.com/tile/"));
-        assertTrue(result.tileUrl().endsWith("?appid=test-key"));
+        assertFalse(result.tileUrl().contains("appid"));
         server.verify();
         verify(repository, times(2)).save(any(AgroMonitoringPlotIntegrationEntity.class));
+    }
+
+    @Test
+    void streamsNdviTileWithServerSideApiKey() {
+        var properties = configuredProperties();
+        var repository = mock(SpringDataAgroMonitoringPlotIntegrationRepository.class);
+        var plot = createPlot();
+
+        var integration = new AgroMonitoringPlotIntegrationEntity();
+        integration.setPlotId(1L);
+        integration.setExternalPolygonId("provider-polygon-1");
+        integration.setBoundaryFingerprint(boundaryFingerprintOf(plot));
+        integration.setTileUrl("https://api.agromonitoring.com/tile/1.0/{z}/{x}/{y}/latest");
+        when(repository.findByPlotId(1L)).thenReturn(Optional.of(integration));
+
+        var restClientBuilder = RestClient.builder();
+        var server = MockRestServiceServer.bindTo(restClientBuilder).build();
+        var adapter = new AgroMonitoringImageryServiceAdapter(
+                properties,
+                repository,
+                restClientBuilder.baseUrl(properties.getBaseUrl()).build()
+        );
+
+        var tileBytes = new byte[]{(byte) 0x89, 'P', 'N', 'G'};
+        server.expect(once(), request -> {
+                    assertEquals("/tile/1.0/12/1180/2122/latest", request.getURI().getPath());
+                    assertEquals("appid=test-key", request.getURI().getQuery());
+                })
+                .andExpect(method(HttpMethod.GET))
+                .andRespond(withSuccess(tileBytes, MediaType.IMAGE_PNG));
+
+        var result = adapter.fetchCurrentNdviTile(plot, 12, 1180, 2122);
+
+        assertArrayEquals(tileBytes, result.orElseThrow());
+        server.verify();
+    }
+
+    @Test
+    void returnsEmptyTileWhenNoImageryIsCached() {
+        var properties = configuredProperties();
+        var repository = mock(SpringDataAgroMonitoringPlotIntegrationRepository.class);
+        when(repository.findByPlotId(1L)).thenReturn(Optional.empty());
+
+        var adapter = new AgroMonitoringImageryServiceAdapter(
+                properties,
+                repository,
+                RestClient.create()
+        );
+
+        assertTrue(adapter.fetchCurrentNdviTile(createPlot(), 12, 1180, 2122).isEmpty());
+    }
+
+    /**
+     * Mirrors the adapter's boundary fingerprint (SHA-256 over the canonical
+     * hex-encoded coordinates) so cached integrations match in tile tests.
+     */
+    private String boundaryFingerprintOf(Plot plot) {
+        var canonicalCoordinates = new StringBuilder();
+        plot.getPolygonCoordinates().getPoints().forEach(point -> canonicalCoordinates
+                .append(Double.toHexString(point.getLongitude()))
+                .append(',')
+                .append(Double.toHexString(point.getLatitude()))
+                .append(';'));
+        try {
+            var digest = java.security.MessageDigest.getInstance("SHA-256")
+                    .digest(canonicalCoordinates.toString().getBytes(java.nio.charset.StandardCharsets.UTF_8));
+            return java.util.HexFormat.of().formatHex(digest);
+        } catch (java.security.NoSuchAlgorithmException exception) {
+            throw new IllegalStateException("SHA-256 is not available.", exception);
+        }
     }
 
     @Test
