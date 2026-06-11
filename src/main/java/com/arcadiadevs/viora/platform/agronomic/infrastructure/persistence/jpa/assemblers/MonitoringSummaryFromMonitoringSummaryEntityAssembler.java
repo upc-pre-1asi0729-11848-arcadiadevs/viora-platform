@@ -10,7 +10,7 @@ import com.arcadiadevs.viora.platform.agronomic.domain.model.valueobjects.Mitiga
 import com.arcadiadevs.viora.platform.agronomic.domain.model.valueobjects.MonitoringSummaryId;
 import com.arcadiadevs.viora.platform.agronomic.domain.model.valueobjects.NdviValue;
 import com.arcadiadevs.viora.platform.agronomic.domain.model.valueobjects.NutritionInputRecommendation;
-import com.arcadiadevs.viora.platform.agronomic.domain.model.valueobjects.TimeRange;
+import com.arcadiadevs.viora.platform.agronomic.domain.model.valueobjects.TimeWindow;
 import com.arcadiadevs.viora.platform.agronomic.domain.model.valueobjects.UserId;
 import com.arcadiadevs.viora.platform.agronomic.domain.model.valueobjects.WeatherSnapshot;
 import com.arcadiadevs.viora.platform.agronomic.domain.model.valueobjects.WeatherStatus;
@@ -33,7 +33,8 @@ public class MonitoringSummaryFromMonitoringSummaryEntityAssembler {
         WeatherSnapshot weatherSnapshot = new WeatherSnapshot(
                 WeatherStatus.fromString(entity.getWeatherStatus()),
                 new MeasurementDate(entity.getWeatherMeasurementDate()),
-                ClimateRiskLevel.fromString(entity.getWeatherClimateRiskLevel())
+                ClimateRiskLevel.fromString(entity.getWeatherClimateRiskLevel()),
+                entity.getWeatherTemperature() // New field
         );
 
         // Reconstruct ClimateRiskLevel
@@ -50,16 +51,16 @@ public class MonitoringSummaryFromMonitoringSummaryEntityAssembler {
             MitigationRecommendation recommendation = new MitigationRecommendation(
                     MitigationActionType.fromString(entity.getMitigationActionType()),
                     new NutritionInputRecommendation(entity.getNutritionInputRecommendation()),
-                    new TimeRange(entity.getMitigationApplicationWindowStart(), entity.getMitigationApplicationWindowEnd()),
+                    new TimeWindow(entity.getMitigationApplicationWindowStart(), entity.getMitigationApplicationWindowEnd()),
                     climateRiskLevel // Pass for validation
             );
             mitigationRecommendations.add(recommendation);
         }
 
-
+        // Create the MonitoringSummary with all fields
         MonitoringSummary monitoringSummary = new MonitoringSummary(
                 new UserId(entity.getUserId()),
-                GeneralHealthStatus.fromString(entity.getGeneralHealthStatus()), // Convert String to enum
+                GeneralHealthStatus.fromString(entity.getGeneralHealthStatus()),
                 new NdviValue(entity.getNdviValue()),
                 new AccumulatedChillHours(entity.getAccumulatedChillHours()),
                 new YieldForecast(entity.getYieldForecast()),
@@ -68,9 +69,12 @@ public class MonitoringSummaryFromMonitoringSummaryEntityAssembler {
                 climateRiskLevel,
                 mitigationRecommendations
         );
+        
+        // Restore the identity if it exists
         if (entity.getId() != null) {
             monitoringSummary.restoreIdentity(new MonitoringSummaryId(entity.getId()));
         }
+        
         return monitoringSummary;
     }
 }
