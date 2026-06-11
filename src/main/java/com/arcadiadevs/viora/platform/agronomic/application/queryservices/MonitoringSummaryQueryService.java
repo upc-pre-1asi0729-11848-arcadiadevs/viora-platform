@@ -108,8 +108,10 @@ public class MonitoringSummaryQueryService {
                 .max(Comparator.comparing(MeasurementDate::getValue))
                 .orElse(new MeasurementDate(LocalDate.now()));
 
-        // 7. Get Weather Snapshot
-        Optional<WeatherSnapshot> optionalWeatherSnapshot = weatherDataService.getWeatherSnapshot(userId, latestMeasurementDate);
+        // 7. Get Weather Snapshot for a representative plot of the user
+        Plot representativePlot = userPlots.getFirst();
+        Optional<WeatherSnapshot> optionalWeatherSnapshot =
+                weatherDataService.getCurrentWeatherSnapshot(representativePlot);
         WeatherSnapshot weatherSnapshot = optionalWeatherSnapshot.orElseThrow(
                 () -> new IllegalStateException("Weather data not available for user " + userId.getValue() + " on " + latestMeasurementDate.getValue())
         );
