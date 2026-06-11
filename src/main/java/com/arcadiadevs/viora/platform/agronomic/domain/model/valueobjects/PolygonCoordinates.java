@@ -42,6 +42,24 @@ public class PolygonCoordinates {
     }
 
     /**
+     * Computes a representative interior point of the plot as the arithmetic
+     * mean of its distinct vertices (the closing vertex is excluded).
+     *
+     * <p>
+     *     Used for location-based lookups such as weather, where a single
+     *     latitude/longitude is required for the whole plot.
+     * </p>
+     *
+     * @return The representative geographic point of the polygon.
+     */
+    public GeoPoint centroid() {
+        List<GeoPoint> vertices = points.subList(0, points.size() - 1);
+        double latitude = vertices.stream().mapToDouble(GeoPoint::getLatitude).average().orElseThrow();
+        double longitude = vertices.stream().mapToDouble(GeoPoint::getLongitude).average().orElseThrow();
+        return new GeoPoint(latitude, longitude);
+    }
+
+    /**
      * Validates the polygon coordinates.
      * @param points The points to validate.
      */

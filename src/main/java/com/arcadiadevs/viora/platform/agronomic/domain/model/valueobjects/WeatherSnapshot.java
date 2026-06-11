@@ -14,28 +14,28 @@ public class WeatherSnapshot {
     private final WeatherStatus weatherStatus;
     private final MeasurementDate measurementDate;
     private final ClimateRiskLevel climateRiskLevel;
-    private final Double temperature; // New field
+    private final Double temperature;
 
     public WeatherSnapshot(
             WeatherStatus weatherStatus,
             MeasurementDate measurementDate,
             ClimateRiskLevel climateRiskLevel,
-            Double temperature // New parameter
+            Double temperature
     ) {
         validateRequiredFields(weatherStatus, measurementDate, climateRiskLevel, temperature);
-        validateConsistency(weatherStatus, climateRiskLevel); // Consistency rules might also involve temperature
+        validateConsistency(weatherStatus, climateRiskLevel);
 
         this.weatherStatus = weatherStatus;
         this.measurementDate = measurementDate;
         this.climateRiskLevel = climateRiskLevel;
-        this.temperature = temperature; // Assign new field
+        this.temperature = temperature;
     }
 
     private void validateRequiredFields(
             WeatherStatus weatherStatus,
             MeasurementDate measurementDate,
             ClimateRiskLevel climateRiskLevel,
-            Double temperature // New parameter
+            Double temperature
     ) {
         if (weatherStatus == null) {
             throw new IllegalArgumentException("Weather status is required.");
@@ -46,21 +46,20 @@ public class WeatherSnapshot {
         if (climateRiskLevel == null) {
             throw new IllegalArgumentException("Climate risk level is required.");
         }
-        if (temperature == null) { // New validation
+        if (temperature == null) {
             throw new IllegalArgumentException("Temperature is required.");
         }
-        // Add more specific temperature validations if needed (e.g., range)
+        if (!Double.isFinite(temperature)) {
+            throw new IllegalArgumentException("Temperature must be finite.");
+        }
     }
 
     private void validateConsistency(
             WeatherStatus weatherStatus,
             ClimateRiskLevel climateRiskLevel
     ) {
-        // Example of a business invariant:
-        // If the weather is stormy, the climate risk level cannot be LOW.
         if (weatherStatus == WeatherStatus.STORMY && climateRiskLevel == ClimateRiskLevel.LOW) {
             throw new InvalidWeatherSnapshotException("Inconsistent weather snapshot: Stormy weather cannot have a LOW climate risk level.");
         }
-        // Add more consistency rules as needed.
     }
 }
