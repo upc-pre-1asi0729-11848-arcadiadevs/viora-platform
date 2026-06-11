@@ -12,12 +12,12 @@ public class MitigationRecommendation {
 
     private final MitigationActionType actionType;
     private final NutritionInputRecommendation nutritionInputRecommendation;
-    private final TimeRange applicationWindow;
+    private final TimeWindow applicationWindow;
 
     public MitigationRecommendation(
             MitigationActionType actionType,
             NutritionInputRecommendation nutritionInputRecommendation,
-            TimeRange applicationWindow,
+            TimeWindow applicationWindow,
             ClimateRiskLevel currentRiskLevel // Used for validation, not stored as state
     ) {
         validateRequiredFields(actionType, nutritionInputRecommendation, applicationWindow, currentRiskLevel);
@@ -31,7 +31,7 @@ public class MitigationRecommendation {
     private void validateRequiredFields(
             MitigationActionType actionType,
             NutritionInputRecommendation nutritionInputRecommendation,
-            TimeRange applicationWindow,
+            TimeWindow applicationWindow,
             ClimateRiskLevel currentRiskLevel
     ) {
         if (actionType == null) {
