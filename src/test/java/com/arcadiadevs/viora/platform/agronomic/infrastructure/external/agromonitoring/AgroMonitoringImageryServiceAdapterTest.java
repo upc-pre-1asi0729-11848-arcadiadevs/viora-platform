@@ -199,6 +199,29 @@ class AgroMonitoringImageryServiceAdapterTest {
         assertTrue(adapter.fetchCurrentNdviTile(createPlot(), 12, 1180, 2122).isEmpty());
     }
 
+    @Test
+    void reportsPlotLinkedOnlyForItsCurrentBoundary() {
+        var properties = configuredProperties();
+        var repository = mock(SpringDataAgroMonitoringPlotIntegrationRepository.class);
+        var plot = createPlot();
+        var integration = new AgroMonitoringPlotIntegrationEntity();
+        integration.setPlotId(1L);
+        integration.setExternalPolygonId("provider-polygon-1");
+        integration.setBoundaryFingerprint(boundaryFingerprintOf(plot));
+        when(repository.findByPlotId(1L)).thenReturn(Optional.of(integration));
+
+        var adapter = new AgroMonitoringImageryServiceAdapter(
+                properties,
+                repository,
+                RestClient.create()
+        );
+
+        assertTrue(adapter.isPlotLinked(plot));
+
+        integration.setBoundaryFingerprint("outdated-boundary");
+        assertFalse(adapter.isPlotLinked(plot));
+    }
+
     /**
      * Mirrors the adapter's boundary fingerprint (SHA-256 over the canonical
      * hex-encoded coordinates) so cached integrations match in tile tests.

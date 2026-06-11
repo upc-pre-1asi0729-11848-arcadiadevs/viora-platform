@@ -2,14 +2,21 @@ package com.arcadiadevs.viora.platform.agronomic.interfaces.rest;
 
 import com.arcadiadevs.viora.platform.agronomic.application.commandservices.PlotCommandService;
 import com.arcadiadevs.viora.platform.agronomic.application.queryservices.PlotQueryService;
+import com.arcadiadevs.viora.platform.agronomic.application.readmodels.IntegrationLinkStatus;
+import com.arcadiadevs.viora.platform.agronomic.application.readmodels.MyPlotsOverview;
+import com.arcadiadevs.viora.platform.agronomic.application.readmodels.PlotMonitoringOverview;
+import com.arcadiadevs.viora.platform.agronomic.application.readmodels.PlotRegistration;
 import com.arcadiadevs.viora.platform.agronomic.application.readmodels.PlotWithCurrentImagery;
 import com.arcadiadevs.viora.platform.agronomic.domain.model.aggregates.Plot;
+import com.arcadiadevs.viora.platform.agronomic.domain.model.commands.CreatePlotCommand;
 import com.arcadiadevs.viora.platform.agronomic.domain.model.commands.DeletePlotCommand;
 import com.arcadiadevs.viora.platform.agronomic.domain.model.commands.UpdatePlotCommand;
+import com.arcadiadevs.viora.platform.agronomic.domain.model.queries.GetMyPlotsOverviewQuery;
 import com.arcadiadevs.viora.platform.agronomic.domain.model.queries.GetPlotByIdQuery;
 import com.arcadiadevs.viora.platform.agronomic.domain.model.queries.GetPlotsWithCurrentImageryQuery;
 import com.arcadiadevs.viora.platform.agronomic.domain.model.valueobjects.AreaSize;
 import com.arcadiadevs.viora.platform.agronomic.domain.model.valueobjects.GeoPoint;
+import com.arcadiadevs.viora.platform.agronomic.domain.model.valueobjects.GeneralHealthStatus;
 import com.arcadiadevs.viora.platform.agronomic.domain.model.valueobjects.PlotId;
 import com.arcadiadevs.viora.platform.agronomic.domain.model.valueobjects.PlotName;
 import com.arcadiadevs.viora.platform.agronomic.domain.model.valueobjects.PolygonCoordinates;
@@ -32,6 +39,7 @@ import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -46,6 +54,48 @@ class PlotsControllerTest {
 
     @MockitoBean
     private PlotCommandService plotCommandService;
+
+    @Test
+    void createsPlotWithEstimatedAreaAndInitialLinks() throws Exception {
+        var plot = createPlot();
+        var registration = new PlotRegistration(
+                plot,
+                new BigDecimal("12.34"),
+                IntegrationLinkStatus.ACTIVE,
+                IntegrationLinkStatus.INITIALIZING,
+                IntegrationLinkStatus.NOT_LINKED
+        );
+        when(plotCommandService.handle(any(CreatePlotCommand.class)))
+                .thenReturn(Result.success(registration));
+
+        mockMvc.perform(post("/api/v1/plots")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "userId": 10,
+                                  "name": "North field",
+                                  "polygonCoordinates": [
+                                    [-77.0, -12.0],
+                                    [-76.9, -12.0],
+                                    [-76.9, -12.1],
+                                    [-77.0, -12.0]
+                                  ],
+                                  "areaSizeHectares": 12.50,
+                                  "cropType": "Coffee",
+                                  "variety": "Typica",
+                                  "location": "Tacna, Peru",
+                                  "campaign": "2026 campaign",
+                                  "notes": "Regular irrigation."
+                                }
+                                """))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.id").value(1))
+                .andExpect(jsonPath("$.estimatedAreaHectares").value(12.34))
+                .andExpect(jsonPath("$.location").value("Tacna, Peru"))
+                .andExpect(jsonPath("$.climateMonitoring").value("ACTIVE"))
+                .andExpect(jsonPath("$.satelliteNdvi").value("INITIALIZING"))
+                .andExpect(jsonPath("$.iotDevices").value("NOT_LINKED"));
+    }
 
     @Test
     void getsPlotById() throws Exception {
@@ -86,6 +136,42 @@ class PlotsControllerTest {
                 ))
                 .andExpect(jsonPath("$[0].currentImagery.ndviMean").value(0.62))
                 .andExpect(jsonPath("$[0].currentImagery.cloudPercentage").value(2.5));
+    }
+
+    @Test
+    void getsMyPlotsOverview() throws Exception {
+        var plot = createPlot();
+        var plotOverview = new PlotMonitoringOverview(
+                plot,
+                0.68,
+                72.0,
+                GeneralHealthStatus.HEALTHY,
+                2,
+                0,
+                Instant.parse("2026-06-11T12:00:00Z"),
+                IntegrationLinkStatus.ACTIVE,
+                IntegrationLinkStatus.ACTIVE
+        );
+        when(plotQueryService.handle(any(GetMyPlotsOverviewQuery.class)))
+                .thenReturn(Result.success(new MyPlotsOverview(
+                        1,
+                        new BigDecimal("12.50"),
+                        1,
+                        2,
+                        List.of(plotOverview)
+                )));
+
+        mockMvc.perform(get("/api/v1/plots/overview").param("userId", "10"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.registeredPlotCount").value(1))
+                .andExpect(jsonPath("$.monitoredAreaHectares").value(12.50))
+                .andExpect(jsonPath("$.climateLinkedPlotCount").value(1))
+                .andExpect(jsonPath("$.onlineDeviceCount").value(2))
+                .andExpect(jsonPath("$.plots[0].name").value("North field"))
+                .andExpect(jsonPath("$.plots[0].location").value("Tacna, Peru"))
+                .andExpect(jsonPath("$.plots[0].currentNdvi").value(0.68))
+                .andExpect(jsonPath("$.plots[0].chillPortions").value(72.0))
+                .andExpect(jsonPath("$.plots[0].healthStatus").value("HEALTHY"));
     }
 
     @Test
@@ -147,7 +233,10 @@ class PlotsControllerTest {
                 )),
                 new AreaSize(new BigDecimal("12.50")),
                 "Coffee",
-                "Typica"
+                "Typica",
+                "Tacna, Peru",
+                "2026 campaign",
+                "Regular irrigation."
         );
         return plot.restoreIdentity(new PlotId(1L));
     }

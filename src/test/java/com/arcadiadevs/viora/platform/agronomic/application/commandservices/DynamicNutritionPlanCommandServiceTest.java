@@ -201,6 +201,16 @@ class DynamicNutritionPlanCommandServiceTest {
         private SatelliteImagery imagery;
 
         @Override
+        public boolean isIntegrationEnabled() {
+            return true;
+        }
+
+        @Override
+        public boolean isPlotLinked(Plot plot) {
+            return imagery != null;
+        }
+
+        @Override
         public Optional<SatelliteImagery> findCurrentImagery(Plot plot) {
             return Optional.ofNullable(imagery);
         }

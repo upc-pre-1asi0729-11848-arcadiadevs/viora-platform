@@ -1,6 +1,9 @@
 package com.arcadiadevs.viora.platform.agronomic.application.commandservices;
 
+import com.arcadiadevs.viora.platform.agronomic.application.internal.outboundservices.AgroMonitoringImageryService;
+import com.arcadiadevs.viora.platform.agronomic.application.readmodels.IntegrationLinkStatus;
 import com.arcadiadevs.viora.platform.agronomic.domain.model.aggregates.Plot;
+import com.arcadiadevs.viora.platform.agronomic.domain.model.commands.CreatePlotCommand;
 import com.arcadiadevs.viora.platform.agronomic.domain.model.commands.DeletePlotCommand;
 import com.arcadiadevs.viora.platform.agronomic.domain.model.commands.UpdatePlotCommand;
 import com.arcadiadevs.viora.platform.agronomic.domain.model.valueobjects.AreaSize;
@@ -8,6 +11,7 @@ import com.arcadiadevs.viora.platform.agronomic.domain.model.valueobjects.GeoPoi
 import com.arcadiadevs.viora.platform.agronomic.domain.model.valueobjects.PlotId;
 import com.arcadiadevs.viora.platform.agronomic.domain.model.valueobjects.PlotName;
 import com.arcadiadevs.viora.platform.agronomic.domain.model.valueobjects.PolygonCoordinates;
+import com.arcadiadevs.viora.platform.agronomic.domain.model.valueobjects.SatelliteImagery;
 import com.arcadiadevs.viora.platform.agronomic.domain.model.valueobjects.UserId;
 import com.arcadiadevs.viora.platform.agronomic.domain.repositories.PlotRepository;
 import org.junit.jupiter.api.Test;
@@ -27,19 +31,25 @@ class PlotCommandServiceTest {
     void updatesPlotAfterAllInputIsValidated() {
         var repository = new InMemoryPlotRepository();
         repository.plot = createPlot();
-        var service = new PlotCommandService(repository);
+        var service = new PlotCommandService(repository, new StubImageryService(false, false));
         var result = service.handle(new UpdatePlotCommand(
                 1L,
                 "North field",
                 validCoordinates(),
                 new BigDecimal("12.50"),
                 "Coffee",
-                "Typica"
+                "Typica",
+                "Tacna, Peru",
+                "2026 campaign",
+                "Updated notes"
         ));
 
         assertTrue(result.isSuccess());
         assertEquals("North field", repository.plot.getName().getValue());
         assertEquals(new BigDecimal("12.50"), repository.plot.getAreaSize().getHectares());
+        assertEquals("Tacna, Peru", repository.plot.getLocation());
+        assertEquals("2026 campaign", repository.plot.getCampaign());
+        assertEquals("Updated notes", repository.plot.getNotes());
         assertEquals(1, repository.saveCount);
     }
 
@@ -47,7 +57,7 @@ class PlotCommandServiceTest {
     void invalidPolygonDoesNotMutatePlot() {
         var repository = new InMemoryPlotRepository();
         repository.plot = createPlot();
-        var service = new PlotCommandService(repository);
+        var service = new PlotCommandService(repository, new StubImageryService(false, false));
 
         var result = service.handle(new UpdatePlotCommand(
                 1L,
@@ -68,7 +78,7 @@ class PlotCommandServiceTest {
         var repository = new InMemoryPlotRepository();
         repository.plot = createPlot();
         repository.duplicateName = true;
-        var service = new PlotCommandService(repository);
+        var service = new PlotCommandService(repository, new StubImageryService(false, false));
 
         var result = service.handle(new UpdatePlotCommand(
                 1L,
@@ -89,7 +99,7 @@ class PlotCommandServiceTest {
         var repository = new InMemoryPlotRepository();
         repository.plot = createPlot();
         repository.relatedRecords = true;
-        var service = new PlotCommandService(repository);
+        var service = new PlotCommandService(repository, new StubImageryService(false, false));
 
         var result = service.handle(new DeletePlotCommand(1L));
 
@@ -97,6 +107,34 @@ class PlotCommandServiceTest {
         assertFalse(repository.plot.isActive());
         assertEquals(1, repository.saveCount);
         assertEquals(0, repository.deleteCount);
+    }
+
+    @Test
+    void createsRegistrationWithEstimatedAreaAndIntegrationStates() {
+        var repository = new InMemoryPlotRepository();
+        var service = new PlotCommandService(
+                repository,
+                new StubImageryService(true, true)
+        );
+
+        var result = service.handle(new CreatePlotCommand(
+                10L,
+                "Santa Rosa",
+                validCoordinates(),
+                new BigDecimal("12.50"),
+                "Olive",
+                "Sevillana",
+                "Tacna, Peru",
+                "2026 campaign",
+                "Regular irrigation."
+        ));
+
+        assertTrue(result.isSuccess());
+        var registration = result.success().orElseThrow();
+        assertTrue(registration.estimatedAreaHectares().signum() > 0);
+        assertEquals(IntegrationLinkStatus.ACTIVE, registration.climateMonitoring());
+        assertEquals(IntegrationLinkStatus.INITIALIZING, registration.satelliteNdvi());
+        assertEquals(IntegrationLinkStatus.NOT_LINKED, registration.iotDevices());
     }
 
     private Plot createPlot() {
@@ -158,6 +196,9 @@ class PlotCommandServiceTest {
 
         @Override
         public Plot save(Plot plot) {
+            if (plot.getId() == null) {
+                plot.restoreIdentity(new PlotId(1L));
+            }
             this.plot = plot;
             saveCount++;
             return plot;
@@ -191,6 +232,32 @@ class PlotCommandServiceTest {
         public void deleteById(PlotId id) {
             plot = null;
             deleteCount++;
+        }
+    }
+
+    private record StubImageryService(
+            boolean enabled,
+            boolean linked
+    ) implements AgroMonitoringImageryService {
+
+        @Override
+        public boolean isIntegrationEnabled() {
+            return enabled;
+        }
+
+        @Override
+        public boolean isPlotLinked(Plot plot) {
+            return linked;
+        }
+
+        @Override
+        public Optional<SatelliteImagery> findCurrentImagery(Plot plot) {
+            return Optional.empty();
+        }
+
+        @Override
+        public Optional<byte[]> fetchCurrentNdviTile(Plot plot, int zoom, int x, int y) {
+            return Optional.empty();
         }
     }
 }

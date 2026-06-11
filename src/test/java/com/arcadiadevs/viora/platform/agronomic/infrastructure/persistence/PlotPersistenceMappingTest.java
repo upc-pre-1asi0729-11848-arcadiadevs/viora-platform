@@ -30,6 +30,9 @@ class PlotPersistenceMappingTest {
         assertEquals(plot.getId(), restoredPlot.getId());
         assertEquals(plot.getUserId(), restoredPlot.getUserId());
         assertEquals(plot.getPolygonCoordinates(), restoredPlot.getPolygonCoordinates());
+        assertEquals("Tacna, Peru", restoredPlot.getLocation());
+        assertEquals("2026 campaign", restoredPlot.getCampaign());
+        assertEquals("Regular irrigation.", restoredPlot.getNotes());
         assertFalse(restoredPlot.isActive());
     }
 
@@ -57,7 +60,10 @@ class PlotPersistenceMappingTest {
                 )),
                 new AreaSize(new BigDecimal("12.50")),
                 "Coffee",
-                "Typica"
+                "Typica",
+                "Tacna, Peru",
+                "2026 campaign",
+                "Regular irrigation."
         );
         return plot.restoreIdentity(new PlotId(1L));
     }

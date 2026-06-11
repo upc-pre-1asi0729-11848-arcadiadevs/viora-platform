@@ -56,11 +56,18 @@ class PlotsDataSourceIntegrationTest {
                                   ],
                                   "areaSizeHectares": 10.00,
                                   "cropType": "Olive",
-                                  "variety": "Sevillana"
+                                  "variety": "Sevillana",
+                                  "location": "Tacna, Peru",
+                                  "campaign": "2026 campaign",
+                                  "notes": "Regular irrigation."
                                 }
                                 """))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.state").value("enable"))
+                .andExpect(jsonPath("$.estimatedAreaHectares").isNumber())
+                .andExpect(jsonPath("$.climateMonitoring").value("NOT_LINKED"))
+                .andExpect(jsonPath("$.satelliteNdvi").value("NOT_LINKED"))
+                .andExpect(jsonPath("$.iotDevices").value("NOT_LINKED"))
                 .andReturn();
 
         var location = response.getResponse().getContentAsString();
@@ -72,7 +79,22 @@ class PlotsDataSourceIntegrationTest {
         mockMvc.perform(get("/api/v1/plots/{plotId}", plotId))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.id").value(plotId))
-                .andExpect(jsonPath("$.name").value("Original plot"));
+                .andExpect(jsonPath("$.name").value("Original plot"))
+                .andExpect(jsonPath("$.location").value("Tacna, Peru"))
+                .andExpect(jsonPath("$.campaign").value("2026 campaign"))
+                .andExpect(jsonPath("$.notes").value("Regular irrigation."));
+
+        mockMvc.perform(get("/api/v1/plots/overview").param("userId", "10"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.registeredPlotCount").value(1))
+                .andExpect(jsonPath("$.monitoredAreaHectares").value(10.00))
+                .andExpect(jsonPath("$.climateLinkedPlotCount").value(0))
+                .andExpect(jsonPath("$.onlineDeviceCount").value(0))
+                .andExpect(jsonPath("$.plots[0].id").value(plotId))
+                .andExpect(jsonPath("$.plots[0].location").value("Tacna, Peru"))
+                .andExpect(jsonPath("$.plots[0].activeAlertCount").value(0))
+                .andExpect(jsonPath("$.plots[0].healthStatus").value("UNKNOWN"))
+                .andExpect(jsonPath("$.plots[0].climateMonitoring").value("NOT_LINKED"));
 
         mockMvc.perform(get("/api/v1/plots").param("userId", "10"))
                 .andExpect(status().isOk())
@@ -93,16 +115,25 @@ class PlotsDataSourceIntegrationTest {
                         .content("""
                                 {
                                   "name": "Updated plot",
-                                  "areaSizeHectares": 12.50
+                                  "areaSizeHectares": 12.50,
+                                  "location": "La Yarada, Tacna",
+                                  "campaign": "2027 campaign",
+                                  "notes": "Updated notes."
                                 }
                                 """))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.name").value("Updated plot"))
-                .andExpect(jsonPath("$.areaSizeHectares").value(12.50));
+                .andExpect(jsonPath("$.areaSizeHectares").value(12.50))
+                .andExpect(jsonPath("$.location").value("La Yarada, Tacna"))
+                .andExpect(jsonPath("$.campaign").value("2027 campaign"))
+                .andExpect(jsonPath("$.notes").value("Updated notes."));
 
         var updatedEntity = plotRepository.findById(plotId).orElseThrow();
         assertEquals("Updated plot", updatedEntity.getName());
         assertEquals(new BigDecimal("12.50"), updatedEntity.getAreaSize());
+        assertEquals("La Yarada, Tacna", updatedEntity.getLocation());
+        assertEquals("2027 campaign", updatedEntity.getCampaign());
+        assertEquals("Updated notes.", updatedEntity.getNotes());
 
         mockMvc.perform(delete("/api/v1/plots/{plotId}", plotId))
                 .andExpect(status().isOk())
