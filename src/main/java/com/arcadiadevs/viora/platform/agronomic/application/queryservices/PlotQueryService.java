@@ -4,6 +4,7 @@ import com.arcadiadevs.viora.platform.agronomic.application.internal.outboundser
 import com.arcadiadevs.viora.platform.agronomic.application.readmodels.PlotWithCurrentImagery;
 import com.arcadiadevs.viora.platform.agronomic.domain.model.aggregates.Plot;
 import com.arcadiadevs.viora.platform.agronomic.domain.model.queries.GetPlotByIdQuery;
+import com.arcadiadevs.viora.platform.agronomic.domain.model.queries.GetPlotNdviTileQuery;
 import com.arcadiadevs.viora.platform.agronomic.domain.model.queries.GetPlotsByUserIdQuery;
 import com.arcadiadevs.viora.platform.agronomic.domain.model.queries.GetPlotsWithCurrentImageryQuery;
 import com.arcadiadevs.viora.platform.agronomic.domain.model.valueobjects.PlotId;
@@ -87,5 +88,39 @@ public class PlotQueryService {
                 .toList();
 
         return Result.success(readModels);
+    }
+
+    /**
+     * Handles the query for a raster NDVI tile of the current imagery of a plot.
+     *
+     * <p>
+     * Validates plot existence and ownership before proxying the tile from the
+     * imagery provider, so provider credentials never reach the client.
+     * </p>
+     *
+     * @param query Query with the requesting user, the plot and the tile coordinates.
+     * @return The tile image bytes, or a failure when the plot is invalid, not
+     *         owned by the user, or no imagery is available.
+     */
+    @Transactional(readOnly = true)
+    public Result<byte[], ApplicationError> handle(GetPlotNdviTileQuery query) {
+        var plot = plotRepository.findById(new PlotId(query.plotId()));
+
+        if (plot.isEmpty() || !plot.get().isActive()) {
+            return Result.failure(ApplicationError.notFound("plot", query.plotId().toString()));
+        }
+
+        if (!plot.get().belongsTo(new UserId(query.userId()))) {
+            return Result.failure(ApplicationError.forbidden(
+                    "plot-ownership",
+                    "User %d does not own plot %d.".formatted(query.userId(), query.plotId())));
+        }
+
+        return agroMonitoringImageryService
+                .fetchCurrentNdviTile(plot.get(), query.zoom(), query.x(), query.y())
+                .<Result<byte[], ApplicationError>>map(Result::success)
+                .orElseGet(() -> Result.failure(ApplicationError.notFound(
+                        "plot_imagery_tile",
+                        query.plotId().toString())));
     }
 }

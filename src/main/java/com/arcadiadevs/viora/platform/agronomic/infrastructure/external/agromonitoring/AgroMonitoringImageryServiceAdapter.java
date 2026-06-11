@@ -228,6 +228,47 @@ public class AgroMonitoringImageryServiceAdapter implements AgroMonitoringImager
         }
     }
 
+    @Override
+    public Optional<byte[]> fetchCurrentNdviTile(Plot plot, int zoom, int x, int y) {
+        if (!properties.isConfigured()) {
+            return Optional.empty();
+        }
+
+        var tileUrlTemplate = integrationRepository.findByPlotId(plot.getId().getValue())
+                .filter(integration -> boundaryFingerprint(plot).equals(integration.getBoundaryFingerprint()))
+                .map(AgroMonitoringPlotIntegrationEntity::getTileUrl)
+                .orElse(null);
+
+        if (tileUrlTemplate == null) {
+            return Optional.empty();
+        }
+
+        var tileUrl = withApiKey(tileUrlTemplate
+                .replace("{z}", Integer.toString(zoom))
+                .replace("{x}", Integer.toString(x))
+                .replace("{y}", Integer.toString(y)));
+
+        try {
+            var tileBytes = restClient.get()
+                    .uri(tileUrl)
+                    .retrieve()
+                    .body(byte[].class);
+            return Optional.ofNullable(tileBytes).filter(bytes -> bytes.length > 0);
+        } catch (RestClientException exception) {
+            log.warn(
+                    "Unable to fetch AgroMonitoring NDVI tile {}/{}/{} for plot {} ({}).",
+                    zoom,
+                    x,
+                    y,
+                    plot.getId().getValue(),
+                    providerFailureReason(exception)
+            );
+            return Optional.empty();
+        }
+    }
+
+    /* The cached tile URL is exposed without provider credentials; clients consume
+       tiles through the platform proxy endpoint instead of calling the provider. */
     private Optional<SatelliteImagery> toCachedImagery(
             AgroMonitoringPlotIntegrationEntity integration
     ) {
@@ -240,7 +281,7 @@ public class AgroMonitoringImageryServiceAdapter implements AgroMonitoringImager
 
         return Optional.of(new SatelliteImagery(
                 integration.getProviderImageryId(),
-                withApiKey(integration.getTileUrl()),
+                integration.getTileUrl(),
                 integration.getCaptureDate(),
                 integration.getNdviMean(),
                 integration.getCloudPercentage()
