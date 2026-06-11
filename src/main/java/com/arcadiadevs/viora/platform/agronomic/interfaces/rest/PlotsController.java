@@ -2,15 +2,20 @@ package com.arcadiadevs.viora.platform.agronomic.interfaces.rest;
 
 import com.arcadiadevs.viora.platform.agronomic.application.commandservices.PlotCommandService;
 import com.arcadiadevs.viora.platform.agronomic.application.queryservices.PlotQueryService;
+import com.arcadiadevs.viora.platform.agronomic.domain.model.queries.GetMyPlotsOverviewQuery;
 import com.arcadiadevs.viora.platform.agronomic.domain.model.queries.GetPlotsByUserIdQuery;
 import com.arcadiadevs.viora.platform.agronomic.domain.model.queries.GetPlotsWithCurrentImageryQuery;
 import com.arcadiadevs.viora.platform.agronomic.domain.model.commands.DeletePlotCommand;
 import com.arcadiadevs.viora.platform.agronomic.domain.model.queries.GetPlotByIdQuery;
 import com.arcadiadevs.viora.platform.agronomic.interfaces.rest.resources.CreatePlotResource;
+import com.arcadiadevs.viora.platform.agronomic.interfaces.rest.resources.MyPlotsOverviewResource;
+import com.arcadiadevs.viora.platform.agronomic.interfaces.rest.resources.PlotRegistrationResource;
 import com.arcadiadevs.viora.platform.agronomic.interfaces.rest.resources.PlotWithCurrentImageryResource;
 import com.arcadiadevs.viora.platform.agronomic.interfaces.rest.resources.UpdatePlotResource;
 import com.arcadiadevs.viora.platform.agronomic.interfaces.rest.transform.CreatePlotCommandFromResourceAssembler;
+import com.arcadiadevs.viora.platform.agronomic.interfaces.rest.transform.MyPlotsOverviewResourceAssembler;
 import com.arcadiadevs.viora.platform.agronomic.interfaces.rest.transform.PlotResourceFromPlotAssembler;
+import com.arcadiadevs.viora.platform.agronomic.interfaces.rest.transform.PlotRegistrationResourceAssembler;
 import com.arcadiadevs.viora.platform.agronomic.interfaces.rest.transform.PlotWithCurrentImageryResourceAssembler;
 import com.arcadiadevs.viora.platform.agronomic.interfaces.rest.transform.UpdatePlotCommandFromResourceAssembler;
 import com.arcadiadevs.viora.platform.shared.interfaces.rest.resources.MessageResource;
@@ -66,7 +71,13 @@ public class PlotsController {
                     + "Polygon points use GeoJSON order: [longitude, latitude]."
     )
     @ApiResponses(value = {
-            @ApiResponse(responseCode = "201", description = "Plot created"),
+            @ApiResponse(
+                    responseCode = "201",
+                    description = "Plot created",
+                    content = @Content(schema = @Schema(
+                            implementation = PlotRegistrationResource.class
+                    ))
+            ),
             @ApiResponse(responseCode = "400", description = "Invalid request data"),
             @ApiResponse(responseCode = "409", description = "Plot name conflict"),
             @ApiResponse(responseCode = "500", description = "Unexpected error")
@@ -77,8 +88,41 @@ public class PlotsController {
 
         return ResponseEntityAssembler.toResponseEntityFromResult(
                 result,
-                PlotResourceFromPlotAssembler::toResourceFromAggregate,
+                PlotRegistrationResourceAssembler::toResourceFromReadModel,
                 HttpStatus.CREATED
+        );
+    }
+
+    /**
+     * Gets the cards and per-plot monitoring rows for the My Plots screen.
+     *
+     * @param userId The owner user identifier.
+     * @return The My Plots overview projection.
+     */
+    @GetMapping("/overview")
+    @Operation(
+            summary = "Get My Plots overview",
+            description = "Returns registered plot totals, monitored area, climate links, "
+                    + "online IoT devices and the latest monitoring signals per plot."
+    )
+    @ApiResponses(value = {
+            @ApiResponse(
+                    responseCode = "200",
+                    description = "My Plots overview retrieved",
+                    content = @Content(schema = @Schema(
+                            implementation = MyPlotsOverviewResource.class
+                    ))
+            ),
+            @ApiResponse(responseCode = "400", description = "Invalid user ID"),
+            @ApiResponse(responseCode = "500", description = "Unexpected error")
+    })
+    public ResponseEntity<?> getMyPlotsOverview(@RequestParam Long userId) {
+        var result = plotQueryService.handle(new GetMyPlotsOverviewQuery(userId));
+
+        return ResponseEntityAssembler.toResponseEntityFromResult(
+                result,
+                MyPlotsOverviewResourceAssembler::toResourceFromReadModel,
+                HttpStatus.OK
         );
     }
 

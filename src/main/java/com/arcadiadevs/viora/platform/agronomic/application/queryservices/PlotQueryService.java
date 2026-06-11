@@ -1,14 +1,26 @@
 package com.arcadiadevs.viora.platform.agronomic.application.queryservices;
 
 import com.arcadiadevs.viora.platform.agronomic.application.internal.outboundservices.AgroMonitoringImageryService;
+import com.arcadiadevs.viora.platform.agronomic.application.readmodels.IntegrationLinkStatus;
+import com.arcadiadevs.viora.platform.agronomic.application.readmodels.MyPlotsOverview;
+import com.arcadiadevs.viora.platform.agronomic.application.readmodels.PlotMonitoringOverview;
 import com.arcadiadevs.viora.platform.agronomic.application.readmodels.PlotWithCurrentImagery;
+import com.arcadiadevs.viora.platform.agronomic.domain.model.aggregates.AgronomicStatistic;
 import com.arcadiadevs.viora.platform.agronomic.domain.model.aggregates.Plot;
+import com.arcadiadevs.viora.platform.agronomic.domain.model.queries.GetMyPlotsOverviewQuery;
 import com.arcadiadevs.viora.platform.agronomic.domain.model.queries.GetPlotByIdQuery;
 import com.arcadiadevs.viora.platform.agronomic.domain.model.queries.GetPlotNdviTileQuery;
 import com.arcadiadevs.viora.platform.agronomic.domain.model.queries.GetPlotsByUserIdQuery;
 import com.arcadiadevs.viora.platform.agronomic.domain.model.queries.GetPlotsWithCurrentImageryQuery;
+import com.arcadiadevs.viora.platform.agronomic.domain.model.valueobjects.DateRange;
+import com.arcadiadevs.viora.platform.agronomic.domain.model.valueobjects.GeneralHealthStatus;
+import com.arcadiadevs.viora.platform.agronomic.domain.model.valueobjects.IoTDeviceStatus;
+import com.arcadiadevs.viora.platform.agronomic.domain.model.valueobjects.MeasurementDate;
 import com.arcadiadevs.viora.platform.agronomic.domain.model.valueobjects.PlotId;
+import com.arcadiadevs.viora.platform.agronomic.domain.model.valueobjects.SatelliteImagery;
 import com.arcadiadevs.viora.platform.agronomic.domain.model.valueobjects.UserId;
+import com.arcadiadevs.viora.platform.agronomic.domain.repositories.AgronomicStatisticRepository;
+import com.arcadiadevs.viora.platform.agronomic.domain.repositories.IoTDeviceRepository;
 import com.arcadiadevs.viora.platform.agronomic.domain.repositories.PlotRepository;
 import com.arcadiadevs.viora.platform.shared.application.result.ApplicationError;
 import com.arcadiadevs.viora.platform.shared.application.result.Result;
@@ -16,7 +28,15 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
+import java.time.Clock;
+import java.time.Instant;
+import java.time.LocalDate;
+import java.time.ZoneOffset;
+import java.util.Comparator;
 import java.util.List;
+import java.util.Objects;
+import java.util.Optional;
 
 /**
  * Plot query service.
@@ -31,6 +51,10 @@ import java.util.List;
 @RequiredArgsConstructor
 public class PlotQueryService {
 
+    private static final int OVERVIEW_STATISTICS_LOOKBACK_DAYS = 30;
+    private static final double CRITICAL_NDVI_THRESHOLD = 0.3;
+    private static final double WARNING_NDVI_THRESHOLD = 0.6;
+
     /**
      * Plot repository port.
      */
@@ -40,6 +64,21 @@ public class PlotQueryService {
      * Satellite imagery outbound service.
      */
     private final AgroMonitoringImageryService agroMonitoringImageryService;
+
+    /**
+     * Agronomic statistic repository port.
+     */
+    private final AgronomicStatisticRepository agronomicStatisticRepository;
+
+    /**
+     * IoT device repository port.
+     */
+    private final IoTDeviceRepository ioTDeviceRepository;
+
+    /**
+     * Application clock used to build deterministic monitoring date ranges.
+     */
+    private final Clock clock;
 
     /**
      * Handles the GetPlotById query.
@@ -88,6 +127,124 @@ public class PlotQueryService {
                 .toList();
 
         return Result.success(readModels);
+    }
+
+    /**
+     * Handles the My Plots overview query.
+     *
+     * <p>
+     * Builds the per-plot monitoring rows (NDVI from satellite imagery with
+     * recorded statistics as fallback, chill accumulation, derived health badge,
+     * online devices and latest update) plus the summary card values.
+     * </p>
+     *
+     * @param query Query containing the owner user identifier.
+     * @return The My Plots overview read model.
+     */
+    @Transactional
+    public Result<MyPlotsOverview, ApplicationError> handle(GetMyPlotsOverviewQuery query) {
+        var userId = new UserId(query.userId());
+        var plots = plotRepository.findByUserId(userId);
+        var plotOverviews = plots.stream()
+                .map(plot -> toPlotMonitoringOverview(userId, plot))
+                .toList();
+
+        var monitoredArea = plots.stream()
+                .map(plot -> plot.getAreaSize().getHectares())
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        var onlineDevices = plotOverviews.stream()
+                .mapToLong(PlotMonitoringOverview::onlineDeviceCount)
+                .sum();
+
+        var climateLinkedPlots = plotOverviews.stream()
+                .filter(overview ->
+                        overview.climateMonitoring() == IntegrationLinkStatus.ACTIVE
+                )
+                .count();
+
+        return Result.success(new MyPlotsOverview(
+                plots.size(),
+                monitoredArea,
+                Math.toIntExact(climateLinkedPlots),
+                onlineDevices,
+                plotOverviews
+        ));
+    }
+
+    private PlotMonitoringOverview toPlotMonitoringOverview(UserId userId, Plot plot) {
+        var imagery = agroMonitoringImageryService.findCurrentImagery(plot);
+
+        var endDate = LocalDate.now(clock);
+        var dateRange = new DateRange(endDate.minusDays(OVERVIEW_STATISTICS_LOOKBACK_DAYS), endDate);
+        var latestStatistic = agronomicStatisticRepository
+                .findAllByUserIdAndPlotIdAndMeasurementDateBetween(userId, plot.getId(), dateRange)
+                .stream()
+                .max(Comparator.comparing(statistic -> statistic.getMeasurementDate().getValue()));
+
+        var currentNdvi = imagery.map(SatelliteImagery::ndviMean)
+                .filter(Objects::nonNull)
+                .or(() -> latestStatistic.map(statistic -> statistic.getNdviValue().getValue()))
+                .orElse(null);
+
+        var chillPortions = latestStatistic
+                .map(statistic -> statistic.getChillPortions().getValue())
+                .orElse(null);
+
+        var lastUpdatedAt = latestInstant(
+                imagery.map(SatelliteImagery::captureDate),
+                latestStatistic.map(AgronomicStatistic::getMeasurementDate)
+                        .map(MeasurementDate::getValue)
+                        .map(date -> date.atStartOfDay(ZoneOffset.UTC).toInstant())
+        );
+
+        var onlineDevices = ioTDeviceRepository.findAllByPlotId(plot.getId().getValue())
+                .stream()
+                .filter(device -> device.getStatus() == IoTDeviceStatus.ACTIVE)
+                .count();
+
+        var linkedToProvider = agroMonitoringImageryService.isPlotLinked(plot);
+        var climateMonitoring = linkedToProvider
+                ? IntegrationLinkStatus.ACTIVE
+                : IntegrationLinkStatus.NOT_LINKED;
+        var satelliteNdvi = imagery.isPresent()
+                ? IntegrationLinkStatus.ACTIVE
+                : linkedToProvider
+                ? IntegrationLinkStatus.INITIALIZING
+                : IntegrationLinkStatus.NOT_LINKED;
+
+        /* Active alerts are a placeholder until the alerts capability exists. */
+        return new PlotMonitoringOverview(
+                plot,
+                currentNdvi,
+                chillPortions,
+                toHealthStatus(currentNdvi),
+                onlineDevices,
+                0,
+                lastUpdatedAt,
+                climateMonitoring,
+                satelliteNdvi
+        );
+    }
+
+    private GeneralHealthStatus toHealthStatus(Double ndvi) {
+        if (ndvi == null) {
+            return GeneralHealthStatus.UNKNOWN;
+        }
+        if (ndvi < CRITICAL_NDVI_THRESHOLD) {
+            return GeneralHealthStatus.CRITICAL;
+        }
+        if (ndvi < WARNING_NDVI_THRESHOLD) {
+            return GeneralHealthStatus.WARNING;
+        }
+        return GeneralHealthStatus.HEALTHY;
+    }
+
+    private Instant latestInstant(Optional<Instant> first, Optional<Instant> second) {
+        return first
+                .map(value -> second.filter(other -> other.isAfter(value)).orElse(value))
+                .or(() -> second)
+                .orElse(null);
     }
 
     /**
