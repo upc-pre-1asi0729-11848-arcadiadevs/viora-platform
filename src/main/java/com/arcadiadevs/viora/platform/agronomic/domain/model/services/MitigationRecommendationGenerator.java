@@ -4,7 +4,7 @@ import com.arcadiadevs.viora.platform.agronomic.domain.model.valueobjects.Climat
 import com.arcadiadevs.viora.platform.agronomic.domain.model.valueobjects.MitigationActionType;
 import com.arcadiadevs.viora.platform.agronomic.domain.model.valueobjects.MitigationRecommendation;
 import com.arcadiadevs.viora.platform.agronomic.domain.model.valueobjects.NutritionInputRecommendation;
-import com.arcadiadevs.viora.platform.agronomic.domain.model.valueobjects.TimeRange;
+import com.arcadiadevs.viora.platform.agronomic.domain.model.valueobjects.TimeWindow;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
@@ -33,7 +33,7 @@ public class MitigationRecommendationGenerator {
                 recommendations.add(new MitigationRecommendation(
                         MitigationActionType.OTHER,
                         new NutritionInputRecommendation("Monitor soil moisture"),
-                        new TimeRange(today, today.plusDays(7)),
+                        new TimeWindow(today, today.plusDays(7)),
                         climateRiskLevel
                 ));
                 break;
@@ -41,13 +41,13 @@ public class MitigationRecommendationGenerator {
                 recommendations.add(new MitigationRecommendation(
                         MitigationActionType.IRRIGATION,
                         new NutritionInputRecommendation("Check irrigation system efficiency"),
-                        new TimeRange(today, today.plusDays(3)),
+                        new TimeWindow(today, today.plusDays(3)),
                         climateRiskLevel
                 ));
                 recommendations.add(new MitigationRecommendation(
                         MitigationActionType.NUTRIENT_APPLICATION,
                         new NutritionInputRecommendation("Apply balanced NPK fertilizer"),
-                        new TimeRange(today.plusDays(1), today.plusDays(5)),
+                        new TimeWindow(today.plusDays(1), today.plusDays(5)),
                         climateRiskLevel
                 ));
                 break;
@@ -55,13 +55,13 @@ public class MitigationRecommendationGenerator {
                 recommendations.add(new MitigationRecommendation(
                         MitigationActionType.PEST_CONTROL,
                         new NutritionInputRecommendation("Scout for pests and apply organic pesticide"),
-                        new TimeRange(today, today.plusDays(1)),
+                        new TimeWindow(today, today.plusDays(1)),
                         climateRiskLevel
                 ));
                 recommendations.add(new MitigationRecommendation(
                         MitigationActionType.IRRIGATION,
                         new NutritionInputRecommendation("Increase irrigation frequency and volume"),
-                        new TimeRange(today, today.plusDays(2)),
+                        new TimeWindow(today, today.plusDays(2)),
                         climateRiskLevel
                 ));
                 break;
@@ -69,13 +69,13 @@ public class MitigationRecommendationGenerator {
                 recommendations.add(new MitigationRecommendation(
                         MitigationActionType.DISEASE_CONTROL,
                         new NutritionInputRecommendation("Apply broad-spectrum fungicide immediately"),
-                        new TimeRange(today, today.plusDays(1)),
+                        new TimeWindow(today, today.plusDays(1)),
                         climateRiskLevel
                 ));
                 recommendations.add(new MitigationRecommendation(
                         MitigationActionType.SOIL_TREATMENT,
                         new NutritionInputRecommendation("Consider soil amendments for stress reduction"),
-                        new TimeRange(today.plusDays(1), today.plusDays(3)),
+                        new TimeWindow(today.plusDays(1), today.plusDays(3)),
                         climateRiskLevel
                 ));
                 break;
@@ -84,7 +84,7 @@ public class MitigationRecommendationGenerator {
                 recommendations.add(new MitigationRecommendation(
                         MitigationActionType.OTHER,
                         new NutritionInputRecommendation("Gather more data for accurate assessment"),
-                        new TimeRange(today, today.plusDays(1)),
+                        new TimeWindow(today, today.plusDays(1)),
                         climateRiskLevel
                 ));
                 break;
