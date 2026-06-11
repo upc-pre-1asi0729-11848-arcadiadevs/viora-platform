@@ -12,6 +12,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientException;
+import org.springframework.web.client.RestClientResponseException;
 
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
@@ -83,9 +84,9 @@ public class AgroMonitoringImageryServiceAdapter implements AgroMonitoringImager
             return toCachedImagery(integration);
         } catch (RestClientException | IllegalArgumentException exception) {
             log.warn(
-                    "Unable to refresh AgroMonitoring imagery for plot {}: {}",
+                    "Unable to refresh AgroMonitoring imagery for plot {} ({}).",
                     plot.getId().getValue(),
-                    exception.getMessage()
+                    providerFailureReason(exception)
             );
             return integrationRepository.findByPlotId(plot.getId().getValue())
                     .filter(integration ->
@@ -175,9 +176,9 @@ public class AgroMonitoringImageryServiceAdapter implements AgroMonitoringImager
                     .toBodilessEntity();
         } catch (RestClientException exception) {
             log.warn(
-                    "Unable to remove obsolete AgroMonitoring polygon {}: {}",
+                    "Unable to remove obsolete AgroMonitoring polygon {} ({}).",
                     externalPolygonId,
-                    exception.getMessage()
+                    providerFailureReason(exception)
             );
         }
     }
@@ -219,7 +220,10 @@ public class AgroMonitoringImageryServiceAdapter implements AgroMonitoringImager
                     .body(AgroMonitoringStatisticsResponse.class);
             return response == null ? Optional.empty() : Optional.ofNullable(response.mean());
         } catch (RestClientException exception) {
-            log.warn("Unable to obtain AgroMonitoring NDVI statistics: {}", exception.getMessage());
+            log.warn(
+                    "Unable to obtain AgroMonitoring NDVI statistics ({}).",
+                    providerFailureReason(exception)
+            );
             return Optional.empty();
         }
     }
@@ -293,6 +297,13 @@ public class AgroMonitoringImageryServiceAdapter implements AgroMonitoringImager
         } catch (NoSuchAlgorithmException exception) {
             throw new IllegalStateException("SHA-256 is not available.", exception);
         }
+    }
+
+    private String providerFailureReason(Exception exception) {
+        if (exception instanceof RestClientResponseException responseException) {
+            return "HTTP " + responseException.getStatusCode().value();
+        }
+        return exception.getClass().getSimpleName();
     }
 
     private record AgroMonitoringCreatePolygonRequest(

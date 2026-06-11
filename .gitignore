@@ -40,3 +40,7 @@ build/
 .env.local
 .atl/
 openspec/
+
+### Local AI assistant configuration ###
+.claude/
+CLAUDE.md
