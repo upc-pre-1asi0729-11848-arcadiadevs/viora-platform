@@ -101,4 +101,18 @@ public class PlotPersistenceEntity extends AuditableAbstractPersistenceEntity {
      */
     @Column(nullable = false)
     private Boolean active = true;
+
+    /**
+     * Declared winter-chill requirement override, in Dynamic Model chill portions.
+     * Null when the crop-derived system default applies.
+     */
+    @Column(name = "chill_requirement_portions")
+    private Double chillRequirementPortions;
+
+    /**
+     * Provenance of the declared chill requirement ({@code USER_DECLARED} or
+     * {@code AGRONOMIST_VALIDATED}). Null when no override is configured.
+     */
+    @Column(name = "chill_requirement_source", length = 40)
+    private String chillRequirementSource;
 }

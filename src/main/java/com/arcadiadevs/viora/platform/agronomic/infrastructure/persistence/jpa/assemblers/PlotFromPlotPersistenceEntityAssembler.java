@@ -2,6 +2,8 @@ package com.arcadiadevs.viora.platform.agronomic.infrastructure.persistence.jpa.
 
 import com.arcadiadevs.viora.platform.agronomic.domain.model.aggregates.Plot;
 import com.arcadiadevs.viora.platform.agronomic.domain.model.valueobjects.AreaSize;
+import com.arcadiadevs.viora.platform.agronomic.domain.model.valueobjects.ChillPortions;
+import com.arcadiadevs.viora.platform.agronomic.domain.model.valueobjects.ChillRequirementSource;
 import com.arcadiadevs.viora.platform.agronomic.domain.model.valueobjects.PlotId;
 import com.arcadiadevs.viora.platform.agronomic.domain.model.valueobjects.PlotName;
 import com.arcadiadevs.viora.platform.agronomic.domain.model.valueobjects.UserId;
@@ -29,7 +31,7 @@ public class PlotFromPlotPersistenceEntityAssembler {
                 new UserId(entity.getUserId()),
                 new PlotName(entity.getName()),
                 entity.getPolygonCoordinates(),
-                new AreaSize(entity.getAreaSize()),
+                AreaSize.calculatedFrom(entity.getPolygonCoordinates()),
                 entity.getCropType(),
                 entity.getVariety(),
                 entity.getLocation(),
@@ -41,6 +43,13 @@ public class PlotFromPlotPersistenceEntityAssembler {
 
         if (Boolean.FALSE.equals(entity.getActive())) {
             plot.deactivate();
+        }
+
+        if (entity.getChillRequirementPortions() != null && entity.getChillRequirementSource() != null) {
+            plot.configureChillRequirement(
+                    new ChillPortions(entity.getChillRequirementPortions()),
+                    ChillRequirementSource.valueOf(entity.getChillRequirementSource())
+            );
         }
 
         return plot;

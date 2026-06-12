@@ -58,6 +58,15 @@ public class PlotPersistenceEntityFromPlotAssembler {
         entity.setNotes(plot.getNotes());
         entity.setActive(plot.getActive());
 
+        var chillRequirement = plot.getChillRequirementOverride();
+        if (chillRequirement != null) {
+            entity.setChillRequirementPortions(chillRequirement.value());
+            entity.setChillRequirementSource(chillRequirement.source().name());
+        } else {
+            entity.setChillRequirementPortions(null);
+            entity.setChillRequirementSource(null);
+        }
+
         return entity;
     }
 }

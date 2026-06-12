@@ -11,8 +11,12 @@ import com.arcadiadevs.viora.platform.agronomic.domain.model.queries.GetPlotMoni
 import com.arcadiadevs.viora.platform.agronomic.domain.model.queries.GetPlotWeatherForecastQuery;
 import com.arcadiadevs.viora.platform.agronomic.domain.model.queries.GetPlotsByUserIdQuery;
 import com.arcadiadevs.viora.platform.agronomic.domain.model.queries.GetPlotsWithCurrentImageryQuery;
+import com.arcadiadevs.viora.platform.agronomic.domain.model.commands.ConfigureChillRequirementCommand;
 import com.arcadiadevs.viora.platform.agronomic.domain.model.commands.DeletePlotCommand;
+import com.arcadiadevs.viora.platform.agronomic.domain.model.commands.ResetChillRequirementCommand;
 import com.arcadiadevs.viora.platform.agronomic.domain.model.queries.GetPlotByIdQuery;
+import com.arcadiadevs.viora.platform.agronomic.interfaces.rest.resources.ChillRequirementResource;
+import com.arcadiadevs.viora.platform.agronomic.interfaces.rest.resources.ConfigureChillRequirementResource;
 import com.arcadiadevs.viora.platform.agronomic.interfaces.rest.resources.CreatePlotResource;
 import com.arcadiadevs.viora.platform.agronomic.interfaces.rest.resources.MyPlotsOverviewResource;
 import com.arcadiadevs.viora.platform.agronomic.interfaces.rest.resources.PlotDetailResource;
@@ -21,6 +25,8 @@ import com.arcadiadevs.viora.platform.agronomic.interfaces.rest.resources.PlotRe
 import com.arcadiadevs.viora.platform.agronomic.interfaces.rest.resources.PlotWeatherForecastResource;
 import com.arcadiadevs.viora.platform.agronomic.interfaces.rest.resources.PlotWithCurrentImageryResource;
 import com.arcadiadevs.viora.platform.agronomic.interfaces.rest.resources.UpdatePlotResource;
+import com.arcadiadevs.viora.platform.agronomic.interfaces.rest.transform.ChillRequirementResourceAssembler;
+import com.arcadiadevs.viora.platform.agronomic.interfaces.rest.transform.ConfigureChillRequirementCommandFromResourceAssembler;
 import com.arcadiadevs.viora.platform.agronomic.interfaces.rest.transform.CreatePlotCommandFromResourceAssembler;
 import com.arcadiadevs.viora.platform.agronomic.interfaces.rest.transform.MyPlotsOverviewResourceAssembler;
 import com.arcadiadevs.viora.platform.agronomic.interfaces.rest.transform.PlotDetailResourceAssembler;
@@ -95,7 +101,8 @@ public class PlotsController {
     @Operation(
             summary = "Create plot",
             description = "Registers a productive agricultural plot and its geographic boundary. "
-                    + "Polygon points use GeoJSON order: [longitude, latitude]."
+                    + "Polygon points use GeoJSON order: [longitude, latitude]. "
+                    + "The plot area is calculated by the backend from the boundary."
     )
     @ApiResponses(value = {
             @ApiResponse(
@@ -279,6 +286,88 @@ public class PlotsController {
     }
 
     /**
+     * Declares the winter-chill requirement for a plot from its agronomic
+     * configuration.
+     *
+     * @param plotId Plot identifier.
+     * @param userId Owner user identifier.
+     * @param resource The declared chill requirement.
+     * @return The plot's effective chill requirement after the change.
+     */
+    @PutMapping(value = "/{plotId}/chill-requirement", consumes = MediaType.APPLICATION_JSON_VALUE)
+    @Operation(
+            summary = "Configure plot chill requirement",
+            description = "Declares the plot's winter-chill requirement (Dynamic Model chill portions), "
+                    + "overriding the crop-derived system default. The stored value is tagged as "
+                    + "USER_DECLARED provenance and shared by the trend chart's reference line and the "
+                    + "yield-forecast chill modifier."
+    )
+    @ApiResponses(value = {
+            @ApiResponse(
+                    responseCode = "200",
+                    description = "Chill requirement configured",
+                    content = @Content(schema = @Schema(implementation = ChillRequirementResource.class))
+            ),
+            @ApiResponse(responseCode = "400", description = "Invalid request data"),
+            @ApiResponse(responseCode = "403", description = "User does not own the plot"),
+            @ApiResponse(responseCode = "404", description = "Plot not found"),
+            @ApiResponse(responseCode = "500", description = "Unexpected error")
+    })
+    public ResponseEntity<?> configureChillRequirement(
+            @PathVariable Long plotId,
+            @RequestParam Long userId,
+            @Valid @RequestBody ConfigureChillRequirementResource resource
+    ) {
+        var command = ConfigureChillRequirementCommandFromResourceAssembler
+                .toCommandFromResource(plotId, userId, resource);
+        var result = plotCommandService.handle(command);
+
+        return ResponseEntityAssembler.toResponseEntityFromResult(
+                result,
+                ChillRequirementResourceAssembler::toResourceFromValueObject,
+                HttpStatus.OK
+        );
+    }
+
+    /**
+     * Clears a plot's declared chill requirement, reverting to the crop-derived
+     * system default.
+     *
+     * @param plotId Plot identifier.
+     * @param userId Owner user identifier.
+     * @return The plot's effective (system-default) chill requirement.
+     */
+    @DeleteMapping("/{plotId}/chill-requirement")
+    @Operation(
+            summary = "Reset plot chill requirement",
+            description = "Clears the declared chill requirement so the crop-derived system default "
+                    + "applies again."
+    )
+    @ApiResponses(value = {
+            @ApiResponse(
+                    responseCode = "200",
+                    description = "Chill requirement reset",
+                    content = @Content(schema = @Schema(implementation = ChillRequirementResource.class))
+            ),
+            @ApiResponse(responseCode = "400", description = "Invalid request parameters"),
+            @ApiResponse(responseCode = "403", description = "User does not own the plot"),
+            @ApiResponse(responseCode = "404", description = "Plot not found"),
+            @ApiResponse(responseCode = "500", description = "Unexpected error")
+    })
+    public ResponseEntity<?> resetChillRequirement(
+            @PathVariable Long plotId,
+            @RequestParam Long userId
+    ) {
+        var result = plotCommandService.handle(new ResetChillRequirementCommand(plotId, userId));
+
+        return ResponseEntityAssembler.toResponseEntityFromResult(
+                result,
+                ChillRequirementResourceAssembler::toResourceFromValueObject,
+                HttpStatus.OK
+        );
+    }
+
+    /**
      * Gets all active plots owned by a user.
      *
      * @param userId The owner user identifier.
@@ -373,7 +462,8 @@ public class PlotsController {
     @PatchMapping(value = "/{plotId}", consumes = MediaType.APPLICATION_JSON_VALUE)
     @Operation(
             summary = "Update plot",
-            description = "Updates the information and/or geographic boundary of an existing productive agricultural plot."
+            description = "Updates the information and/or geographic boundary of an existing productive agricultural plot. "
+                    + "When the boundary changes, the backend recalculates the plot area."
     )
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "Plot updated"),
