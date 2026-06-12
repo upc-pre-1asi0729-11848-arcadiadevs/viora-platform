@@ -2,9 +2,13 @@ package com.arcadiadevs.viora.platform.agronomic.interfaces.rest;
 
 import com.arcadiadevs.viora.platform.agronomic.application.commandservices.PlotCommandService;
 import com.arcadiadevs.viora.platform.agronomic.application.queryservices.PlotDetailQueryService;
+import com.arcadiadevs.viora.platform.agronomic.application.queryservices.PlotMonitoringSummaryQueryService;
 import com.arcadiadevs.viora.platform.agronomic.application.queryservices.PlotQueryService;
+import com.arcadiadevs.viora.platform.agronomic.application.queryservices.PlotWeatherForecastQueryService;
 import com.arcadiadevs.viora.platform.agronomic.domain.model.queries.GetMyPlotsOverviewQuery;
 import com.arcadiadevs.viora.platform.agronomic.domain.model.queries.GetPlotDetailQuery;
+import com.arcadiadevs.viora.platform.agronomic.domain.model.queries.GetPlotMonitoringSummaryQuery;
+import com.arcadiadevs.viora.platform.agronomic.domain.model.queries.GetPlotWeatherForecastQuery;
 import com.arcadiadevs.viora.platform.agronomic.domain.model.queries.GetPlotsByUserIdQuery;
 import com.arcadiadevs.viora.platform.agronomic.domain.model.queries.GetPlotsWithCurrentImageryQuery;
 import com.arcadiadevs.viora.platform.agronomic.domain.model.commands.DeletePlotCommand;
@@ -12,13 +16,17 @@ import com.arcadiadevs.viora.platform.agronomic.domain.model.queries.GetPlotById
 import com.arcadiadevs.viora.platform.agronomic.interfaces.rest.resources.CreatePlotResource;
 import com.arcadiadevs.viora.platform.agronomic.interfaces.rest.resources.MyPlotsOverviewResource;
 import com.arcadiadevs.viora.platform.agronomic.interfaces.rest.resources.PlotDetailResource;
+import com.arcadiadevs.viora.platform.agronomic.interfaces.rest.resources.PlotMonitoringSummaryResource;
 import com.arcadiadevs.viora.platform.agronomic.interfaces.rest.resources.PlotRegistrationResource;
+import com.arcadiadevs.viora.platform.agronomic.interfaces.rest.resources.PlotWeatherForecastResource;
 import com.arcadiadevs.viora.platform.agronomic.interfaces.rest.resources.PlotWithCurrentImageryResource;
 import com.arcadiadevs.viora.platform.agronomic.interfaces.rest.resources.UpdatePlotResource;
 import com.arcadiadevs.viora.platform.agronomic.interfaces.rest.transform.CreatePlotCommandFromResourceAssembler;
 import com.arcadiadevs.viora.platform.agronomic.interfaces.rest.transform.MyPlotsOverviewResourceAssembler;
 import com.arcadiadevs.viora.platform.agronomic.interfaces.rest.transform.PlotDetailResourceAssembler;
+import com.arcadiadevs.viora.platform.agronomic.interfaces.rest.transform.PlotMonitoringSummaryResourceAssembler;
 import com.arcadiadevs.viora.platform.agronomic.interfaces.rest.transform.PlotResourceFromPlotAssembler;
+import com.arcadiadevs.viora.platform.agronomic.interfaces.rest.transform.PlotWeatherForecastResourceAssembler;
 import com.arcadiadevs.viora.platform.agronomic.interfaces.rest.transform.PlotRegistrationResourceAssembler;
 import com.arcadiadevs.viora.platform.agronomic.interfaces.rest.transform.PlotWithCurrentImageryResourceAssembler;
 import com.arcadiadevs.viora.platform.agronomic.interfaces.rest.transform.UpdatePlotCommandFromResourceAssembler;
@@ -61,6 +69,16 @@ public class PlotsController {
      * Plot Detail query service.
      */
     private final PlotDetailQueryService plotDetailQueryService;
+
+    /**
+     * Per-plot monitoring summary query service.
+     */
+    private final PlotMonitoringSummaryQueryService plotMonitoringSummaryQueryService;
+
+    /**
+     * Per-plot weather forecast query service.
+     */
+    private final PlotWeatherForecastQueryService plotWeatherForecastQueryService;
 
     /**
      * Plot command service.
@@ -170,6 +188,92 @@ public class PlotsController {
         return ResponseEntityAssembler.toResponseEntityFromResult(
                 result,
                 PlotDetailResourceAssembler::toResourceFromReadModel,
+                HttpStatus.OK
+        );
+    }
+
+    /**
+     * Gets the real-time monitoring summary for one plot.
+     *
+     * @param plotId Plot identifier.
+     * @param userId Owner user identifier.
+     * @return Per-plot monitoring summary projection.
+     */
+    @GetMapping("/{plotId}/monitoring-summary")
+    @Operation(
+            summary = "Get plot monitoring summary",
+            description = "Returns the real-time monitoring summary for a single plot: current NDVI, "
+                    + "NDVI trend, chill portions, consolidated health, weather and climate risk, "
+                    + "last update, mitigation recommendations and the availability and freshness of "
+                    + "each external data source."
+    )
+    @ApiResponses(value = {
+            @ApiResponse(
+                    responseCode = "200",
+                    description = "Plot monitoring summary retrieved",
+                    content = @Content(schema = @Schema(
+                            implementation = PlotMonitoringSummaryResource.class
+                    ))
+            ),
+            @ApiResponse(responseCode = "400", description = "Invalid request parameters"),
+            @ApiResponse(responseCode = "403", description = "User does not own the plot"),
+            @ApiResponse(responseCode = "404", description = "Plot not found"),
+            @ApiResponse(responseCode = "500", description = "Unexpected error")
+    })
+    public ResponseEntity<?> getPlotMonitoringSummary(
+            @PathVariable Long plotId,
+            @RequestParam Long userId
+    ) {
+        var result = plotMonitoringSummaryQueryService.handle(
+                new GetPlotMonitoringSummaryQuery(userId, plotId)
+        );
+
+        return ResponseEntityAssembler.toResponseEntityFromResult(
+                result,
+                PlotMonitoringSummaryResourceAssembler::toResourceFromReadModel,
+                HttpStatus.OK
+        );
+    }
+
+    /**
+     * Gets the weather forecast for one plot.
+     *
+     * @param plotId Plot identifier.
+     * @param userId Owner user identifier.
+     * @return Per-plot weather forecast projection.
+     */
+    @GetMapping("/{plotId}/weather-forecast")
+    @Operation(
+            summary = "Get plot weather forecast",
+            description = "Returns the detailed weather forecast for a plot (about five days, the "
+                    + "provider's available window): hourly readings, daily minimum/maximum, humidity, "
+                    + "wind and gusts, precipitation, thermal anomaly and agronomic warnings, plus the "
+                    + "availability and freshness of the weather source."
+    )
+    @ApiResponses(value = {
+            @ApiResponse(
+                    responseCode = "200",
+                    description = "Weather forecast retrieved",
+                    content = @Content(schema = @Schema(
+                            implementation = PlotWeatherForecastResource.class
+                    ))
+            ),
+            @ApiResponse(responseCode = "400", description = "Invalid request parameters"),
+            @ApiResponse(responseCode = "403", description = "User does not own the plot"),
+            @ApiResponse(responseCode = "404", description = "Plot not found"),
+            @ApiResponse(responseCode = "500", description = "Unexpected error")
+    })
+    public ResponseEntity<?> getPlotWeatherForecast(
+            @PathVariable Long plotId,
+            @RequestParam Long userId
+    ) {
+        var result = plotWeatherForecastQueryService.handle(
+                new GetPlotWeatherForecastQuery(userId, plotId)
+        );
+
+        return ResponseEntityAssembler.toResponseEntityFromResult(
+                result,
+                PlotWeatherForecastResourceAssembler::toResourceFromReadModel,
                 HttpStatus.OK
         );
     }

@@ -2,7 +2,9 @@ package com.arcadiadevs.viora.platform.agronomic.interfaces.rest;
 
 import com.arcadiadevs.viora.platform.agronomic.application.commandservices.PlotCommandService;
 import com.arcadiadevs.viora.platform.agronomic.application.queryservices.PlotDetailQueryService;
+import com.arcadiadevs.viora.platform.agronomic.application.queryservices.PlotMonitoringSummaryQueryService;
 import com.arcadiadevs.viora.platform.agronomic.application.queryservices.PlotQueryService;
+import com.arcadiadevs.viora.platform.agronomic.application.queryservices.PlotWeatherForecastQueryService;
 import com.arcadiadevs.viora.platform.agronomic.application.readmodels.IntegrationLinkStatus;
 import com.arcadiadevs.viora.platform.agronomic.application.readmodels.MyPlotsOverview;
 import com.arcadiadevs.viora.platform.agronomic.application.readmodels.PlotMonitoringOverview;
@@ -60,6 +62,12 @@ class PlotsControllerTest {
 
     @MockitoBean
     private PlotDetailQueryService plotDetailQueryService;
+
+    @MockitoBean
+    private PlotMonitoringSummaryQueryService plotMonitoringSummaryQueryService;
+
+    @MockitoBean
+    private PlotWeatherForecastQueryService plotWeatherForecastQueryService;
 
     @Test
     void createsPlotWithEstimatedAreaAndInitialLinks() throws Exception {
@@ -216,6 +224,87 @@ class PlotsControllerTest {
                 .andExpect(jsonPath("$.iot.status").value("NOT_LINKED"))
                 .andExpect(jsonPath("$.recentConfigurationActivity[0].type")
                         .value("PLOT_REGISTERED"));
+    }
+
+    @Test
+    void getsPlotMonitoringSummary() throws Exception {
+        var plot = createPlot();
+        var summary = new com.arcadiadevs.viora.platform.agronomic.application.readmodels.PlotMonitoringSummary(
+                plot,
+                0.62,
+                new com.arcadiadevs.viora.platform.agronomic.domain.model.valueobjects.NdviTrend(
+                        com.arcadiadevs.viora.platform.agronomic.domain.model.valueobjects.NdviTrendDirection.RISING,
+                        0.22,
+                        List.of(new com.arcadiadevs.viora.platform.agronomic.domain.model.valueobjects.NdviStatistic(
+                                Instant.parse("2026-06-01T00:00:00Z"), 0.62, null, null, null, null, null, null))
+                ),
+                45.0,
+                GeneralHealthStatus.HEALTHY,
+                42.0,
+                null,
+                com.arcadiadevs.viora.platform.agronomic.domain.model.valueobjects.ClimateRiskLevel.LOW,
+                Instant.parse("2026-06-11T00:00:00Z"),
+                List.of(),
+                new com.arcadiadevs.viora.platform.agronomic.domain.model.valueobjects.DataSourceMetadata(
+                        "AgroMonitoring",
+                        com.arcadiadevs.viora.platform.agronomic.domain.model.valueobjects.ProviderDataAvailability.AVAILABLE,
+                        null, 60),
+                new com.arcadiadevs.viora.platform.agronomic.domain.model.valueobjects.DataSourceMetadata(
+                        "AgroMonitoring",
+                        com.arcadiadevs.viora.platform.agronomic.domain.model.valueobjects.ProviderDataAvailability.AVAILABLE,
+                        Instant.parse("2026-06-10T00:00:00Z"), 60)
+        );
+        when(plotMonitoringSummaryQueryService.handle(
+                any(com.arcadiadevs.viora.platform.agronomic.domain.model.queries.GetPlotMonitoringSummaryQuery.class)))
+                .thenReturn(Result.success(summary));
+
+        mockMvc.perform(get("/api/v1/plots/1/monitoring-summary").param("userId", "10"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.plotId").value(1))
+                .andExpect(jsonPath("$.currentNdvi").value(0.62))
+                .andExpect(jsonPath("$.ndviTrend.direction").value("RISING"))
+                .andExpect(jsonPath("$.healthStatus").value("HEALTHY"))
+                .andExpect(jsonPath("$.yieldForecastTonnes").value(42.0))
+                .andExpect(jsonPath("$.climateRiskLevel").value("LOW"))
+                .andExpect(jsonPath("$.ndviSource.availability").value("AVAILABLE"))
+                .andExpect(jsonPath("$.ndviSource.updateFrequencyMinutes").value(60));
+    }
+
+    @Test
+    void getsPlotWeatherForecast() throws Exception {
+        var plot = createPlot();
+        var forecast = new com.arcadiadevs.viora.platform.agronomic.application.readmodels.PlotWeatherForecast(
+                plot,
+                Instant.parse("2026-06-11T00:00:00Z"),
+                List.of(),
+                List.of(new com.arcadiadevs.viora.platform.agronomic.domain.model.valueobjects.DailyWeather(
+                        java.time.LocalDate.of(2026, 6, 11), 1.5, 30.0, 18.0,
+                        com.arcadiadevs.viora.platform.agronomic.domain.model.valueobjects.WeatherStatus.SUNNY,
+                        55, 0.0, 6.0)),
+                1.5,
+                com.arcadiadevs.viora.platform.agronomic.domain.model.valueobjects.ClimateRiskLevel.HIGH,
+                List.of(new com.arcadiadevs.viora.platform.agronomic.domain.model.valueobjects.AgronomicWeatherWarning(
+                        com.arcadiadevs.viora.platform.agronomic.domain.model.valueobjects.WeatherWarningType.FROST,
+                        com.arcadiadevs.viora.platform.agronomic.domain.model.valueobjects.ClimateRiskLevel.HIGH,
+                        java.time.LocalDate.of(2026, 6, 11),
+                        "Frost risk: minimum temperature 1.5 C.")),
+                new com.arcadiadevs.viora.platform.agronomic.domain.model.valueobjects.DataSourceMetadata(
+                        "AgroMonitoring",
+                        com.arcadiadevs.viora.platform.agronomic.domain.model.valueobjects.ProviderDataAvailability.AVAILABLE,
+                        Instant.parse("2026-06-11T00:00:00Z"), 60)
+        );
+        when(plotWeatherForecastQueryService.handle(
+                any(com.arcadiadevs.viora.platform.agronomic.domain.model.queries.GetPlotWeatherForecastQuery.class)))
+                .thenReturn(Result.success(forecast));
+
+        mockMvc.perform(get("/api/v1/plots/1/weather-forecast").param("userId", "10"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.plotId").value(1))
+                .andExpect(jsonPath("$.overallRisk").value("HIGH"))
+                .andExpect(jsonPath("$.thermalAnomalyCelsius").value(1.5))
+                .andExpect(jsonPath("$.daily[0].minTemperatureCelsius").value(1.5))
+                .andExpect(jsonPath("$.warnings[0].type").value("FROST"))
+                .andExpect(jsonPath("$.source.availability").value("AVAILABLE"));
     }
 
     @Test
