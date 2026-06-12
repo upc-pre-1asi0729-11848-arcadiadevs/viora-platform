@@ -5,6 +5,7 @@ import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Index;
 import jakarta.persistence.Table;
+import jakarta.persistence.UniqueConstraint;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
@@ -25,6 +26,12 @@ import java.time.LocalDate;
                 @Index(
                         name = "idx_agronomic_statistics_user_plot_measurement_date",
                         columnList = "user_id, plot_id, measurement_date"
+                )
+        },
+        uniqueConstraints = {
+                @UniqueConstraint(
+                        name = "uq_agronomic_statistics_plot_measurement_date",
+                        columnNames = {"plot_id", "measurement_date"}
                 )
         }
 )
