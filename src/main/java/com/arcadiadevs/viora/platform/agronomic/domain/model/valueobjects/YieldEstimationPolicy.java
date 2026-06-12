@@ -10,17 +10,22 @@ package com.arcadiadevs.viora.platform.agronomic.domain.model.valueobjects;
  * agronomist for the target crop before being used for real decisions.
  * </p>
  *
+ * <p>
+ * The chill requirement is not part of this policy: it is a per-plot, crop-derived
+ * value resolved separately (see {@code ChillRequirementResolver}) and passed into
+ * the estimator, so the chart reference line and the yield modifier share a single
+ * requirement.
+ * </p>
+ *
  * @param baseYieldTonnesPerHectare Potential yield per hectare under optimal vigor and chill.
  * @param ndviFloor NDVI at or below which vigor contributes no yield.
  * @param ndviOptimal NDVI at or above which vigor contribution is maximal.
- * @param chillRequirementPortions Chill portions for full chill adequacy.
  * @param chillMinFactor Minimum chill modifier applied when chill is fully inadequate.
  */
 public record YieldEstimationPolicy(
         double baseYieldTonnesPerHectare,
         double ndviFloor,
         double ndviOptimal,
-        double chillRequirementPortions,
         double chillMinFactor
 ) {
     public YieldEstimationPolicy {
@@ -32,9 +37,6 @@ public record YieldEstimationPolicy(
         }
         if (ndviOptimal <= ndviFloor || ndviOptimal > 1.0) {
             throw new IllegalArgumentException("NDVI optimal must be greater than the floor and at most 1.");
-        }
-        if (!(chillRequirementPortions > 0)) {
-            throw new IllegalArgumentException("Chill requirement must be positive.");
         }
         if (chillMinFactor < 0.0 || chillMinFactor > 1.0) {
             throw new IllegalArgumentException("Chill minimum factor must be between 0 and 1.");

@@ -1,5 +1,7 @@
 package com.arcadiadevs.viora.platform.agronomic.application.readmodels;
 
+import com.arcadiadevs.viora.platform.agronomic.domain.model.valueobjects.ChillMetricModel;
+import com.arcadiadevs.viora.platform.agronomic.domain.model.valueobjects.ChillRequirementSource;
 import com.arcadiadevs.viora.platform.agronomic.domain.model.valueobjects.TimeRange;
 
 import java.time.LocalDate;
@@ -22,7 +24,9 @@ import java.util.Objects;
  * @param ndviTrend NDVI trend vs the previous period.
  * @param chillPortionsTrend Chill-portions trend vs the previous period.
  * @param chillHoursTrend Chill-hours trend vs the previous period.
- * @param chillPortionsThreshold Chill-portions reference threshold for the chart.
+ * @param chillPortionsThreshold Chill-portions requirement rendered as the chart reference line.
+ * @param chillRequirementSource Provenance of the chill requirement threshold.
+ * @param chillMetricModel The chill model the series and threshold are expressed in.
  */
 public record AgronomicStatisticSeries(
         Long plotId,
@@ -31,13 +35,17 @@ public record AgronomicStatisticSeries(
         MetricTrend ndviTrend,
         MetricTrend chillPortionsTrend,
         MetricTrend chillHoursTrend,
-        double chillPortionsThreshold
+        double chillPortionsThreshold,
+        ChillRequirementSource chillRequirementSource,
+        ChillMetricModel chillMetricModel
 ) {
     public AgronomicStatisticSeries {
         Objects.requireNonNull(timeRange, "Time range is required.");
         Objects.requireNonNull(ndviTrend, "NDVI trend is required.");
         Objects.requireNonNull(chillPortionsTrend, "Chill portions trend is required.");
         Objects.requireNonNull(chillHoursTrend, "Chill hours trend is required.");
+        Objects.requireNonNull(chillRequirementSource, "Chill requirement source is required.");
+        Objects.requireNonNull(chillMetricModel, "Chill metric model is required.");
         points = points == null ? List.of() : List.copyOf(points);
     }
 

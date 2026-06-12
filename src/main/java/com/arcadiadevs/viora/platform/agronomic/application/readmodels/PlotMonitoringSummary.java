@@ -1,6 +1,7 @@
 package com.arcadiadevs.viora.platform.agronomic.application.readmodels;
 
 import com.arcadiadevs.viora.platform.agronomic.domain.model.aggregates.Plot;
+import com.arcadiadevs.viora.platform.agronomic.domain.model.valueobjects.ChillRequirement;
 import com.arcadiadevs.viora.platform.agronomic.domain.model.valueobjects.ClimateRiskLevel;
 import com.arcadiadevs.viora.platform.agronomic.domain.model.valueobjects.DataSourceMetadata;
 import com.arcadiadevs.viora.platform.agronomic.domain.model.valueobjects.GeneralHealthStatus;
@@ -27,6 +28,7 @@ import java.util.Objects;
  * @param currentNdvi Consolidated current NDVI (satellite first, latest persisted statistic as fallback), or null.
  * @param ndviTrend NDVI trend over the recent window, or null when no history exists.
  * @param chillPortions Latest persisted chill portions reading, or null when none exists.
+ * @param chillRequirement The plot's resolved chill requirement (value, source and model).
  * @param healthStatus Consolidated health badge derived from the current NDVI.
  * @param yieldForecastTonnes Estimated yield in tonnes, or null when NDVI is unavailable.
  * @param weather Current weather snapshot, or null when unavailable.
@@ -41,6 +43,7 @@ public record PlotMonitoringSummary(
         Double currentNdvi,
         NdviTrend ndviTrend,
         Double chillPortions,
+        ChillRequirement chillRequirement,
         GeneralHealthStatus healthStatus,
         Double yieldForecastTonnes,
         WeatherSnapshot weather,

@@ -57,4 +57,12 @@ public class AgronomicStatisticEntity extends AuditableAbstractPersistenceEntity
 
     @Column(name = "chill_hours", nullable = false)
     private Double chillHours;
+
+    /** Dynamic Model carry-over: standing intermediate chilling product (x). */
+    @Column(name = "chill_intermediate_product")
+    private Double chillIntermediateProduct;
+
+    /** Dynamic Model carry-over: last processed hour's temperature (°C). */
+    @Column(name = "chill_state_last_temperature")
+    private Double chillStateLastTemperature;
 }

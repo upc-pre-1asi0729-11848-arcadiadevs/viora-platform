@@ -9,8 +9,11 @@ import com.arcadiadevs.viora.platform.agronomic.domain.model.services.ClimateRis
 import com.arcadiadevs.viora.platform.agronomic.domain.model.services.MitigationRecommendationGenerator;
 import com.arcadiadevs.viora.platform.agronomic.domain.model.services.NdviTrendAnalyzer;
 import com.arcadiadevs.viora.platform.agronomic.domain.model.services.PlotHealthEvaluator;
+import com.arcadiadevs.viora.platform.agronomic.domain.model.services.ChillRequirementResolver;
 import com.arcadiadevs.viora.platform.agronomic.domain.model.services.YieldForecastEstimator;
 import com.arcadiadevs.viora.platform.agronomic.domain.model.valueobjects.YieldEstimationPolicy;
+import com.arcadiadevs.viora.platform.agronomic.domain.model.valueobjects.ChillRequirementPolicy;
+import com.arcadiadevs.viora.platform.agronomic.domain.model.valueobjects.ChillRequirementSource;
 import com.arcadiadevs.viora.platform.agronomic.domain.model.valueobjects.AccumulatedChillHours;
 import com.arcadiadevs.viora.platform.agronomic.domain.model.valueobjects.AreaSize;
 import com.arcadiadevs.viora.platform.agronomic.domain.model.valueobjects.ChillPortions;
@@ -40,6 +43,7 @@ import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -78,7 +82,8 @@ class PlotMonitoringSummaryQueryServiceTest {
                 new PlotHealthEvaluator(),
                 new ClimateRiskEvaluator(),
                 new MitigationRecommendationGenerator(),
-                new YieldForecastEstimator(new YieldEstimationPolicy(4.0, 0.20, 0.80, 40.0, 0.60))
+                new YieldForecastEstimator(new YieldEstimationPolicy(4.0, 0.20, 0.80, 0.60)),
+                new ChillRequirementResolver(new ChillRequirementPolicy(50.0, Map.of("olive", 40.0)))
         );
     }
 
@@ -116,6 +121,8 @@ class PlotMonitoringSummaryQueryServiceTest {
         assertEquals(0.62, summary.currentNdvi());
         assertEquals(NdviTrendDirection.RISING, summary.ndviTrend().direction());
         assertEquals(45.0, summary.chillPortions());
+        assertEquals(40.0, summary.chillRequirement().value(), 1e-6);
+        assertEquals(ChillRequirementSource.SYSTEM_DEFAULT, summary.chillRequirement().source());
         assertEquals(GeneralHealthStatus.HEALTHY, summary.healthStatus());
         // vigor 0.7 × chill modifier 1.0 × base 4.0 t/ha × 12.5 ha = 35.0 t.
         assertEquals(35.0, summary.yieldForecastTonnes(), 1e-6);

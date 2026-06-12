@@ -1,0 +1,32 @@
+package com.arcadiadevs.viora.platform.agronomic.domain.model.valueobjects;
+
+/**
+ * Carry-over state of the Dynamic Model chill accumulation between ingestion
+ * runs.
+ *
+ * <p>
+ * Unlike additive models (Chilling Hours, Utah), the Dynamic Model only fixes a
+ * chill portion once an intermediate metabolite crosses a threshold across a
+ * continuous run of cold hours, with a partial reset afterwards. That
+ * intermediate product therefore has to persist across the hour and day
+ * boundaries of Viora's incremental, day-by-day snapshot pipeline; computing the
+ * model independently per day would restart the metabolite at zero and grossly
+ * under-count chill. This value object is the minimal state needed to continue
+ * the accumulation seamlessly: the standing intermediate product and the last
+ * processed hour's temperature (which conditions the next step's reset).
+ * </p>
+ *
+ * @param intermediateProduct The standing intermediate chilling product (x).
+ * @param previousHourTemperatureCelsius Last processed hour's temperature, or
+ *                                       null at the start of the season.
+ */
+public record ChillModelState(
+        double intermediateProduct,
+        Double previousHourTemperatureCelsius
+) {
+
+    /** State for a plot that has not accumulated any chill yet. */
+    public static ChillModelState empty() {
+        return new ChillModelState(0.0, null);
+    }
+}

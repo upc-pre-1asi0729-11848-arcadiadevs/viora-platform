@@ -35,13 +35,20 @@ public class YieldForecastEstimator {
      *
      * @param ndvi Current NDVI (vegetation vigor).
      * @param chillPortions Accumulated chill portions; treated as zero adequacy when 0.
+     * @param chillRequirementPortions The plot's chill requirement (full adequacy denominator).
      * @param areaHectares Plot area in hectares.
      * @return The estimated yield forecast in tonnes (never negative).
      */
-    public YieldForecast estimate(double ndvi, double chillPortions, double areaHectares) {
+    public YieldForecast estimate(
+            double ndvi,
+            double chillPortions,
+            double chillRequirementPortions,
+            double areaHectares
+    ) {
+        double requirement = chillRequirementPortions > 0 ? chillRequirementPortions : 1.0;
         double vigorFactor = clampUnitInterval(
                 (ndvi - policy.ndviFloor()) / (policy.ndviOptimal() - policy.ndviFloor()));
-        double chillAdequacy = clampUnitInterval(chillPortions / policy.chillRequirementPortions());
+        double chillAdequacy = clampUnitInterval(chillPortions / requirement);
         double chillModifier = policy.chillMinFactor() + (1.0 - policy.chillMinFactor()) * chillAdequacy;
 
         double tonnes = policy.baseYieldTonnesPerHectare()

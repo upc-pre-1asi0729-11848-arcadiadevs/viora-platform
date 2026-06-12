@@ -10,8 +10,10 @@ import com.arcadiadevs.viora.platform.agronomic.domain.model.services.ClimateRis
 import com.arcadiadevs.viora.platform.agronomic.domain.model.services.MitigationRecommendationGenerator;
 import com.arcadiadevs.viora.platform.agronomic.domain.model.services.NdviTrendAnalyzer;
 import com.arcadiadevs.viora.platform.agronomic.domain.model.services.PlotHealthEvaluator;
+import com.arcadiadevs.viora.platform.agronomic.domain.model.services.ChillRequirementResolver;
 import com.arcadiadevs.viora.platform.agronomic.domain.model.services.YieldForecastEstimator;
 import com.arcadiadevs.viora.platform.agronomic.domain.model.valueobjects.AccumulatedChillHours;
+import com.arcadiadevs.viora.platform.agronomic.domain.model.valueobjects.ChillRequirement;
 import com.arcadiadevs.viora.platform.agronomic.domain.model.valueobjects.ClimateRiskLevel;
 import com.arcadiadevs.viora.platform.agronomic.domain.model.valueobjects.DateRange;
 import com.arcadiadevs.viora.platform.agronomic.domain.model.valueobjects.MitigationRecommendation;
@@ -65,6 +67,7 @@ public class PlotMonitoringSummaryQueryService {
     private final ClimateRiskEvaluator climateRiskEvaluator;
     private final MitigationRecommendationGenerator mitigationRecommendationGenerator;
     private final YieldForecastEstimator yieldForecastEstimator;
+    private final ChillRequirementResolver chillRequirementResolver;
 
     /**
      * Handles the per-plot monitoring summary query.
@@ -105,7 +108,8 @@ public class PlotMonitoringSummaryQueryService {
                 .orElse(null);
 
         var healthStatus = plotHealthEvaluator.evaluate(currentNdvi);
-        var yieldForecastTonnes = estimateYield(plot, currentNdvi, chillPortions);
+        var chillRequirement = chillRequirementResolver.resolveFor(plot);
+        var yieldForecastTonnes = estimateYield(plot, currentNdvi, chillPortions, chillRequirement);
         var climateRiskLevel = resolveClimateRisk(weather, currentNdvi, latestStatistic);
         var recommendations = climateRiskLevel == null
                 ? List.<MitigationRecommendation>of()
@@ -118,6 +122,7 @@ public class PlotMonitoringSummaryQueryService {
                 currentNdvi,
                 ndviTrend,
                 chillPortions,
+                chillRequirement,
                 healthStatus,
                 yieldForecastTonnes,
                 weather.orElse(null),
@@ -130,13 +135,19 @@ public class PlotMonitoringSummaryQueryService {
     }
 
     /* Yield estimate requires a vegetation signal; chill defaults to zero adequacy. */
-    private Double estimateYield(Plot plot, Double currentNdvi, Double chillPortions) {
+    private Double estimateYield(
+            Plot plot,
+            Double currentNdvi,
+            Double chillPortions,
+            ChillRequirement chillRequirement
+    ) {
         if (currentNdvi == null) {
             return null;
         }
         return yieldForecastEstimator.estimate(
                 currentNdvi,
                 chillPortions == null ? 0.0 : chillPortions,
+                chillRequirement.value(),
                 plot.getAreaSize().getHectares().doubleValue()
         ).getValue();
     }

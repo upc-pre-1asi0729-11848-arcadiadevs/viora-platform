@@ -71,7 +71,8 @@ class AgronomicStatisticIngestionServiceTest {
         when(statisticRepository.findByPlotIdAndMeasurementDate(any(), any())).thenReturn(Optional.empty());
         when(imageryService.findCurrentImagery(any())).thenReturn(Optional.of(new SatelliteImagery(
                 "img-1", "https://tiles/{z}/{x}/{y}", Instant.parse("2026-06-11T00:00:00Z"), 0.61, 5.0)));
-        // Two chilling hours (+1 Utah unit each from the 5°C readings).
+        // Two chilling hours; the Dynamic Model fixes no new portion from a single
+        // cold transition (the intermediate product is still building toward 1).
         when(weatherDataService.getWeatherHistory(any(), any())).thenReturn(Optional.of(new WeatherHistory(List.of(
                 reading(5.0), reading(5.0)))));
         when(statisticRepository.findLatestByPlotId(any()))
@@ -86,7 +87,7 @@ class AgronomicStatisticIngestionServiceTest {
         var saved = captor.getValue();
         assertEquals(0.61, saved.getNdviValue().getValue());
         assertEquals(242.0, saved.getChillHours().getValue());     // 240 + 2 chilling hours
-        assertEquals(102.0, saved.getChillPortions().getValue());  // 100 + 2 Utah units
+        assertEquals(100.0, saved.getChillPortions().getValue());  // 100 + 0 newly fixed portions
     }
 
     @Test

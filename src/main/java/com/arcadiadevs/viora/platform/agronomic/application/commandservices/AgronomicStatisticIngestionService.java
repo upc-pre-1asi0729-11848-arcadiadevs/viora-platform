@@ -8,6 +8,7 @@ import com.arcadiadevs.viora.platform.agronomic.domain.model.aggregates.Plot;
 import com.arcadiadevs.viora.platform.agronomic.domain.model.commands.IngestAgronomicStatisticsCommand;
 import com.arcadiadevs.viora.platform.agronomic.domain.model.services.ChillAccumulationCalculator;
 import com.arcadiadevs.viora.platform.agronomic.domain.model.valueobjects.AccumulatedChillHours;
+import com.arcadiadevs.viora.platform.agronomic.domain.model.valueobjects.ChillModelState;
 import com.arcadiadevs.viora.platform.agronomic.domain.model.valueobjects.ChillPortions;
 import com.arcadiadevs.viora.platform.agronomic.domain.model.valueobjects.DateRange;
 import com.arcadiadevs.viora.platform.agronomic.domain.model.valueobjects.MeasurementDate;
@@ -111,11 +112,13 @@ public class AgronomicStatisticIngestionService {
             return false;
         }
 
-        var dailyChill = weatherDataService.getWeatherHistory(plot, new DateRange(today, today))
-                .map(chillAccumulationCalculator::computeDailyChill)
-                .orElse(new ChillAccumulationCalculator.DailyChill(0.0, 0.0));
-
         var base = agronomicStatisticRepository.findLatestByPlotId(plotId);
+        var incomingState = base.map(AgronomicStatistic::getChillModelState).orElse(ChillModelState.empty());
+
+        var dailyChill = weatherDataService.getWeatherHistory(plot, new DateRange(today, today))
+                .map(history -> chillAccumulationCalculator.accumulate(history, incomingState))
+                .orElse(new ChillAccumulationCalculator.ChillAccumulation(0.0, 0.0, incomingState));
+
         double accumulatedChillHours = Math.max(0.0,
                 base.map(snapshot -> snapshot.getChillHours().getValue()).orElse(0.0) + dailyChill.chillHours());
         double accumulatedChillPortions = Math.max(0.0,
@@ -127,7 +130,8 @@ public class AgronomicStatisticIngestionService {
                 measurementDate,
                 new NdviValue(ndviMean),
                 new ChillPortions(accumulatedChillPortions),
-                new AccumulatedChillHours(accumulatedChillHours)
+                new AccumulatedChillHours(accumulatedChillHours),
+                dailyChill.newState()
         ));
         return true;
     }

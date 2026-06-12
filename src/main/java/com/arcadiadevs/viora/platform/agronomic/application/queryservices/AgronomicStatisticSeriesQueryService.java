@@ -5,12 +5,13 @@ import com.arcadiadevs.viora.platform.agronomic.application.readmodels.MetricTre
 import com.arcadiadevs.viora.platform.agronomic.application.readmodels.TrendDirection;
 import com.arcadiadevs.viora.platform.agronomic.domain.model.aggregates.AgronomicStatistic;
 import com.arcadiadevs.viora.platform.agronomic.domain.model.queries.GetAgronomicStatisticSeriesQuery;
+import com.arcadiadevs.viora.platform.agronomic.domain.model.services.ChillRequirementResolver;
+import com.arcadiadevs.viora.platform.agronomic.domain.model.valueobjects.ChillRequirement;
 import com.arcadiadevs.viora.platform.agronomic.domain.model.valueobjects.DateRange;
 import com.arcadiadevs.viora.platform.agronomic.domain.model.valueobjects.PlotId;
 import com.arcadiadevs.viora.platform.agronomic.domain.model.valueobjects.UserId;
 import com.arcadiadevs.viora.platform.agronomic.domain.repositories.AgronomicStatisticRepository;
 import com.arcadiadevs.viora.platform.agronomic.domain.repositories.PlotRepository;
-import com.arcadiadevs.viora.platform.agronomic.infrastructure.statistics.AgronomicStatisticsProperties;
 import com.arcadiadevs.viora.platform.shared.application.result.ApplicationError;
 import com.arcadiadevs.viora.platform.shared.application.result.Result;
 import lombok.RequiredArgsConstructor;
@@ -43,7 +44,7 @@ public class AgronomicStatisticSeriesQueryService {
 
     private final AgronomicStatisticRepository agronomicStatisticRepository;
     private final PlotRepository plotRepository;
-    private final AgronomicStatisticsProperties properties;
+    private final ChillRequirementResolver chillRequirementResolver;
 
     @Transactional(readOnly = true)
     public Result<AgronomicStatisticSeries, ApplicationError> handle(GetAgronomicStatisticSeriesQuery query) {
@@ -59,6 +60,7 @@ public class AgronomicStatisticSeriesQueryService {
             }
 
             PlotId plotId = null;
+            ChillRequirement chillRequirement = chillRequirementResolver.resolveDefault();
             if (query.plotId() != null) {
                 plotId = new PlotId(query.plotId());
                 var plot = plotRepository.findById(plotId);
@@ -74,6 +76,7 @@ public class AgronomicStatisticSeriesQueryService {
                             "User %d does not own plot %d.".formatted(query.userId(), query.plotId())
                     ));
                 }
+                chillRequirement = chillRequirementResolver.resolveFor(plot.get());
             }
 
             var today = LocalDate.now();
@@ -94,7 +97,9 @@ public class AgronomicStatisticSeriesQueryService {
                     trend(currentStatistics, previousStatistics, AgronomicStatisticSeriesQueryService::ndvi, NDVI_STABILITY_EPSILON),
                     trend(currentStatistics, previousStatistics, AgronomicStatisticSeriesQueryService::chillPortions, CHILL_STABILITY_EPSILON),
                     trend(currentStatistics, previousStatistics, AgronomicStatisticSeriesQueryService::chillHours, CHILL_STABILITY_EPSILON),
-                    properties.getChillPortionsThreshold()
+                    chillRequirement.value(),
+                    chillRequirement.source(),
+                    chillRequirement.model()
             );
 
             return Result.success(series);

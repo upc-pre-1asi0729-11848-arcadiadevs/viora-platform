@@ -1,10 +1,15 @@
 package com.arcadiadevs.viora.platform.agronomic.application.queryservices;
 
 import com.arcadiadevs.viora.platform.agronomic.application.readmodels.TrendDirection;
+import com.arcadiadevs.viora.platform.agronomic.application.readmodels.AgronomicStatisticSeries;
 import com.arcadiadevs.viora.platform.agronomic.domain.model.aggregates.AgronomicStatistic;
 import com.arcadiadevs.viora.platform.agronomic.domain.model.aggregates.Plot;
 import com.arcadiadevs.viora.platform.agronomic.domain.model.queries.GetAgronomicStatisticSeriesQuery;
+import com.arcadiadevs.viora.platform.agronomic.domain.model.services.ChillRequirementResolver;
 import com.arcadiadevs.viora.platform.agronomic.domain.model.valueobjects.AccumulatedChillHours;
+import com.arcadiadevs.viora.platform.agronomic.domain.model.valueobjects.ChillMetricModel;
+import com.arcadiadevs.viora.platform.agronomic.domain.model.valueobjects.ChillRequirementPolicy;
+import com.arcadiadevs.viora.platform.agronomic.domain.model.valueobjects.ChillRequirementSource;
 import com.arcadiadevs.viora.platform.agronomic.domain.model.valueobjects.AreaSize;
 import com.arcadiadevs.viora.platform.agronomic.domain.model.valueobjects.ChillPortions;
 import com.arcadiadevs.viora.platform.agronomic.domain.model.valueobjects.GeoPoint;
@@ -17,13 +22,13 @@ import com.arcadiadevs.viora.platform.agronomic.domain.model.valueobjects.TimeRa
 import com.arcadiadevs.viora.platform.agronomic.domain.model.valueobjects.UserId;
 import com.arcadiadevs.viora.platform.agronomic.domain.repositories.AgronomicStatisticRepository;
 import com.arcadiadevs.viora.platform.agronomic.domain.repositories.PlotRepository;
-import com.arcadiadevs.viora.platform.agronomic.infrastructure.statistics.AgronomicStatisticsProperties;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -45,10 +50,12 @@ class AgronomicStatisticSeriesQueryServiceTest {
     void setUp() {
         statisticRepository = mock(AgronomicStatisticRepository.class);
         plotRepository = mock(PlotRepository.class);
+        var chillRequirementResolver = new ChillRequirementResolver(
+                new ChillRequirementPolicy(50.0, Map.of("olive", 40.0)));
         service = new AgronomicStatisticSeriesQueryService(
                 statisticRepository,
                 plotRepository,
-                new AgronomicStatisticsProperties()
+                chillRequirementResolver
         );
     }
 
@@ -71,7 +78,23 @@ class AgronomicStatisticSeriesQueryServiceTest {
         assertEquals(0.61, series.ndviTrend().currentValue(), 1e-6);
         assertEquals(0.40, series.ndviTrend().previousValue(), 1e-6);
         assertEquals(0.21, series.ndviTrend().change(), 1e-6);
-        assertEquals(600.0, series.chillPortionsThreshold(), 1e-6);
+        // Threshold is now the plot's resolved chill requirement (olive, 40 CP), not a fixed 600.
+        assertEquals(40.0, series.chillPortionsThreshold(), 1e-6);
+        assertEquals(ChillRequirementSource.SYSTEM_DEFAULT, series.chillRequirementSource());
+        assertEquals(ChillMetricModel.DYNAMIC, series.chillMetricModel());
+    }
+
+    @Test
+    void aggregatedSeriesUsesNotConfiguredDefaultRequirement() {
+        var today = LocalDate.now();
+        when(statisticRepository.findAllByUserIdAndMeasurementDateBetween(any(), any()))
+                .thenReturn(List.of(statistic(today, 0.62, 112.0, 252.0)));
+
+        AgronomicStatisticSeries series = service.handle(new GetAgronomicStatisticSeriesQuery(
+                OWNER_ID, OWNER_ID, null, TimeRange.LAST_7_DAYS)).success().orElseThrow();
+
+        assertEquals(50.0, series.chillPortionsThreshold(), 1e-6);
+        assertEquals(ChillRequirementSource.NOT_CONFIGURED, series.chillRequirementSource());
     }
 
     @Test

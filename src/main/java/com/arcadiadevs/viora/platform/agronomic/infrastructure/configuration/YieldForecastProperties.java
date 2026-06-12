@@ -30,9 +30,6 @@ public class YieldForecastProperties {
     @DecimalMax("1.0")
     private double ndviOptimal = 0.80;
 
-    @Positive
-    private double chillRequirementPortions = 40.0;
-
     @DecimalMin("0.0")
     @DecimalMax("1.0")
     private double chillMinFactor = 0.60;

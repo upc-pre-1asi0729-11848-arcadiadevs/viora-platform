@@ -18,7 +18,6 @@ public class YieldForecastConfiguration {
                 properties.getBaseYieldTonnesPerHectare(),
                 properties.getNdviFloor(),
                 properties.getNdviOptimal(),
-                properties.getChillRequirementPortions(),
                 properties.getChillMinFactor()
         );
     }
