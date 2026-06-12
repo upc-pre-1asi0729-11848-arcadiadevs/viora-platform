@@ -2,6 +2,11 @@ package com.arcadiadevs.viora.platform.agronomic.infrastructure.external.agromon
 
 import com.arcadiadevs.viora.platform.agronomic.application.internal.outboundservices.AgroMonitoringImageryService;
 import com.arcadiadevs.viora.platform.agronomic.domain.model.aggregates.Plot;
+import com.arcadiadevs.viora.platform.agronomic.domain.model.valueobjects.DataSourceMetadata;
+import com.arcadiadevs.viora.platform.agronomic.domain.model.valueobjects.DateRange;
+import com.arcadiadevs.viora.platform.agronomic.domain.model.valueobjects.NdviHistory;
+import com.arcadiadevs.viora.platform.agronomic.domain.model.valueobjects.NdviStatistic;
+import com.arcadiadevs.viora.platform.agronomic.domain.model.valueobjects.ProviderDataAvailability;
 import com.arcadiadevs.viora.platform.agronomic.domain.model.valueobjects.SatelliteImagery;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
@@ -18,7 +23,9 @@ import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.time.Duration;
 import java.time.Instant;
+import java.time.ZoneOffset;
 import java.time.temporal.ChronoUnit;
 import java.util.Comparator;
 import java.util.HexFormat;
@@ -33,18 +40,27 @@ import java.util.Optional;
 @Slf4j
 public class AgroMonitoringImageryServiceAdapter implements AgroMonitoringImageryService {
 
+    private static final String PROVIDER = "AgroMonitoring";
+    private static final int HTTP_TOO_MANY_REQUESTS = 429;
+
     private final AgroMonitoringProperties properties;
     private final SpringDataAgroMonitoringPlotIntegrationRepository integrationRepository;
     private final RestClient restClient;
+    private final AgroMonitoringQuotaGuard quotaGuard;
+    private final ExpiringCache<NdviHistory> ndviHistoryCache;
 
     public AgroMonitoringImageryServiceAdapter(
             AgroMonitoringProperties properties,
             SpringDataAgroMonitoringPlotIntegrationRepository integrationRepository,
-            @Qualifier("agroMonitoringRestClient") RestClient restClient
+            @Qualifier("agroMonitoringRestClient") RestClient restClient,
+            AgroMonitoringQuotaGuard quotaGuard
     ) {
         this.properties = properties;
         this.integrationRepository = integrationRepository;
         this.restClient = restClient;
+        this.quotaGuard = quotaGuard;
+        this.ndviHistoryCache = new ExpiringCache<>(
+                Duration.ofMinutes(properties.getNdviHistoryCacheTtlMinutes()));
     }
 
     @Override
@@ -75,6 +91,10 @@ public class AgroMonitoringImageryServiceAdapter implements AgroMonitoringImager
 
         var boundaryFingerprint = boundaryFingerprint(plot);
 
+        if (quotaGuard.isQuotaExhausted()) {
+            return cachedImageryFor(plot, boundaryFingerprint);
+        }
+
         try {
             var integration = findOrRegisterPlot(plot, boundaryFingerprint);
 
@@ -102,17 +122,17 @@ public class AgroMonitoringImageryServiceAdapter implements AgroMonitoringImager
 
             return toCachedImagery(integration);
         } catch (RestClientException | IllegalArgumentException exception) {
-            log.warn(
-                    "Unable to refresh AgroMonitoring imagery for plot {} ({}).",
-                    plot.getId().getValue(),
-                    providerFailureReason(exception)
-            );
-            return integrationRepository.findByPlotId(plot.getId().getValue())
-                    .filter(integration ->
-                            boundaryFingerprint.equals(integration.getBoundaryFingerprint())
-                    )
-                    .flatMap(this::toCachedImagery);
+            handleProviderFailure("imagery", plot, exception);
+            return cachedImageryFor(plot, boundaryFingerprint);
         }
+    }
+
+    private Optional<SatelliteImagery> cachedImageryFor(Plot plot, String boundaryFingerprint) {
+        return integrationRepository.findByPlotId(plot.getId().getValue())
+                .filter(integration ->
+                        boundaryFingerprint.equals(integration.getBoundaryFingerprint())
+                )
+                .flatMap(this::toCachedImagery);
     }
 
     private AgroMonitoringPlotIntegrationEntity findOrRegisterPlot(
@@ -274,6 +294,9 @@ public class AgroMonitoringImageryServiceAdapter implements AgroMonitoringImager
                     .body(byte[].class);
             return Optional.ofNullable(tileBytes).filter(bytes -> bytes.length > 0);
         } catch (RestClientException exception) {
+            if (isQuotaRejection(exception)) {
+                quotaGuard.recordQuotaExceeded();
+            }
             log.warn(
                     "Unable to fetch AgroMonitoring NDVI tile {}/{}/{} for plot {} ({}).",
                     zoom,
@@ -284,6 +307,140 @@ public class AgroMonitoringImageryServiceAdapter implements AgroMonitoringImager
             );
             return Optional.empty();
         }
+    }
+
+    @Override
+    public Optional<NdviHistory> findNdviHistory(Plot plot, DateRange range) {
+        if (range == null) {
+            throw new IllegalArgumentException("NDVI history range is required.");
+        }
+        if (!properties.isConfigured() || quotaGuard.isQuotaExhausted()) {
+            return Optional.empty();
+        }
+
+        var externalPolygonId = integrationRepository.findByPlotId(plot.getId().getValue())
+                .filter(integration -> boundaryFingerprint(plot).equals(integration.getBoundaryFingerprint()))
+                .map(AgroMonitoringPlotIntegrationEntity::getExternalPolygonId)
+                .orElse(null);
+
+        if (externalPolygonId == null) {
+            return Optional.empty();
+        }
+
+        var cacheKey = externalPolygonId + ":" + range.getStartDate() + ":" + range.getEndDate();
+        var cached = ndviHistoryCache.get(cacheKey);
+        if (cached.isPresent()) {
+            return cached;
+        }
+
+        try {
+            var response = restClient.get()
+                    .uri(uriBuilder -> uriBuilder
+                            .path("/agro/1.0/ndvi/history")
+                            .queryParam("polyid", externalPolygonId)
+                            .queryParam("start", startEpochSecond(range))
+                            .queryParam("end", endEpochSecond(range))
+                            .queryParam("appid", properties.getApiKey())
+                            .build())
+                    .retrieve()
+                    .body(new ParameterizedTypeReference<List<AgroMonitoringNdviHistoryEntry>>() {
+                    });
+
+            var statistics = toNdviStatistics(response);
+            if (statistics.isEmpty()) {
+                return Optional.empty();
+            }
+
+            var history = new NdviHistory(statistics);
+            ndviHistoryCache.put(cacheKey, history);
+            return Optional.of(history);
+        } catch (RestClientException | IllegalArgumentException exception) {
+            handleProviderFailure("NDVI history", plot, exception);
+            return Optional.empty();
+        }
+    }
+
+    @Override
+    public DataSourceMetadata describeNdviSource(Plot plot) {
+        if (!properties.isConfigured()) {
+            return DataSourceMetadata.notConfigured(PROVIDER);
+        }
+
+        var integration = integrationRepository.findByPlotId(plot.getId().getValue())
+                .filter(linked -> boundaryFingerprint(plot).equals(linked.getBoundaryFingerprint()))
+                .orElse(null);
+
+        if (integration == null) {
+            return new DataSourceMetadata(PROVIDER, ProviderDataAvailability.NOT_LINKED, null, null);
+        }
+
+        var availability = quotaGuard.isQuotaExhausted()
+                ? ProviderDataAvailability.QUOTA_EXCEEDED
+                : ProviderDataAvailability.AVAILABLE;
+
+        return new DataSourceMetadata(
+                PROVIDER,
+                availability,
+                integration.getCaptureDate(),
+                properties.getRefreshIntervalMinutes()
+        );
+    }
+
+    private List<NdviStatistic> toNdviStatistics(List<AgroMonitoringNdviHistoryEntry> entries) {
+        if (entries == null) {
+            return List.of();
+        }
+        return entries.stream()
+                .map(this::toNdviStatistic)
+                .flatMap(Optional::stream)
+                .toList();
+    }
+
+    private Optional<NdviStatistic> toNdviStatistic(AgroMonitoringNdviHistoryEntry entry) {
+        if (entry == null || entry.data() == null || entry.data().mean() == null) {
+            return Optional.empty();
+        }
+
+        var data = entry.data();
+        try {
+            return Optional.of(new NdviStatistic(
+                    Instant.ofEpochSecond(entry.dt()),
+                    data.mean(),
+                    data.min(),
+                    data.max(),
+                    data.median(),
+                    data.std(),
+                    data.p25(),
+                    data.p75()
+            ));
+        } catch (IllegalArgumentException exception) {
+            return Optional.empty();
+        }
+    }
+
+    private long startEpochSecond(DateRange range) {
+        return range.getStartDate().atStartOfDay(ZoneOffset.UTC).toEpochSecond();
+    }
+
+    private long endEpochSecond(DateRange range) {
+        return range.getEndDate().plusDays(1).atStartOfDay(ZoneOffset.UTC).toEpochSecond();
+    }
+
+    private void handleProviderFailure(String operation, Plot plot, Exception exception) {
+        if (isQuotaRejection(exception)) {
+            quotaGuard.recordQuotaExceeded();
+        }
+        log.warn(
+                "Unable to refresh AgroMonitoring {} for plot {} ({}).",
+                operation,
+                plot.getId().getValue(),
+                providerFailureReason(exception)
+        );
+    }
+
+    private boolean isQuotaRejection(Exception exception) {
+        return exception instanceof RestClientResponseException responseException
+                && responseException.getStatusCode().value() == HTTP_TOO_MANY_REQUESTS;
     }
 
     /* The cached tile URL is exposed without provider credentials; clients consume
@@ -404,5 +561,24 @@ public class AgroMonitoringImageryServiceAdapter implements AgroMonitoringImager
 
     @JsonIgnoreProperties(ignoreUnknown = true)
     private record AgroMonitoringStatisticsResponse(Double mean) {
+    }
+
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    private record AgroMonitoringNdviHistoryEntry(
+            long dt,
+            AgroMonitoringNdviStatistics data
+    ) {
+    }
+
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    private record AgroMonitoringNdviStatistics(
+            Double mean,
+            Double min,
+            Double max,
+            Double median,
+            Double std,
+            Double p25,
+            Double p75
+    ) {
     }
 }

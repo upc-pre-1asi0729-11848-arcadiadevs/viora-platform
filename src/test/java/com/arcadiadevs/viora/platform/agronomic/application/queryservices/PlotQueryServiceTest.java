@@ -272,6 +272,19 @@ class PlotQueryServiceTest {
         public Optional<byte[]> fetchCurrentNdviTile(Plot plot, int zoom, int x, int y) {
             return Optional.ofNullable(tileBytes);
         }
+
+        @Override
+        public Optional<com.arcadiadevs.viora.platform.agronomic.domain.model.valueobjects.NdviHistory> findNdviHistory(
+                Plot plot,
+                com.arcadiadevs.viora.platform.agronomic.domain.model.valueobjects.DateRange range
+        ) {
+            return Optional.empty();
+        }
+
+        @Override
+        public com.arcadiadevs.viora.platform.agronomic.domain.model.valueobjects.DataSourceMetadata describeNdviSource(Plot plot) {
+            return com.arcadiadevs.viora.platform.agronomic.domain.model.valueobjects.DataSourceMetadata.notConfigured("AgroMonitoring");
+        }
     }
 
     private record QueryPlotRepository(Plot plot) implements PlotRepository {

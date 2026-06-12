@@ -1,6 +1,9 @@
 package com.arcadiadevs.viora.platform.agronomic.application.internal.outboundservices;
 
 import com.arcadiadevs.viora.platform.agronomic.domain.model.aggregates.Plot;
+import com.arcadiadevs.viora.platform.agronomic.domain.model.valueobjects.DataSourceMetadata;
+import com.arcadiadevs.viora.platform.agronomic.domain.model.valueobjects.DateRange;
+import com.arcadiadevs.viora.platform.agronomic.domain.model.valueobjects.NdviHistory;
 import com.arcadiadevs.viora.platform.agronomic.domain.model.valueobjects.SatelliteImagery;
 
 import java.util.Optional;
@@ -56,4 +59,27 @@ public interface AgroMonitoringImageryService {
      * @return Tile image bytes, or empty when no imagery is available.
      */
     Optional<byte[]> fetchCurrentNdviTile(Plot plot, int zoom, int x, int y);
+
+    /**
+     * Retrieves the historical NDVI statistics series for a plot.
+     *
+     * <p>
+     * Backed by the provider's NDVI history for the plot's registered polygon.
+     * Provider failures, timeouts and exhausted quotas degrade to an empty
+     * result so callers remain available.
+     * </p>
+     *
+     * @param plot Plot to inspect.
+     * @param range Inclusive day range to query.
+     * @return The NDVI history when available, otherwise empty.
+     */
+    Optional<NdviHistory> findNdviHistory(Plot plot, DateRange range);
+
+    /**
+     * Describes the satellite NDVI source and its freshness for a plot.
+     *
+     * @param plot The plot whose NDVI source is described.
+     * @return Provider identity, availability and update cadence metadata.
+     */
+    DataSourceMetadata describeNdviSource(Plot plot);
 }
