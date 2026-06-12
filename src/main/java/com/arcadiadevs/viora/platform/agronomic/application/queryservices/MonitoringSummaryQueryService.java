@@ -7,6 +7,8 @@ import com.arcadiadevs.viora.platform.agronomic.domain.model.aggregates.Plot;
 import com.arcadiadevs.viora.platform.agronomic.domain.model.queries.GetCurrentMonitoringSummaryQuery;
 import com.arcadiadevs.viora.platform.agronomic.domain.model.services.ClimateRiskEvaluator;
 import com.arcadiadevs.viora.platform.agronomic.domain.model.services.MitigationRecommendationGenerator;
+import com.arcadiadevs.viora.platform.agronomic.domain.model.services.ChillRequirementResolver;
+import com.arcadiadevs.viora.platform.agronomic.domain.model.services.PlotHealthEvaluator;
 import com.arcadiadevs.viora.platform.agronomic.domain.model.services.YieldForecastEstimator;
 import com.arcadiadevs.viora.platform.agronomic.domain.model.valueobjects.AccumulatedChillHours;
 import com.arcadiadevs.viora.platform.agronomic.domain.model.valueobjects.ClimateRiskLevel;
@@ -45,6 +47,8 @@ public class MonitoringSummaryQueryService {
     private final ClimateRiskEvaluator climateRiskEvaluator;
     private final MitigationRecommendationGenerator mitigationRecommendationGenerator;
     private final YieldForecastEstimator yieldForecastEstimator;
+    private final ChillRequirementResolver chillRequirementResolver;
+    private final PlotHealthEvaluator plotHealthEvaluator;
 
     public MonitoringSummaryQueryService(
             PlotRepository plotRepository,
@@ -52,7 +56,9 @@ public class MonitoringSummaryQueryService {
             WeatherDataService weatherDataService,
             ClimateRiskEvaluator climateRiskEvaluator,
             MitigationRecommendationGenerator mitigationRecommendationGenerator,
-            YieldForecastEstimator yieldForecastEstimator
+            YieldForecastEstimator yieldForecastEstimator,
+            ChillRequirementResolver chillRequirementResolver,
+            PlotHealthEvaluator plotHealthEvaluator
     ) {
         this.plotRepository = plotRepository;
         this.agronomicStatisticRepository = agronomicStatisticRepository;
@@ -60,6 +66,8 @@ public class MonitoringSummaryQueryService {
         this.climateRiskEvaluator = climateRiskEvaluator;
         this.mitigationRecommendationGenerator = mitigationRecommendationGenerator;
         this.yieldForecastEstimator = yieldForecastEstimator;
+        this.chillRequirementResolver = chillRequirementResolver;
+        this.plotHealthEvaluator = plotHealthEvaluator;
     }
 
     /**
@@ -91,18 +99,33 @@ public class MonitoringSummaryQueryService {
             return Optional.empty(); // No statistics, no summary
         }
 
-        // 4. Consolidate NDVI and Accumulated Chill Hours
-        double consolidatedNdvi = allUserStatistics.stream()
+        // 4. Consolidate the current state across plots: take each plot's latest
+        // snapshot, then average across plots. Chill hours and chill portions are
+        // cumulative metrics, so averaging across the whole 30-day window would
+        // understate the current accumulation; the dashboard average must reflect
+        // the latest reading per plot, consistent with the per-plot summary.
+        List<AgronomicStatistic> latestPerPlot = allUserStatistics.stream()
+                .collect(Collectors.groupingBy(
+                        stat -> stat.getPlotId().getValue(),
+                        Collectors.collectingAndThen(
+                                Collectors.maxBy(Comparator.comparing(
+                                        stat -> stat.getMeasurementDate().getValue())),
+                                Optional::orElseThrow)))
+                .values()
+                .stream()
+                .toList();
+
+        double consolidatedNdvi = latestPerPlot.stream()
                 .mapToDouble(stat -> stat.getNdviValue().getValue())
                 .average()
                 .orElse(0.0); // Default if no NDVI values
 
-        double consolidatedChillHours = allUserStatistics.stream()
+        double consolidatedChillHours = latestPerPlot.stream()
                 .mapToDouble(stat -> stat.getChillHours().getValue())
                 .average()
                 .orElse(0.0); // Default if no chill hours
 
-        double consolidatedChillPortions = allUserStatistics.stream()
+        double consolidatedChillPortions = latestPerPlot.stream()
                 .mapToDouble(stat -> stat.getChillPortions().getValue())
                 .average()
                 .orElse(0.0);
@@ -112,9 +135,10 @@ public class MonitoringSummaryQueryService {
                 .reduce(0.0, Double::sum);
 
         // 5. Determine GeneralHealthStatus and estimate yield (transparent heuristic)
-        GeneralHealthStatus generalHealthStatus = determineGeneralHealthStatus(consolidatedNdvi);
+        GeneralHealthStatus generalHealthStatus = plotHealthEvaluator.evaluate(consolidatedNdvi);
+        double chillRequirementPortions = chillRequirementResolver.resolveFor(userPlots.getFirst()).value();
         YieldForecast yieldForecast = yieldForecastEstimator.estimate(
-                consolidatedNdvi, consolidatedChillPortions, totalAreaHectares);
+                consolidatedNdvi, consolidatedChillPortions, chillRequirementPortions, totalAreaHectares);
 
         // 6. Use the latest measurement date from the statistics, or current date if none
         MeasurementDate latestMeasurementDate = allUserStatistics.stream()
@@ -155,17 +179,6 @@ public class MonitoringSummaryQueryService {
         );
 
         return Optional.of(monitoringSummary);
-    }
-
-    // Placeholder method for determining GeneralHealthStatus
-    private GeneralHealthStatus determineGeneralHealthStatus(double ndvi) {
-        if (ndvi < 0.3) {
-            return GeneralHealthStatus.CRITICAL;
-        } else if (ndvi < 0.6) {
-            return GeneralHealthStatus.WARNING;
-        } else {
-            return GeneralHealthStatus.HEALTHY;
-        }
     }
 
 }
