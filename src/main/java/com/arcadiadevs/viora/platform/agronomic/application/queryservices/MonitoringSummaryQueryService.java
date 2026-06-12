@@ -7,6 +7,7 @@ import com.arcadiadevs.viora.platform.agronomic.domain.model.aggregates.Plot;
 import com.arcadiadevs.viora.platform.agronomic.domain.model.queries.GetCurrentMonitoringSummaryQuery;
 import com.arcadiadevs.viora.platform.agronomic.domain.model.services.ClimateRiskEvaluator;
 import com.arcadiadevs.viora.platform.agronomic.domain.model.services.MitigationRecommendationGenerator;
+import com.arcadiadevs.viora.platform.agronomic.domain.model.services.YieldForecastEstimator;
 import com.arcadiadevs.viora.platform.agronomic.domain.model.valueobjects.AccumulatedChillHours;
 import com.arcadiadevs.viora.platform.agronomic.domain.model.valueobjects.ClimateRiskLevel;
 import com.arcadiadevs.viora.platform.agronomic.domain.model.valueobjects.DateRange;
@@ -40,22 +41,25 @@ public class MonitoringSummaryQueryService {
 
     private final PlotRepository plotRepository;
     private final AgronomicStatisticRepository agronomicStatisticRepository;
-    private final WeatherDataService weatherDataService; // New dependency
-    private final ClimateRiskEvaluator climateRiskEvaluator; // New dependency
-    private final MitigationRecommendationGenerator mitigationRecommendationGenerator; // New dependency
+    private final WeatherDataService weatherDataService;
+    private final ClimateRiskEvaluator climateRiskEvaluator;
+    private final MitigationRecommendationGenerator mitigationRecommendationGenerator;
+    private final YieldForecastEstimator yieldForecastEstimator;
 
     public MonitoringSummaryQueryService(
             PlotRepository plotRepository,
             AgronomicStatisticRepository agronomicStatisticRepository,
             WeatherDataService weatherDataService,
             ClimateRiskEvaluator climateRiskEvaluator,
-            MitigationRecommendationGenerator mitigationRecommendationGenerator
+            MitigationRecommendationGenerator mitigationRecommendationGenerator,
+            YieldForecastEstimator yieldForecastEstimator
     ) {
         this.plotRepository = plotRepository;
         this.agronomicStatisticRepository = agronomicStatisticRepository;
         this.weatherDataService = weatherDataService;
         this.climateRiskEvaluator = climateRiskEvaluator;
         this.mitigationRecommendationGenerator = mitigationRecommendationGenerator;
+        this.yieldForecastEstimator = yieldForecastEstimator;
     }
 
     /**
@@ -98,9 +102,19 @@ public class MonitoringSummaryQueryService {
                 .average()
                 .orElse(0.0); // Default if no chill hours
 
-        // 5. Determine GeneralHealthStatus and YieldForecast (placeholder logic)
+        double consolidatedChillPortions = allUserStatistics.stream()
+                .mapToDouble(stat -> stat.getChillPortions().getValue())
+                .average()
+                .orElse(0.0);
+
+        double totalAreaHectares = userPlots.stream()
+                .map(plot -> plot.getAreaSize().getHectares().doubleValue())
+                .reduce(0.0, Double::sum);
+
+        // 5. Determine GeneralHealthStatus and estimate yield (transparent heuristic)
         GeneralHealthStatus generalHealthStatus = determineGeneralHealthStatus(consolidatedNdvi);
-        YieldForecast yieldForecast = determineYieldForecast(consolidatedNdvi, consolidatedChillHours);
+        YieldForecast yieldForecast = yieldForecastEstimator.estimate(
+                consolidatedNdvi, consolidatedChillPortions, totalAreaHectares);
 
         // 6. Use the latest measurement date from the statistics, or current date if none
         MeasurementDate latestMeasurementDate = allUserStatistics.stream()
@@ -154,10 +168,4 @@ public class MonitoringSummaryQueryService {
         }
     }
 
-    // Placeholder method for determining YieldForecast
-    private YieldForecast determineYieldForecast(double ndvi, double chillHours) {
-        // Simple linear relationship for demonstration
-        double forecastValue = (ndvi * 100) + (chillHours / 10);
-        return new YieldForecast(Math.max(0.0, forecastValue)); // Ensure non-negative
-    }
 }
