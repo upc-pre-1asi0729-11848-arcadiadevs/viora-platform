@@ -20,7 +20,7 @@ class PlotValidationTest {
     void rejectsEmptyPatch() {
         assertThrows(
                 IllegalArgumentException.class,
-                () -> new UpdatePlotCommand(1L, null, null, null, null, null)
+                () -> new UpdatePlotCommand(1L, null, null, null, null)
         );
     }
 

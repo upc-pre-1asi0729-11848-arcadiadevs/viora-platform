@@ -1,6 +1,5 @@
 package com.arcadiadevs.viora.platform.agronomic.domain.model.commands;
 
-import java.math.BigDecimal;
 import java.util.List;
 
 /**
@@ -14,7 +13,6 @@ import java.util.List;
  * @param userId             The identifier of the owner user. Cannot be null or non-positive.
  * @param name               The business name assigned to the plot. Cannot be null or blank.
  * @param polygonCoordinates The geographic polygon coordinates that delimit the plot. Cannot be null or empty.
- * @param areaSizeHectares   The productive area size in hectares. Cannot be null or negative.
  * @param cropType           The crop type associated with the plot. Can be null or blank (optional).
  * @param variety            The crop variety associated with the plot. Can be null or blank (optional).
  * @param location           The human-readable plot location. Can be null or blank (optional).
@@ -25,7 +23,6 @@ public record CreatePlotCommand(
         Long userId,
         String name,
         List<List<Double>> polygonCoordinates,
-        BigDecimal areaSizeHectares,
         String cropType,
         String variety,
         String location,
@@ -45,9 +42,6 @@ public record CreatePlotCommand(
         }
         if (polygonCoordinates == null || polygonCoordinates.isEmpty()) {
             throw new IllegalArgumentException("Polygon coordinates cannot be null or empty.");
-        }
-        if (areaSizeHectares == null || areaSizeHectares.compareTo(BigDecimal.ZERO) < 0) {
-            throw new IllegalArgumentException("Area size in hectares cannot be null or negative.");
         }
     }
 }

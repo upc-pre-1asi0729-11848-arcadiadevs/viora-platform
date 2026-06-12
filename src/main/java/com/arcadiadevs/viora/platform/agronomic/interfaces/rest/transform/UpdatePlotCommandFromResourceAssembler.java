@@ -27,7 +27,6 @@ public final class UpdatePlotCommandFromResourceAssembler {
                 plotId,
                 resource.name(),
                 resource.polygonCoordinates(),
-                resource.areaSizeHectares(),
                 resource.cropType(),
                 resource.variety(),
                 resource.location(),

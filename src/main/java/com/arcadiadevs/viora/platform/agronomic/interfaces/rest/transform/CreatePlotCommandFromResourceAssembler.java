@@ -20,7 +20,6 @@ public final class CreatePlotCommandFromResourceAssembler {
                 resource.userId(),
                 resource.name(),
                 resource.polygonCoordinates(),
-                resource.areaSizeHectares(),
                 resource.cropType(),
                 resource.variety(),
                 resource.location(),

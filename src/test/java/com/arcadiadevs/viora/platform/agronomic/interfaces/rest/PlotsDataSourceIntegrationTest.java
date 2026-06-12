@@ -1,6 +1,8 @@
 package com.arcadiadevs.viora.platform.agronomic.interfaces.rest;
 
 import com.arcadiadevs.viora.platform.agronomic.infrastructure.persistence.jpa.repositories.SpringDataPlotRepository;
+import com.arcadiadevs.viora.platform.agronomic.domain.model.valueobjects.GeoPoint;
+import com.arcadiadevs.viora.platform.agronomic.domain.model.valueobjects.PolygonCoordinates;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -39,6 +41,7 @@ class PlotsDataSourceIntegrationTest {
     private SpringDataPlotRepository plotRepository;
 
     private Long plotId;
+    private BigDecimal initialCalculatedArea;
 
     @BeforeEach
     void setUp() throws Exception {
@@ -54,7 +57,6 @@ class PlotsDataSourceIntegrationTest {
                                     [-76.9, -12.1],
                                     [-77.0, -12.0]
                                   ],
-                                  "areaSizeHectares": 10.00,
                                   "cropType": "Olive",
                                   "variety": "Sevillana",
                                   "location": "Tacna, Peru",
@@ -64,7 +66,8 @@ class PlotsDataSourceIntegrationTest {
                                 """))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.state").value("enable"))
-                .andExpect(jsonPath("$.estimatedAreaHectares").isNumber())
+                .andExpect(jsonPath("$.areaSizeHectares").isNumber())
+                .andExpect(jsonPath("$.estimatedAreaHectares").doesNotExist())
                 .andExpect(jsonPath("$.climateMonitoring").value("NOT_LINKED"))
                 .andExpect(jsonPath("$.satelliteNdvi").value("NOT_LINKED"))
                 .andExpect(jsonPath("$.iotDevices").value("NOT_LINKED"))
@@ -72,6 +75,11 @@ class PlotsDataSourceIntegrationTest {
 
         var location = response.getResponse().getContentAsString();
         plotId = Long.valueOf(location.replaceAll(".*\"id\":(\\d+).*", "$1"));
+        initialCalculatedArea = areaOf(
+                new GeoPoint(-12.0, -77.0),
+                new GeoPoint(-12.0, -76.9),
+                new GeoPoint(-12.1, -76.9)
+        );
     }
 
     @Test
@@ -87,7 +95,7 @@ class PlotsDataSourceIntegrationTest {
         mockMvc.perform(get("/api/v1/plots/overview").param("userId", "10"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.registeredPlotCount").value(1))
-                .andExpect(jsonPath("$.monitoredAreaHectares").value(10.00))
+                .andExpect(jsonPath("$.monitoredAreaHectares").value(initialCalculatedArea.doubleValue()))
                 .andExpect(jsonPath("$.climateLinkedPlotCount").value(0))
                 .andExpect(jsonPath("$.onlineDeviceCount").value(0))
                 .andExpect(jsonPath("$.plots[0].id").value(plotId))
@@ -144,7 +152,7 @@ class PlotsDataSourceIntegrationTest {
                         .param("includeCurrentImagery", "true"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].id").value(plotId))
-                .andExpect(jsonPath("$[0].areaSize").value(10.00))
+                .andExpect(jsonPath("$[0].areaSize").value(initialCalculatedArea.doubleValue()))
                 .andExpect(jsonPath("$[0].polygonCoordinates[0][0]").value(-77.0))
                 .andExpect(jsonPath("$[0].polygonCoordinates[0][1]").value(-12.0))
                 .andExpect(jsonPath("$[0].currentImagery").isEmpty());
@@ -154,7 +162,12 @@ class PlotsDataSourceIntegrationTest {
                         .content("""
                                 {
                                   "name": "Updated plot",
-                                  "areaSizeHectares": 12.50,
+                                  "polygonCoordinates": [
+                                    [-77.0, -12.0],
+                                    [-76.99, -12.0],
+                                    [-76.99, -12.01],
+                                    [-77.0, -12.0]
+                                  ],
                                   "location": "La Yarada, Tacna",
                                   "campaign": "2027 campaign",
                                   "notes": "Updated notes."
@@ -162,14 +175,27 @@ class PlotsDataSourceIntegrationTest {
                                 """))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.name").value("Updated plot"))
-                .andExpect(jsonPath("$.areaSizeHectares").value(12.50))
+                .andExpect(jsonPath("$.areaSizeHectares").value(
+                        areaOf(
+                                new GeoPoint(-12.0, -77.0),
+                                new GeoPoint(-12.0, -76.99),
+                                new GeoPoint(-12.01, -76.99)
+                        ).doubleValue()
+                ))
                 .andExpect(jsonPath("$.location").value("La Yarada, Tacna"))
                 .andExpect(jsonPath("$.campaign").value("2027 campaign"))
                 .andExpect(jsonPath("$.notes").value("Updated notes."));
 
         var updatedEntity = plotRepository.findById(plotId).orElseThrow();
         assertEquals("Updated plot", updatedEntity.getName());
-        assertEquals(new BigDecimal("12.50"), updatedEntity.getAreaSize());
+        assertEquals(
+                areaOf(
+                        new GeoPoint(-12.0, -77.0),
+                        new GeoPoint(-12.0, -76.99),
+                        new GeoPoint(-12.01, -76.99)
+                ),
+                updatedEntity.getAreaSize()
+        );
         assertEquals("La Yarada, Tacna", updatedEntity.getLocation());
         assertEquals("2027 campaign", updatedEntity.getCampaign());
         assertEquals("Updated notes.", updatedEntity.getNotes());
@@ -183,5 +209,10 @@ class PlotsDataSourceIntegrationTest {
         mockMvc.perform(get("/api/v1/plots/{plotId}", plotId))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.code").value("PLOT_NOT_FOUND"));
+    }
+
+    private BigDecimal areaOf(GeoPoint first, GeoPoint second, GeoPoint third) {
+        return new PolygonCoordinates(java.util.List.of(first, second, third, first))
+                .estimatedAreaHectares();
     }
 }

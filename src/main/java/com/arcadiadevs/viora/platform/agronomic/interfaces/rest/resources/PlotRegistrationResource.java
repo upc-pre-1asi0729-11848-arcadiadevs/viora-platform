@@ -10,8 +10,7 @@ import java.util.List;
  * @param userId Owner user identifier.
  * @param name Plot name.
  * @param polygonCoordinates Boundary coordinates in GeoJSON order.
- * @param areaSizeHectares Productive area submitted by the user.
- * @param estimatedAreaHectares Area calculated from the geographic boundary.
+ * @param areaSizeHectares Area calculated by the backend from the geographic boundary.
  * @param cropType Crop type.
  * @param variety Crop variety.
  * @param location Human-readable location.
@@ -28,7 +27,6 @@ public record PlotRegistrationResource(
         String name,
         List<List<Double>> polygonCoordinates,
         BigDecimal areaSizeHectares,
-        BigDecimal estimatedAreaHectares,
         String cropType,
         String variety,
         String location,

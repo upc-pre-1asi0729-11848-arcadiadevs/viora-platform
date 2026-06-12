@@ -22,7 +22,6 @@ public final class PlotRegistrationResourceAssembler {
                 plot.getName().getValue(),
                 toCoordinateResource(plot.getPolygonCoordinates().getPoints()),
                 plot.getAreaSize().getHectares(),
-                registration.estimatedAreaHectares(),
                 plot.getCropType(),
                 plot.getVariety(),
                 plot.getLocation(),

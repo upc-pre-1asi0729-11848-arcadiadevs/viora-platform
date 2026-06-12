@@ -74,7 +74,6 @@ class PlotsControllerTest {
         var plot = createPlot();
         var registration = new PlotRegistration(
                 plot,
-                new BigDecimal("12.34"),
                 IntegrationLinkStatus.ACTIVE,
                 IntegrationLinkStatus.INITIALIZING,
                 IntegrationLinkStatus.NOT_LINKED
@@ -94,7 +93,6 @@ class PlotsControllerTest {
                                     [-76.9, -12.1],
                                     [-77.0, -12.0]
                                   ],
-                                  "areaSizeHectares": 12.50,
                                   "cropType": "Coffee",
                                   "variety": "Typica",
                                   "location": "Tacna, Peru",
@@ -104,7 +102,8 @@ class PlotsControllerTest {
                                 """))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.id").value(1))
-                .andExpect(jsonPath("$.estimatedAreaHectares").value(12.34))
+                .andExpect(jsonPath("$.areaSizeHectares").value(12.50))
+                .andExpect(jsonPath("$.estimatedAreaHectares").doesNotExist())
                 .andExpect(jsonPath("$.location").value("Tacna, Peru"))
                 .andExpect(jsonPath("$.climateMonitoring").value("ACTIVE"))
                 .andExpect(jsonPath("$.satelliteNdvi").value("INITIALIZING"))
@@ -239,6 +238,10 @@ class PlotsControllerTest {
                                 Instant.parse("2026-06-01T00:00:00Z"), 0.62, null, null, null, null, null, null))
                 ),
                 45.0,
+                new com.arcadiadevs.viora.platform.agronomic.domain.model.valueobjects.ChillRequirement(
+                        new com.arcadiadevs.viora.platform.agronomic.domain.model.valueobjects.ChillPortions(40.0),
+                        com.arcadiadevs.viora.platform.agronomic.domain.model.valueobjects.ChillRequirementSource.SYSTEM_DEFAULT,
+                        com.arcadiadevs.viora.platform.agronomic.domain.model.valueobjects.ChillMetricModel.DYNAMIC),
                 GeneralHealthStatus.HEALTHY,
                 42.0,
                 null,

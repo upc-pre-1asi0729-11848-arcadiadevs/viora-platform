@@ -1,6 +1,5 @@
 package com.arcadiadevs.viora.platform.agronomic.domain.model.commands;
 
-import java.math.BigDecimal;
 import java.util.List;
 
 /**
@@ -14,7 +13,6 @@ import java.util.List;
  * @param plotId The identifier of the plot to update.
  * @param name The new plot name.
  * @param polygonCoordinates The new geographic polygon coordinates.
- * @param areaSizeHectares The new area size in hectares.
  * @param cropType The new crop type.
  * @param variety The new crop variety.
  * @param location The new plot location.
@@ -25,7 +23,6 @@ public record UpdatePlotCommand(
         Long plotId,
         String name,
         List<List<Double>> polygonCoordinates,
-        BigDecimal areaSizeHectares,
         String cropType,
         String variety,
         String location,
@@ -39,7 +36,6 @@ public record UpdatePlotCommand(
             Long plotId,
             String name,
             List<List<Double>> polygonCoordinates,
-            BigDecimal areaSizeHectares,
             String cropType,
             String variety
     ) {
@@ -47,7 +43,6 @@ public record UpdatePlotCommand(
                 plotId,
                 name,
                 polygonCoordinates,
-                areaSizeHectares,
                 cropType,
                 variety,
                 null,
@@ -66,7 +61,6 @@ public record UpdatePlotCommand(
 
         if (name == null
                 && polygonCoordinates == null
-                && areaSizeHectares == null
                 && cropType == null
                 && variety == null
                 && location == null
