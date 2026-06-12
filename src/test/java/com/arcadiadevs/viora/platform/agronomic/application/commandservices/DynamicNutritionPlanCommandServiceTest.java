@@ -6,6 +6,7 @@ import com.arcadiadevs.viora.platform.agronomic.application.internal.outboundser
 import com.arcadiadevs.viora.platform.agronomic.application.internal.outboundservices.WeatherDataService;
 import com.arcadiadevs.viora.platform.agronomic.domain.model.aggregates.DynamicNutritionPlan;
 import com.arcadiadevs.viora.platform.agronomic.domain.model.aggregates.Plot;
+import com.arcadiadevs.viora.platform.agronomic.domain.model.commands.CertifyNutritionApplicationCommand;
 import com.arcadiadevs.viora.platform.agronomic.domain.model.commands.RecommendDynamicNutritionCommand;
 import com.arcadiadevs.viora.platform.agronomic.domain.model.services.ClimateRiskEvaluator;
 import com.arcadiadevs.viora.platform.agronomic.domain.model.services.DynamicNutritionPlanGenerator;
@@ -31,6 +32,7 @@ import java.math.BigDecimal;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.time.LocalTime;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.List;
@@ -139,6 +141,118 @@ class DynamicNutritionPlanCommandServiceTest {
 
         assertTrue(result.isFailure());
         assertEquals("PLOT_OWNERSHIP_FORBIDDEN", result.failure().orElseThrow().code());
+    }
+
+    @Test
+    void certifiesActivePlanApplication() {
+        var fixture = new Fixture();
+        var plan = recommendedPlan(fixture);
+        var appliedInput = plan.getInputRecommendations().getFirst().getValue();
+
+        var result = fixture.service().handle(new CertifyNutritionApplicationCommand(
+                10L,
+                plan.getId().getValue(),
+                LocalDate.of(2026, 6, 11),
+                LocalTime.of(7, 30),
+                List.of(appliedInput),
+                "AS_RECOMMENDED",
+                "Santa Rosa field crew",
+                "Applied during stable morning conditions."
+        ));
+
+        assertTrue(result.isSuccess());
+        var certified = result.success().orElseThrow();
+        assertTrue(certified.isCertified());
+        assertEquals(appliedInput, certified.getApplication().appliedInputs().getFirst());
+        assertEquals("Santa Rosa field crew", certified.getApplication().fieldOperator());
+    }
+
+    @Test
+    void returnsForbiddenWhenCertifyingPlanOfAnotherUser() {
+        var fixture = new Fixture();
+        var plan = recommendedPlan(fixture);
+
+        var result = fixture.service().handle(new CertifyNutritionApplicationCommand(
+                99L,
+                plan.getId().getValue(),
+                LocalDate.of(2026, 6, 11),
+                LocalTime.of(7, 30),
+                List.of(plan.getInputRecommendations().getFirst().getValue()),
+                "AS_RECOMMENDED",
+                "crew",
+                null
+        ));
+
+        assertTrue(result.isFailure());
+        assertTrue(result.failure().orElseThrow().code().endsWith("_FORBIDDEN"));
+    }
+
+    @Test
+    void returnsNotFoundWhenCertifyingMissingPlan() {
+        var result = new Fixture().service().handle(new CertifyNutritionApplicationCommand(
+                10L,
+                999L,
+                LocalDate.of(2026, 6, 11),
+                LocalTime.of(7, 30),
+                List.of("Foliar nutrition support"),
+                "AS_RECOMMENDED",
+                "crew",
+                null
+        ));
+
+        assertTrue(result.isFailure());
+        assertTrue(result.failure().orElseThrow().code().endsWith("_NOT_FOUND"));
+    }
+
+    @Test
+    void returnsValidationErrorWhenAppliedInputIsNotPartOfThePlan() {
+        var fixture = new Fixture();
+        var plan = recommendedPlan(fixture);
+
+        var result = fixture.service().handle(new CertifyNutritionApplicationCommand(
+                10L,
+                plan.getId().getValue(),
+                LocalDate.of(2026, 6, 11),
+                LocalTime.of(7, 30),
+                List.of("Unknown input not in the plan"),
+                "AS_RECOMMENDED",
+                "crew",
+                null
+        ));
+
+        assertTrue(result.isFailure());
+        assertEquals("VALIDATION_ERROR", result.failure().orElseThrow().code());
+    }
+
+    @Test
+    void returnsBusinessRuleViolationWhenCertifyingTwice() {
+        var fixture = new Fixture();
+        var plan = recommendedPlan(fixture);
+        var command = new CertifyNutritionApplicationCommand(
+                10L,
+                plan.getId().getValue(),
+                LocalDate.of(2026, 6, 11),
+                LocalTime.of(7, 30),
+                List.of(plan.getInputRecommendations().getFirst().getValue()),
+                "AS_RECOMMENDED",
+                "crew",
+                null
+        );
+
+        fixture.service().handle(command);
+        var secondResult = fixture.service().handle(command);
+
+        assertTrue(secondResult.isFailure());
+        assertEquals("BUSINESS_RULE_VIOLATION", secondResult.failure().orElseThrow().code());
+    }
+
+    private DynamicNutritionPlan recommendedPlan(Fixture fixture) {
+        fixture.plotRepository.plot = createPlot(10L, 1L);
+        fixture.imageryService.imagery = imagery(0.20);
+        return fixture.service()
+                .handle(new RecommendDynamicNutritionCommand(10L, 1L))
+                .success()
+                .orElseThrow();
     }
 
     private static SatelliteImagery imagery(double ndvi) {

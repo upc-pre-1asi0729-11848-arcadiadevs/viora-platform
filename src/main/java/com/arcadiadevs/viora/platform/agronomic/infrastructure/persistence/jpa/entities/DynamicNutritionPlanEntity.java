@@ -15,6 +15,7 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 import java.time.LocalDate;
+import java.time.LocalTime;
 import java.util.List;
 
 /**
@@ -70,4 +71,23 @@ public class DynamicNutritionPlanEntity extends AuditableAbstractPersistenceEnti
 
     @Column(name = "generated_date", nullable = false)
     private LocalDate generatedDate;
+
+    // Certification (in-field execution); null until the plan is certified.
+    @Column(name = "applied_date")
+    private LocalDate appliedDate;
+
+    @Column(name = "applied_time")
+    private LocalTime appliedTime;
+
+    @Column(name = "applied_inputs", length = 2000)
+    private String appliedInputs;
+
+    @Column(name = "dose_confirmation")
+    private String doseConfirmation;
+
+    @Column(name = "field_operator")
+    private String fieldOperator;
+
+    @Column(name = "field_notes", length = 1000)
+    private String fieldNotes;
 }

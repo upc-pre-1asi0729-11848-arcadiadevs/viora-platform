@@ -1,7 +1,10 @@
 package com.arcadiadevs.viora.platform.agronomic.domain.model.aggregates;
 
+import com.arcadiadevs.viora.platform.agronomic.domain.exceptions.DynamicNutritionPlanUnavailableException;
 import com.arcadiadevs.viora.platform.agronomic.domain.model.events.DynamicNutritionRecommendedEvent;
+import com.arcadiadevs.viora.platform.agronomic.domain.model.events.NutritionApplicationCertifiedEvent;
 import com.arcadiadevs.viora.platform.agronomic.domain.model.valueobjects.DynamicNutritionPlanId;
+import com.arcadiadevs.viora.platform.agronomic.domain.model.valueobjects.NutritionApplication;
 import com.arcadiadevs.viora.platform.agronomic.domain.model.valueobjects.NutritionApplicationWindow;
 import com.arcadiadevs.viora.platform.agronomic.domain.model.valueobjects.NutritionInputRecommendation;
 import com.arcadiadevs.viora.platform.agronomic.domain.model.valueobjects.NutritionInputStatus;
@@ -43,6 +46,9 @@ public class DynamicNutritionPlan extends AbstractDomainAggregateRoot<DynamicNut
     private PlanRationale rationale;
 
     private LocalDate generatedDate;
+
+    /** Executed application; present once the plan has been certified in field. */
+    private NutritionApplication application;
 
     /**
      * Default constructor.
@@ -156,12 +162,80 @@ public class DynamicNutritionPlan extends AbstractDomainAggregateRoot<DynamicNut
     }
 
     /**
+     * Certifies the in-field execution of this plan.
+     *
+     * <p>
+     * Certification is a sub-state of an active plan: it records the executed
+     * application without ending the plan's lifecycle, so the plan remains the
+     * plot's current plan and can still be superseded by a newer recommendation.
+     * </p>
+     *
+     * @param application The executed application to record.
+     */
+    public void certifyApplication(NutritionApplication application) {
+        if (application == null) {
+            throw new IllegalArgumentException("Nutrition application is required.");
+        }
+        if (this.status != NutritionPlanStatus.ACTIVE) {
+            throw new DynamicNutritionPlanUnavailableException(
+                    "Only an active dynamic nutrition plan can be certified.");
+        }
+        if (this.application != null) {
+            throw new DynamicNutritionPlanUnavailableException(
+                    "This dynamic nutrition plan has already been certified.");
+        }
+
+        var planInputs = inputRecommendations.stream()
+                .map(NutritionInputRecommendation::getValue)
+                .toList();
+        var unknownInput = application.appliedInputs().stream()
+                .filter(applied -> !planInputs.contains(applied))
+                .findFirst();
+        if (unknownInput.isPresent()) {
+            throw new IllegalArgumentException(
+                    "Applied input '%s' is not part of this plan.".formatted(unknownInput.get()));
+        }
+
+        this.application = application;
+
+        registerDomainEvent(new NutritionApplicationCertifiedEvent(
+                this,
+                plotId.getValue(),
+                userId.getValue(),
+                application.applicationDate()
+        ));
+    }
+
+    /**
      * Indicates whether the plan is currently active.
      *
      * @return True when the plan status is ACTIVE.
      */
     public boolean isActive() {
         return this.status == NutritionPlanStatus.ACTIVE;
+    }
+
+    /**
+     * Indicates whether the plan's application has been certified in field.
+     *
+     * @return True when an executed application has been recorded.
+     */
+    public boolean isCertified() {
+        return this.application != null;
+    }
+
+    /**
+     * Restores the executed application during persistence reconstruction.
+     *
+     * @param application The persisted application.
+     * @return This plan.
+     */
+    public DynamicNutritionPlan restoreApplication(NutritionApplication application) {
+        if (application == null) {
+            throw new IllegalArgumentException("Nutrition application is required.");
+        }
+        this.application = application;
+        return this;
     }
 
     private void validateRequiredFields(
