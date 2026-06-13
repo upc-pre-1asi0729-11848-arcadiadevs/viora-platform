@@ -82,6 +82,25 @@ public class AgronomicStatisticIngestionService {
         return ingest(plotRepository.findAll(), LocalDate.now());
     }
 
+    /**
+     * Ingests today's snapshot for a single plot. Used to seed monitoring data
+     * right after a plot is registered, so the dashboard summary can populate as
+     * soon as real NDVI is available instead of waiting for the scheduled job.
+     *
+     * <p>Best-effort and idempotent: it skips silently when the plot is inactive
+     * or when no real NDVI is available yet, never fabricating vegetation data.</p>
+     *
+     * @param plot the plot to ingest a snapshot for.
+     * @return true if a snapshot was persisted, false when skipped.
+     */
+    @Transactional
+    public boolean ingestForPlot(Plot plot) {
+        if (plot == null || plot.getId() == null || !plot.isActive()) {
+            return false;
+        }
+        return ingestPlot(plot, LocalDate.now());
+    }
+
     private AgronomicStatisticsIngestionReport ingest(List<Plot> plots, LocalDate today) {
         var report = AgronomicStatisticsIngestionReport.empty();
         for (var plot : plots) {

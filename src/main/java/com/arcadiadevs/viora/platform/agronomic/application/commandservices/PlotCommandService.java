@@ -25,8 +25,11 @@ import com.arcadiadevs.viora.platform.agronomic.domain.repositories.PlotReposito
 import com.arcadiadevs.viora.platform.shared.application.result.ApplicationError;
 import com.arcadiadevs.viora.platform.shared.application.result.Result;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.util.List;
 import java.util.Optional;
@@ -40,6 +43,7 @@ import java.util.Optional;
  * </p>
  */
 @Service
+@Slf4j
 @RequiredArgsConstructor
 public class PlotCommandService {
 
@@ -52,6 +56,11 @@ public class PlotCommandService {
      * Satellite and climate provider integration.
      */
     private final AgroMonitoringImageryService agroMonitoringImageryService;
+
+    /**
+     * Seeds the first agronomic statistic snapshot right after registration.
+     */
+    private final AgronomicStatisticIngestionService statisticIngestionService;
 
     /**
      * Resolves the effective chill requirement after a configuration change.
@@ -110,6 +119,8 @@ public class PlotCommandService {
                     ? IntegrationLinkStatus.INITIALIZING
                     : IntegrationLinkStatus.NOT_LINKED;
 
+            scheduleInitialIngestion(savedPlot);
+
             return Result.success(new PlotRegistration(
                     savedPlot,
                     climateMonitoring,
@@ -122,6 +133,39 @@ public class PlotCommandService {
                     exception.getMessage()
             ));
         }
+    }
+
+    /**
+     * Seeds the first agronomic statistic snapshot once the plot registration has
+     * committed, so the monitoring summary can populate immediately when real NDVI
+     * is already available instead of waiting for the daily scheduled job.
+     *
+     * <p>Runs after commit and in its own transaction, so it never affects the
+     * registration outcome; failures and "no NDVI yet" are logged and ignored.
+     * Skipped entirely when the satellite integration is disabled.</p>
+     *
+     * @param plot The freshly registered plot.
+     */
+    private void scheduleInitialIngestion(Plot plot) {
+        if (!agroMonitoringImageryService.isIntegrationEnabled()
+                || !TransactionSynchronizationManager.isSynchronizationActive()) {
+            return;
+        }
+
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCommit() {
+                try {
+                    statisticIngestionService.ingestForPlot(plot);
+                } catch (RuntimeException exception) {
+                    log.warn(
+                            "Initial agronomic statistic ingestion failed for plot {} ({}).",
+                            plot.getId().getValue(),
+                            exception.getClass().getSimpleName()
+                    );
+                }
+            }
+        });
     }
 
     /**
