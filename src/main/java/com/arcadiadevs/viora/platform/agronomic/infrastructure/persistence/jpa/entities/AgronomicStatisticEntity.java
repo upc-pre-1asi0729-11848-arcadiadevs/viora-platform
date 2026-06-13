@@ -65,4 +65,8 @@ public class AgronomicStatisticEntity extends AuditableAbstractPersistenceEntity
     /** Dynamic Model carry-over: last processed hour's temperature (°C). */
     @Column(name = "chill_state_last_temperature")
     private Double chillStateLastTemperature;
+
+    /** Dynamic Model carry-over: temperature before the last processed hour. */
+    @Column(name = "chill_state_prior_temperature")
+    private Double chillStatePriorTemperature;
 }

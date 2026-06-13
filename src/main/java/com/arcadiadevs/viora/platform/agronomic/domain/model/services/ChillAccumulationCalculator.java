@@ -70,10 +70,9 @@ public class ChillAccumulationCalculator {
         double chillPortions = 0.0;
         double intermediate = state.intermediateProduct();
         Double fromTemperature = state.previousHourTemperatureCelsius();
-        // Temperature of the hour preceding the current "from" hour; conditions the
-        // reset term (chillR's xi[l-2]). Null only at a window seam, where we fall
-        // back to the from hour's own xi — a negligible once-per-window lag.
-        Double priorTemperature = null;
+        // Temperature of the hour preceding the current "from" hour; conditions
+        // chillR's xi[l-2] reset term and must survive ingestion-window seams.
+        Double priorTemperature = state.priorHourTemperatureCelsius();
 
         for (var reading : history.readings()) {
             double temperature = reading.temperatureCelsius();
@@ -108,7 +107,7 @@ public class ChillAccumulationCalculator {
         return new ChillAccumulation(
                 chillHours,
                 chillPortions,
-                new ChillModelState(intermediate, fromTemperature)
+                new ChillModelState(intermediate, fromTemperature, priorTemperature)
         );
     }
 

@@ -35,6 +35,7 @@ public class AgronomicStatisticEntityFromAgronomicStatisticAssembler {
         if (chillModelState != null) {
             entity.setChillIntermediateProduct(chillModelState.intermediateProduct());
             entity.setChillStateLastTemperature(chillModelState.previousHourTemperatureCelsius());
+            entity.setChillStatePriorTemperature(chillModelState.priorHourTemperatureCelsius());
         }
 
         return entity;

@@ -58,6 +58,42 @@ class ChillAccumulationCalculatorTest {
         assertEquals(continuous.chillPortions(), split, 1e-9);
     }
 
+    @Test
+    void carriesBothTemperaturesSoVariableWindowsMatchContinuousAccumulation() {
+        var readings = new ArrayList<WeatherReading>();
+        for (int i = 0; i < 28; i++) {
+            readings.add(reading(5.0));
+        }
+        readings.addAll(List.of(
+                reading(1.0),
+                reading(12.0),
+                reading(16.0),
+                reading(8.0),
+                reading(0.0),
+                reading(5.0),
+                reading(5.0),
+                reading(5.0)
+        ));
+
+        var continuous = calculator.accumulate(new WeatherHistory(readings), ChillModelState.empty());
+        var first = calculator.accumulate(
+                new WeatherHistory(readings.subList(0, 30)),
+                ChillModelState.empty()
+        );
+        var second = calculator.accumulate(
+                new WeatherHistory(readings.subList(30, readings.size())),
+                first.newState()
+        );
+
+        assertEquals(
+                continuous.chillPortions(),
+                first.chillPortions() + second.chillPortions(),
+                1e-9
+        );
+        assertEquals(1.0, first.newState().priorHourTemperatureCelsius());
+        assertEquals(12.0, first.newState().previousHourTemperatureCelsius());
+    }
+
     private WeatherHistory constant(double temperatureCelsius, int hours) {
         var readings = new ArrayList<WeatherReading>(hours);
         for (int i = 0; i < hours; i++) {

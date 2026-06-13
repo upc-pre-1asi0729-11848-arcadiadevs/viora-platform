@@ -28,7 +28,8 @@ public class AgronomicStatisticFromAgronomicStatisticEntityAssembler {
 
         var chillModelState = new ChillModelState(
                 entity.getChillIntermediateProduct() == null ? 0.0 : entity.getChillIntermediateProduct(),
-                entity.getChillStateLastTemperature()
+                entity.getChillStateLastTemperature(),
+                entity.getChillStatePriorTemperature()
         );
 
         var agronomicStatistic = new AgronomicStatistic(
