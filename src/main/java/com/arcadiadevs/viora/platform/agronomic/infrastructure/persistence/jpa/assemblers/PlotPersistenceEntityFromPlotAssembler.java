@@ -53,7 +53,19 @@ public class PlotPersistenceEntityFromPlotAssembler {
         entity.setAreaSize(plot.getAreaSize().getHectares());
         entity.setCropType(plot.getCropType());
         entity.setVariety(plot.getVariety());
+        entity.setLocation(plot.getLocation());
+        entity.setCampaign(plot.getCampaign());
+        entity.setNotes(plot.getNotes());
         entity.setActive(plot.getActive());
+
+        var chillRequirement = plot.getChillRequirementOverride();
+        if (chillRequirement != null) {
+            entity.setChillRequirementPortions(chillRequirement.value());
+            entity.setChillRequirementSource(chillRequirement.source().name());
+        } else {
+            entity.setChillRequirementPortions(null);
+            entity.setChillRequirementSource(null);
+        }
 
         return entity;
     }

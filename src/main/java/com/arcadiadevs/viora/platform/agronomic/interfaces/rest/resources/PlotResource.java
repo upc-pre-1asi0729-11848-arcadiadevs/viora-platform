@@ -18,6 +18,9 @@ import java.util.List;
  * @param areaSizeHectares The plot area size in hectares.
  * @param cropType The crop type.
  * @param variety The crop variety.
+ * @param location The human-readable plot location.
+ * @param campaign The production campaign.
+ * @param notes Free-form grower notes.
  * @param state The plot activity state. Expected values: "enable" or "disable".
  */
 public record PlotResource(
@@ -28,6 +31,9 @@ public record PlotResource(
         BigDecimal areaSizeHectares,
         String cropType,
         String variety,
+        String location,
+        String campaign,
+        String notes,
         String state
 ) {
 }

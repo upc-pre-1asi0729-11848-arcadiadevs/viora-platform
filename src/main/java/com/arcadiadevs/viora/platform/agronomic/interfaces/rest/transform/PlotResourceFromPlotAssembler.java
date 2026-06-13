@@ -32,6 +32,9 @@ public final class PlotResourceFromPlotAssembler {
                 plot.getAreaSize().getHectares(),
                 plot.getCropType(),
                 plot.getVariety(),
+                plot.getLocation(),
+                plot.getCampaign(),
+                plot.getNotes(),
                 mapActivityState(plot.getActive())
         );
     }

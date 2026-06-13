@@ -79,8 +79,40 @@ public class PlotPersistenceEntity extends AuditableAbstractPersistenceEntity {
     private String variety;
 
     /**
+     * The human-readable location of the plot.
+     */
+    @Column(length = 120)
+    private String location;
+
+    /**
+     * The production campaign the plot is enrolled in.
+     */
+    @Column(length = 60)
+    private String campaign;
+
+    /**
+     * Free-form grower notes about the plot.
+     */
+    @Column(length = 500)
+    private String notes;
+
+    /**
      * Indicates whether the plot is active.
      */
     @Column(nullable = false)
     private Boolean active = true;
+
+    /**
+     * Declared winter-chill requirement override, in Dynamic Model chill portions.
+     * Null when the crop-derived system default applies.
+     */
+    @Column(name = "chill_requirement_portions")
+    private Double chillRequirementPortions;
+
+    /**
+     * Provenance of the declared chill requirement ({@code USER_DECLARED} or
+     * {@code AGRONOMIST_VALIDATED}). Null when no override is configured.
+     */
+    @Column(name = "chill_requirement_source", length = 40)
+    private String chillRequirementSource;
 }

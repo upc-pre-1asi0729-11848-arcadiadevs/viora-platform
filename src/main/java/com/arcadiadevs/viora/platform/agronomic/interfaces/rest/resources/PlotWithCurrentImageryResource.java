@@ -15,6 +15,9 @@ import java.util.List;
  * @param lastUpdate Last satellite capture instant.
  * @param cropType Crop type.
  * @param variety Crop variety.
+ * @param location Human-readable location.
+ * @param campaign Production campaign.
+ * @param notes Grower notes.
  * @param state Plot activity state.
  * @param healthStatus Current health classification when available.
  * @param phenologicalRisk Current phenological risk when available.
@@ -29,6 +32,9 @@ public record PlotWithCurrentImageryResource(
         Instant lastUpdate,
         String cropType,
         String variety,
+        String location,
+        String campaign,
+        String notes,
         String state,
         String healthStatus,
         String phenologicalRisk,

@@ -7,9 +7,13 @@ import com.arcadiadevs.viora.platform.agronomic.domain.model.aggregates.Plot;
 import com.arcadiadevs.viora.platform.agronomic.domain.model.queries.GetCurrentMonitoringSummaryQuery;
 import com.arcadiadevs.viora.platform.agronomic.domain.model.services.ClimateRiskEvaluator;
 import com.arcadiadevs.viora.platform.agronomic.domain.model.services.MitigationRecommendationGenerator;
+import com.arcadiadevs.viora.platform.agronomic.domain.model.services.ChillRequirementResolver;
+import com.arcadiadevs.viora.platform.agronomic.domain.model.services.PlotHealthEvaluator;
+import com.arcadiadevs.viora.platform.agronomic.domain.model.services.YieldForecastEstimator;
 import com.arcadiadevs.viora.platform.agronomic.domain.model.valueobjects.AccumulatedChillHours;
 import com.arcadiadevs.viora.platform.agronomic.domain.model.valueobjects.ClimateRiskLevel;
 import com.arcadiadevs.viora.platform.agronomic.domain.model.valueobjects.DateRange;
+import com.arcadiadevs.viora.platform.agronomic.domain.model.valueobjects.DynamicNutritionPolicy;
 import com.arcadiadevs.viora.platform.agronomic.domain.model.valueobjects.GeneralHealthStatus;
 import com.arcadiadevs.viora.platform.agronomic.domain.model.valueobjects.MeasurementDate;
 import com.arcadiadevs.viora.platform.agronomic.domain.model.valueobjects.MitigationRecommendation;
@@ -40,22 +44,34 @@ public class MonitoringSummaryQueryService {
 
     private final PlotRepository plotRepository;
     private final AgronomicStatisticRepository agronomicStatisticRepository;
-    private final WeatherDataService weatherDataService; // New dependency
-    private final ClimateRiskEvaluator climateRiskEvaluator; // New dependency
-    private final MitigationRecommendationGenerator mitigationRecommendationGenerator; // New dependency
+    private final WeatherDataService weatherDataService;
+    private final ClimateRiskEvaluator climateRiskEvaluator;
+    private final MitigationRecommendationGenerator mitigationRecommendationGenerator;
+    private final YieldForecastEstimator yieldForecastEstimator;
+    private final ChillRequirementResolver chillRequirementResolver;
+    private final PlotHealthEvaluator plotHealthEvaluator;
+    private final DynamicNutritionPolicy dynamicNutritionPolicy;
 
     public MonitoringSummaryQueryService(
             PlotRepository plotRepository,
             AgronomicStatisticRepository agronomicStatisticRepository,
             WeatherDataService weatherDataService,
             ClimateRiskEvaluator climateRiskEvaluator,
-            MitigationRecommendationGenerator mitigationRecommendationGenerator
+            MitigationRecommendationGenerator mitigationRecommendationGenerator,
+            YieldForecastEstimator yieldForecastEstimator,
+            ChillRequirementResolver chillRequirementResolver,
+            PlotHealthEvaluator plotHealthEvaluator,
+            DynamicNutritionPolicy dynamicNutritionPolicy
     ) {
         this.plotRepository = plotRepository;
         this.agronomicStatisticRepository = agronomicStatisticRepository;
         this.weatherDataService = weatherDataService;
         this.climateRiskEvaluator = climateRiskEvaluator;
         this.mitigationRecommendationGenerator = mitigationRecommendationGenerator;
+        this.yieldForecastEstimator = yieldForecastEstimator;
+        this.chillRequirementResolver = chillRequirementResolver;
+        this.plotHealthEvaluator = plotHealthEvaluator;
+        this.dynamicNutritionPolicy = dynamicNutritionPolicy;
     }
 
     /**
@@ -87,20 +103,46 @@ public class MonitoringSummaryQueryService {
             return Optional.empty(); // No statistics, no summary
         }
 
-        // 4. Consolidate NDVI and Accumulated Chill Hours
-        double consolidatedNdvi = allUserStatistics.stream()
+        // 4. Consolidate the current state across plots: take each plot's latest
+        // snapshot, then average across plots. Chill hours and chill portions are
+        // cumulative metrics, so averaging across the whole 30-day window would
+        // understate the current accumulation; the dashboard average must reflect
+        // the latest reading per plot, consistent with the per-plot summary.
+        List<AgronomicStatistic> latestPerPlot = allUserStatistics.stream()
+                .collect(Collectors.groupingBy(
+                        stat -> stat.getPlotId().getValue(),
+                        Collectors.collectingAndThen(
+                                Collectors.maxBy(Comparator.comparing(
+                                        stat -> stat.getMeasurementDate().getValue())),
+                                Optional::orElseThrow)))
+                .values()
+                .stream()
+                .toList();
+
+        double consolidatedNdvi = latestPerPlot.stream()
                 .mapToDouble(stat -> stat.getNdviValue().getValue())
                 .average()
                 .orElse(0.0); // Default if no NDVI values
 
-        double consolidatedChillHours = allUserStatistics.stream()
+        double consolidatedChillHours = latestPerPlot.stream()
                 .mapToDouble(stat -> stat.getChillHours().getValue())
                 .average()
                 .orElse(0.0); // Default if no chill hours
 
-        // 5. Determine GeneralHealthStatus and YieldForecast (placeholder logic)
-        GeneralHealthStatus generalHealthStatus = determineGeneralHealthStatus(consolidatedNdvi);
-        YieldForecast yieldForecast = determineYieldForecast(consolidatedNdvi, consolidatedChillHours);
+        // 5. Determine GeneralHealthStatus and estimate yield (transparent heuristic)
+        GeneralHealthStatus generalHealthStatus = plotHealthEvaluator.evaluate(consolidatedNdvi);
+        var latestStatisticByPlotId = latestPerPlot.stream()
+                .collect(Collectors.toMap(
+                        statistic -> statistic.getPlotId().getValue(),
+                        statistic -> statistic
+                ));
+        double totalYieldTonnes = userPlots.stream()
+                .mapToDouble(plot -> estimatePlotYield(
+                        plot,
+                        latestStatisticByPlotId.get(plot.getId().getValue())
+                ))
+                .sum();
+        YieldForecast yieldForecast = new YieldForecast(totalYieldTonnes);
 
         // 6. Use the latest measurement date from the statistics, or current date if none
         MeasurementDate latestMeasurementDate = allUserStatistics.stream()
@@ -119,8 +161,8 @@ public class MonitoringSummaryQueryService {
         // 8. Evaluate Climate Risk Level
         ClimateRiskLevel climateRiskLevel = climateRiskEvaluator.evaluateClimateRisk(
                 new NdviValue(consolidatedNdvi),
-                new AccumulatedChillHours(consolidatedChillHours),
-                weatherSnapshot
+                weatherSnapshot,
+                dynamicNutritionPolicy
         );
 
         // 9. Generate Mitigation Recommendations
@@ -143,21 +185,16 @@ public class MonitoringSummaryQueryService {
         return Optional.of(monitoringSummary);
     }
 
-    // Placeholder method for determining GeneralHealthStatus
-    private GeneralHealthStatus determineGeneralHealthStatus(double ndvi) {
-        if (ndvi < 0.3) {
-            return GeneralHealthStatus.CRITICAL;
-        } else if (ndvi < 0.6) {
-            return GeneralHealthStatus.WARNING;
-        } else {
-            return GeneralHealthStatus.HEALTHY;
+    private double estimatePlotYield(Plot plot, AgronomicStatistic statistic) {
+        if (statistic == null) {
+            return 0.0;
         }
-    }
 
-    // Placeholder method for determining YieldForecast
-    private YieldForecast determineYieldForecast(double ndvi, double chillHours) {
-        // Simple linear relationship for demonstration
-        double forecastValue = (ndvi * 100) + (chillHours / 10);
-        return new YieldForecast(Math.max(0.0, forecastValue)); // Ensure non-negative
+        return yieldForecastEstimator.estimate(
+                statistic.getNdviValue().getValue(),
+                statistic.getChillPortions().getValue(),
+                chillRequirementResolver.resolveFor(plot).value(),
+                plot.getAreaSize().getHectares().doubleValue()
+        ).getValue();
     }
 }

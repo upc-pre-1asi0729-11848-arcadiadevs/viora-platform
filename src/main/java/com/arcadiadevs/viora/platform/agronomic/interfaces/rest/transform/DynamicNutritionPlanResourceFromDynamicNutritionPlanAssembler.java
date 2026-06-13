@@ -1,8 +1,10 @@
 package com.arcadiadevs.viora.platform.agronomic.interfaces.rest.transform;
 
 import com.arcadiadevs.viora.platform.agronomic.domain.model.aggregates.DynamicNutritionPlan;
+import com.arcadiadevs.viora.platform.agronomic.domain.model.valueobjects.NutritionApplication;
 import com.arcadiadevs.viora.platform.agronomic.domain.model.valueobjects.NutritionInputRecommendation;
 import com.arcadiadevs.viora.platform.agronomic.interfaces.rest.resources.DynamicNutritionPlanResource;
+import com.arcadiadevs.viora.platform.agronomic.interfaces.rest.resources.NutritionApplicationResource;
 import com.arcadiadevs.viora.platform.agronomic.interfaces.rest.resources.NutritionApplicationWindowResource;
 import com.arcadiadevs.viora.platform.agronomic.interfaces.rest.resources.NutritionInputRecommendationResource;
 import com.arcadiadevs.viora.platform.agronomic.interfaces.rest.resources.PlanRationaleResource;
@@ -38,6 +40,8 @@ public final class DynamicNutritionPlanResourceFromDynamicNutritionPlanAssembler
                 dynamicNutritionPlan.getRationale().getTemperatureAnomaly()
         );
 
+        var application = dynamicNutritionPlan.getApplication();
+
         return new DynamicNutritionPlanResource(
                 dynamicNutritionPlan.getId() != null ? dynamicNutritionPlan.getId().getValue() : null,
                 dynamicNutritionPlan.getUserId().getValue(),
@@ -46,7 +50,23 @@ public final class DynamicNutritionPlanResourceFromDynamicNutritionPlanAssembler
                 inputRecommendationResources,
                 applicationWindowResource,
                 rationaleResource,
-                dynamicNutritionPlan.getGeneratedDate()
+                dynamicNutritionPlan.getGeneratedDate(),
+                application == null ? "PENDING" : "CERTIFIED",
+                toApplicationResource(application)
+        );
+    }
+
+    private static NutritionApplicationResource toApplicationResource(NutritionApplication application) {
+        if (application == null) {
+            return null;
+        }
+        return new NutritionApplicationResource(
+                application.applicationDate(),
+                application.applicationTime(),
+                application.appliedInputs(),
+                application.doseConfirmation().name(),
+                application.fieldOperator(),
+                application.fieldNotes()
         );
     }
 

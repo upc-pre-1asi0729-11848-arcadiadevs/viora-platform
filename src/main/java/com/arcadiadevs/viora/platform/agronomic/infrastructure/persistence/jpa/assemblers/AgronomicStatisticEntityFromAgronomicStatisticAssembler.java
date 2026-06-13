@@ -31,6 +31,13 @@ public class AgronomicStatisticEntityFromAgronomicStatisticAssembler {
         entity.setChillPortions(agronomicStatistic.getChillPortions().getValue());
         entity.setChillHours(agronomicStatistic.getChillHours().getValue());
 
+        var chillModelState = agronomicStatistic.getChillModelState();
+        if (chillModelState != null) {
+            entity.setChillIntermediateProduct(chillModelState.intermediateProduct());
+            entity.setChillStateLastTemperature(chillModelState.previousHourTemperatureCelsius());
+            entity.setChillStatePriorTemperature(chillModelState.priorHourTemperatureCelsius());
+        }
+
         return entity;
     }
 }

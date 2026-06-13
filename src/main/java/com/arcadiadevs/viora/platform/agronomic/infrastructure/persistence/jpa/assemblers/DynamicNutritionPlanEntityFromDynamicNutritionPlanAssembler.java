@@ -36,6 +36,16 @@ public class DynamicNutritionPlanEntityFromDynamicNutritionPlanAssembler {
         entity.setRationaleTemperatureAnomaly(dynamicNutritionPlan.getRationale().getTemperatureAnomaly());
         entity.setGeneratedDate(dynamicNutritionPlan.getGeneratedDate());
 
+        var application = dynamicNutritionPlan.getApplication();
+        if (application != null) {
+            entity.setAppliedDate(application.applicationDate());
+            entity.setAppliedTime(application.applicationTime());
+            entity.setAppliedInputs(String.join("\n", application.appliedInputs()));
+            entity.setDoseConfirmation(application.doseConfirmation().name());
+            entity.setFieldOperator(application.fieldOperator());
+            entity.setFieldNotes(application.fieldNotes());
+        }
+
         return entity;
     }
 }

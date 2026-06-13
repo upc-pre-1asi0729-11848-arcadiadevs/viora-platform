@@ -2,6 +2,7 @@ package com.arcadiadevs.viora.platform.agronomic.domain.model.aggregates;
 
 import com.arcadiadevs.viora.platform.agronomic.domain.model.valueobjects.AccumulatedChillHours;
 import com.arcadiadevs.viora.platform.agronomic.domain.model.valueobjects.AgronomicStatisticId;
+import com.arcadiadevs.viora.platform.agronomic.domain.model.valueobjects.ChillModelState;
 import com.arcadiadevs.viora.platform.agronomic.domain.model.valueobjects.ChillPortions;
 import com.arcadiadevs.viora.platform.agronomic.domain.model.valueobjects.MeasurementDate;
 import com.arcadiadevs.viora.platform.agronomic.domain.model.valueobjects.NdviValue;
@@ -36,13 +37,20 @@ public class AgronomicStatistic extends AbstractDomainAggregateRoot<AgronomicSta
     private AccumulatedChillHours chillHours;
 
     /**
+     * Carry-over state of the Dynamic Model chill accumulation, so the next
+     * snapshot continues the season's chill-portion accumulation seamlessly.
+     */
+    private ChillModelState chillModelState;
+
+    /**
      * Default constructor.
      */
     protected AgronomicStatistic() {
     }
 
     /**
-     * Creates an agronomic statistic.
+     * Creates an agronomic statistic with no chill carry-over state (the start of
+     * a plot's accumulation).
      *
      * @param userId The owner user identifier.
      * @param plotId The plot identifier.
@@ -59,6 +67,29 @@ public class AgronomicStatistic extends AbstractDomainAggregateRoot<AgronomicSta
             ChillPortions chillPortions,
             AccumulatedChillHours chillHours
     ) {
+        this(userId, plotId, measurementDate, ndviValue, chillPortions, chillHours, ChillModelState.empty());
+    }
+
+    /**
+     * Creates an agronomic statistic.
+     *
+     * @param userId The owner user identifier.
+     * @param plotId The plot identifier.
+     * @param measurementDate The measurement date.
+     * @param ndviValue The NDVI value.
+     * @param chillPortions The chill portions value.
+     * @param chillHours The accumulated chill hours value.
+     * @param chillModelState The Dynamic Model carry-over state.
+     */
+    public AgronomicStatistic(
+            UserId userId,
+            PlotId plotId,
+            MeasurementDate measurementDate,
+            NdviValue ndviValue,
+            ChillPortions chillPortions,
+            AccumulatedChillHours chillHours,
+            ChillModelState chillModelState
+    ) {
         validateRequiredFields(userId, plotId, measurementDate, ndviValue, chillPortions, chillHours);
 
         this.userId = userId;
@@ -67,6 +98,7 @@ public class AgronomicStatistic extends AbstractDomainAggregateRoot<AgronomicSta
         this.ndviValue = ndviValue;
         this.chillPortions = chillPortions;
         this.chillHours = chillHours;
+        this.chillModelState = chillModelState == null ? ChillModelState.empty() : chillModelState;
     }
 
     /**
