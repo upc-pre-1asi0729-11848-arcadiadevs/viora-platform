@@ -19,6 +19,7 @@ import com.arcadiadevs.viora.platform.agronomic.domain.model.valueobjects.AreaSi
 import com.arcadiadevs.viora.platform.agronomic.domain.model.valueobjects.ChillPortions;
 import com.arcadiadevs.viora.platform.agronomic.domain.model.valueobjects.ClimateRiskLevel;
 import com.arcadiadevs.viora.platform.agronomic.domain.model.valueobjects.DataSourceMetadata;
+import com.arcadiadevs.viora.platform.agronomic.domain.model.valueobjects.DynamicNutritionPolicy;
 import com.arcadiadevs.viora.platform.agronomic.domain.model.valueobjects.GeneralHealthStatus;
 import com.arcadiadevs.viora.platform.agronomic.domain.model.valueobjects.GeoPoint;
 import com.arcadiadevs.viora.platform.agronomic.domain.model.valueobjects.MeasurementDate;
@@ -83,7 +84,8 @@ class PlotMonitoringSummaryQueryServiceTest {
                 new ClimateRiskEvaluator(),
                 new MitigationRecommendationGenerator(),
                 new YieldForecastEstimator(new YieldEstimationPolicy(4.0, 0.20, 0.80, 0.60)),
-                new ChillRequirementResolver(new ChillRequirementPolicy(50.0, Map.of("olive", 40.0)))
+                new ChillRequirementResolver(new ChillRequirementPolicy(50.0, Map.of("olive", 40.0))),
+                riskPolicy()
         );
     }
 
@@ -109,7 +111,7 @@ class PlotMonitoringSummaryQueryServiceTest {
                 24.0
         )));
         when(statisticRepository.findAllByUserIdAndPlotIdAndMeasurementDateBetween(any(), any(), any()))
-                .thenReturn(List.of(statistic(0.50, 45.0, 320.0)));
+                .thenReturn(List.of(statistic(0.50, 45.0, 50.0)));
         when(weatherDataService.describeSource(any())).thenReturn(new DataSourceMetadata(
                 "AgroMonitoring", ProviderDataAvailability.AVAILABLE, null, 60));
         when(imageryService.describeNdviSource(any())).thenReturn(new DataSourceMetadata(
@@ -227,5 +229,9 @@ class PlotMonitoringSummaryQueryServiceTest {
                 "Olive",
                 "Sevillana"
         ).restoreIdentity(new PlotId(PLOT_ID));
+    }
+
+    private DynamicNutritionPolicy riskPolicy() {
+        return new DynamicNutritionPolicy(20.0, 0.30, 0.50, 3, 2, 2.5, 3.0, 1.2);
     }
 }

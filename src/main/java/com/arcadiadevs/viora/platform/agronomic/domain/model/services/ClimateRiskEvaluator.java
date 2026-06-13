@@ -1,11 +1,12 @@
 package com.arcadiadevs.viora.platform.agronomic.domain.model.services;
 
-import com.arcadiadevs.viora.platform.agronomic.domain.model.valueobjects.AccumulatedChillHours;
 import com.arcadiadevs.viora.platform.agronomic.domain.model.valueobjects.ClimateRiskLevel;
 import com.arcadiadevs.viora.platform.agronomic.domain.model.valueobjects.DynamicNutritionPolicy;
 import com.arcadiadevs.viora.platform.agronomic.domain.model.valueobjects.NdviValue;
 import com.arcadiadevs.viora.platform.agronomic.domain.model.valueobjects.WeatherSnapshot;
 import org.springframework.stereotype.Service;
+
+import java.util.Objects;
 
 /**
  * Domain service for evaluating and classifying climate risk levels.
@@ -20,21 +21,35 @@ import org.springframework.stereotype.Service;
 public class ClimateRiskEvaluator {
 
     /**
-     * Evaluates dynamic nutrition risk using current provider-backed signals.
+     * Evaluates current agronomic climate risk using provider-backed weather and
+     * the latest vegetation signal.
+     *
+     * <p>
+     * Weather remains authoritative for immediate extreme, high and moderate
+     * conditions. NDVI can raise the risk when vegetation vigor is below the
+     * configured thresholds. Seasonal chill accumulation is deliberately not
+     * used here: a low accumulated value is not a current climate hazard without
+     * also considering season progress and the plot-specific requirement.
+     * </p>
      *
      * @param ndviValue Latest satellite NDVI.
-     * @param weatherSnapshot Current weather.
-     * @param policy Configured agronomic thresholds.
-     * @return The classified risk level.
+     * @param weatherSnapshot Current provider-backed weather.
+     * @param policy Configured thresholds shared by monitoring and nutrition.
+     * @return The consolidated risk level.
      */
-    public ClimateRiskLevel evaluateDynamicNutritionRisk(
+    public ClimateRiskLevel evaluateClimateRisk(
             NdviValue ndviValue,
             WeatherSnapshot weatherSnapshot,
             DynamicNutritionPolicy policy
     ) {
-        if (weatherSnapshot.getClimateRiskLevel() == ClimateRiskLevel.EXTREME
-                || weatherSnapshot.getClimateRiskLevel() == ClimateRiskLevel.HIGH) {
-            return weatherSnapshot.getClimateRiskLevel();
+        Objects.requireNonNull(ndviValue, "NDVI value is required.");
+        Objects.requireNonNull(weatherSnapshot, "Weather snapshot is required.");
+        Objects.requireNonNull(policy, "Agronomic risk policy is required.");
+
+        var weatherRisk = weatherSnapshot.getClimateRiskLevel();
+        if (weatherRisk == ClimateRiskLevel.EXTREME
+                || weatherRisk == ClimateRiskLevel.HIGH) {
+            return weatherRisk;
         }
 
         if (ndviValue.getValue() < policy.highRiskNdviThreshold()) {
@@ -42,43 +57,12 @@ public class ClimateRiskEvaluator {
         }
 
         if (ndviValue.getValue() < policy.moderateRiskNdviThreshold()
-                || weatherSnapshot.getClimateRiskLevel() == ClimateRiskLevel.MODERATE) {
+                || weatherRisk == ClimateRiskLevel.MODERATE) {
             return ClimateRiskLevel.MODERATE;
         }
 
-        return ClimateRiskLevel.LOW;
-    }
-
-    /**
-     * Evaluates the climate risk level based on provided agronomic data.
-     *
-     * @param ndviValue The NDVI value for the area.
-     * @param accumulatedChillHours The accumulated chill hours.
-     * @param weatherSnapshot The current weather snapshot.
-     * @return The calculated ClimateRiskLevel.
-     */
-    public ClimateRiskLevel evaluateClimateRisk(
-            NdviValue ndviValue,
-            AccumulatedChillHours accumulatedChillHours,
-            WeatherSnapshot weatherSnapshot
-    ) {
-        // TODO: Implement the actual business logic for climate risk evaluation.
-        // This logic will depend on specific rules and thresholds for olive cultivation.
-        // For demonstration, a placeholder logic is provided.
-
-        if (weatherSnapshot.getClimateRiskLevel() == ClimateRiskLevel.EXTREME ||
-            weatherSnapshot.getClimateRiskLevel() == ClimateRiskLevel.HIGH) {
-            return weatherSnapshot.getClimateRiskLevel();
-        }
-
-        if (ndviValue.getValue() < 0.2 && accumulatedChillHours.getValue() < 100) {
-            return ClimateRiskLevel.HIGH;
-        }
-
-        if (ndviValue.getValue() < 0.4 || accumulatedChillHours.getValue() < 200) {
-            return ClimateRiskLevel.MODERATE;
-        }
-
-        return ClimateRiskLevel.LOW;
+        return weatherRisk == ClimateRiskLevel.UNKNOWN
+                ? ClimateRiskLevel.UNKNOWN
+                : ClimateRiskLevel.LOW;
     }
 }

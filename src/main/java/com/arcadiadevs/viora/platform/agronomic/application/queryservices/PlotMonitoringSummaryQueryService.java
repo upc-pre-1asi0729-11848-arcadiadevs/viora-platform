@@ -12,10 +12,10 @@ import com.arcadiadevs.viora.platform.agronomic.domain.model.services.NdviTrendA
 import com.arcadiadevs.viora.platform.agronomic.domain.model.services.PlotHealthEvaluator;
 import com.arcadiadevs.viora.platform.agronomic.domain.model.services.ChillRequirementResolver;
 import com.arcadiadevs.viora.platform.agronomic.domain.model.services.YieldForecastEstimator;
-import com.arcadiadevs.viora.platform.agronomic.domain.model.valueobjects.AccumulatedChillHours;
 import com.arcadiadevs.viora.platform.agronomic.domain.model.valueobjects.ChillRequirement;
 import com.arcadiadevs.viora.platform.agronomic.domain.model.valueobjects.ClimateRiskLevel;
 import com.arcadiadevs.viora.platform.agronomic.domain.model.valueobjects.DateRange;
+import com.arcadiadevs.viora.platform.agronomic.domain.model.valueobjects.DynamicNutritionPolicy;
 import com.arcadiadevs.viora.platform.agronomic.domain.model.valueobjects.MitigationRecommendation;
 import com.arcadiadevs.viora.platform.agronomic.domain.model.valueobjects.NdviTrend;
 import com.arcadiadevs.viora.platform.agronomic.domain.model.valueobjects.NdviValue;
@@ -68,6 +68,7 @@ public class PlotMonitoringSummaryQueryService {
     private final MitigationRecommendationGenerator mitigationRecommendationGenerator;
     private final YieldForecastEstimator yieldForecastEstimator;
     private final ChillRequirementResolver chillRequirementResolver;
+    private final DynamicNutritionPolicy dynamicNutritionPolicy;
 
     /**
      * Handles the per-plot monitoring summary query.
@@ -110,7 +111,7 @@ public class PlotMonitoringSummaryQueryService {
         var healthStatus = plotHealthEvaluator.evaluate(currentNdvi);
         var chillRequirement = chillRequirementResolver.resolveFor(plot);
         var yieldForecastTonnes = estimateYield(plot, currentNdvi, chillPortions, chillRequirement);
-        var climateRiskLevel = resolveClimateRisk(weather, currentNdvi, latestStatistic);
+        var climateRiskLevel = resolveClimateRisk(weather, currentNdvi);
         var recommendations = climateRiskLevel == null
                 ? List.<MitigationRecommendation>of()
                 : mitigationRecommendationGenerator.generateRecommendations(climateRiskLevel);
@@ -171,25 +172,20 @@ public class PlotMonitoringSummaryQueryService {
                 .orElse(null);
     }
 
-    /* Full risk needs NDVI + chill + weather; otherwise fall back to the weather-implied risk. */
+    /* Consolidated risk needs NDVI and weather; otherwise fall back to weather alone. */
     private ClimateRiskLevel resolveClimateRisk(
             Optional<WeatherSnapshot> weather,
-            Double currentNdvi,
-            Optional<AgronomicStatistic> latestStatistic
+            Double currentNdvi
     ) {
         if (weather.isEmpty()) {
             return null;
         }
 
-        var chillHours = latestStatistic
-                .map(statistic -> statistic.getChillHours().getValue())
-                .orElse(null);
-
-        if (currentNdvi != null && chillHours != null) {
+        if (currentNdvi != null) {
             return climateRiskEvaluator.evaluateClimateRisk(
                     new NdviValue(currentNdvi),
-                    new AccumulatedChillHours(chillHours),
-                    weather.get()
+                    weather.get(),
+                    dynamicNutritionPolicy
             );
         }
 

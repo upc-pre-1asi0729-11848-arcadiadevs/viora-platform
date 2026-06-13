@@ -78,7 +78,7 @@ public class DynamicNutritionPlanAssemblerService {
                                 .formatted(plotId.getValue())));
 
         var ndviValue = new NdviValue(imagery.ndviMean());
-        var climateRiskLevel = climateRiskEvaluator.evaluateDynamicNutritionRisk(
+        var climateRiskLevel = climateRiskEvaluator.evaluateClimateRisk(
                 ndviValue,
                 weatherSnapshot,
                 dynamicNutritionPolicy
