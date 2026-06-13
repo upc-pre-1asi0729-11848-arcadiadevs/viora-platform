@@ -49,7 +49,6 @@ class AgronomicEndpointsDataSourceIntegrationTest {
                                     [-76.9, -12.1],
                                     [-77.0, -12.0]
                                   ],
-                                  "areaSizeHectares": 8.50,
                                   "cropType": "Olive",
                                   "variety": "Sevillana"
                                 }

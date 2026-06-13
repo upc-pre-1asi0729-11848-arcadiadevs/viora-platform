@@ -15,7 +15,9 @@ public enum TimeRange {
     LAST_30_DAYS(30),
     LAST_90_DAYS(90),
     LAST_180_DAYS(180),
-    LAST_365_DAYS(365);
+    LAST_365_DAYS(365),
+    /** Current campaign, modeled as a rolling one-year window until season dates are tracked. */
+    CAMPAIGN(365);
 
     private final int days;
 
@@ -47,7 +49,7 @@ public enum TimeRange {
             );
         } catch (IllegalArgumentException exception) {
             throw new IllegalArgumentException(
-                    "Invalid time range. Allowed values are: LAST_7_DAYS, LAST_30_DAYS, LAST_90_DAYS, LAST_180_DAYS, LAST_365_DAYS."
+                    "Invalid time range. Allowed values are: LAST_7_DAYS, LAST_30_DAYS, LAST_90_DAYS, LAST_180_DAYS, LAST_365_DAYS, CAMPAIGN."
             );
         }
     }

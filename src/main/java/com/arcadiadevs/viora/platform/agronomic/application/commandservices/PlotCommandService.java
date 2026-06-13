@@ -1,16 +1,25 @@
 package com.arcadiadevs.viora.platform.agronomic.application.commandservices;
 
+import com.arcadiadevs.viora.platform.agronomic.application.internal.outboundservices.AgroMonitoringImageryService;
+import com.arcadiadevs.viora.platform.agronomic.application.readmodels.IntegrationLinkStatus;
+import com.arcadiadevs.viora.platform.agronomic.application.readmodels.PlotRegistration;
 import com.arcadiadevs.viora.platform.agronomic.domain.exceptions.InvalidPolygonCoordinatesException;
 import com.arcadiadevs.viora.platform.agronomic.domain.model.aggregates.Plot;
+import com.arcadiadevs.viora.platform.agronomic.domain.model.commands.ConfigureChillRequirementCommand;
 import com.arcadiadevs.viora.platform.agronomic.domain.model.commands.CreatePlotCommand;
 import com.arcadiadevs.viora.platform.agronomic.domain.model.commands.DeletePlotCommand;
+import com.arcadiadevs.viora.platform.agronomic.domain.model.commands.ResetChillRequirementCommand;
 import com.arcadiadevs.viora.platform.agronomic.domain.model.commands.UpdatePlotCommand;
+import com.arcadiadevs.viora.platform.agronomic.domain.model.services.ChillRequirementResolver;
 import com.arcadiadevs.viora.platform.agronomic.domain.model.services.PlotDeletionPolicy;
-import com.arcadiadevs.viora.platform.agronomic.domain.model.valueobjects.AreaSize;
+import com.arcadiadevs.viora.platform.agronomic.domain.model.valueobjects.ChillPortions;
+import com.arcadiadevs.viora.platform.agronomic.domain.model.valueobjects.ChillRequirement;
+import com.arcadiadevs.viora.platform.agronomic.domain.model.valueobjects.ChillRequirementSource;
 import com.arcadiadevs.viora.platform.agronomic.domain.model.valueobjects.GeoPoint;
 import com.arcadiadevs.viora.platform.agronomic.domain.model.valueobjects.PlotId;
 import com.arcadiadevs.viora.platform.agronomic.domain.model.valueobjects.PlotName;
 import com.arcadiadevs.viora.platform.agronomic.domain.model.valueobjects.PolygonCoordinates;
+import com.arcadiadevs.viora.platform.agronomic.domain.model.valueobjects.SatelliteImagery;
 import com.arcadiadevs.viora.platform.agronomic.domain.model.valueobjects.UserId;
 import com.arcadiadevs.viora.platform.agronomic.domain.repositories.PlotRepository;
 import com.arcadiadevs.viora.platform.shared.application.result.ApplicationError;
@@ -20,6 +29,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Optional;
 
 /**
  * Plot command service.
@@ -39,6 +49,16 @@ public class PlotCommandService {
     private final PlotRepository plotRepository;
 
     /**
+     * Satellite and climate provider integration.
+     */
+    private final AgroMonitoringImageryService agroMonitoringImageryService;
+
+    /**
+     * Resolves the effective chill requirement after a configuration change.
+     */
+    private final ChillRequirementResolver chillRequirementResolver;
+
+    /**
      * Plot deletion policy.
      */
     private final PlotDeletionPolicy plotDeletionPolicy = new PlotDeletionPolicy();
@@ -47,10 +67,11 @@ public class PlotCommandService {
      * Handles plot registration.
      *
      * @param command The command containing the new plot data.
-     * @return A successful result with the persisted plot, or an application error.
+     * @return A successful result with the persisted plot and initial integration
+     *         states, or an application error.
      */
     @Transactional
-    public Result<Plot, ApplicationError> handle(CreatePlotCommand command) {
+    public Result<PlotRegistration, ApplicationError> handle(CreatePlotCommand command) {
         try {
             var userId = new UserId(command.userId());
             var plotName = new PlotName(command.name());
@@ -62,16 +83,39 @@ public class PlotCommandService {
                 ));
             }
 
-            var plot = new Plot(
+            var polygonCoordinates = toPolygonCoordinates(command.polygonCoordinates());
+            var plot = Plot.register(
                     userId,
                     plotName,
-                    toPolygonCoordinates(command.polygonCoordinates()),
-                    new AreaSize(command.areaSizeHectares()),
+                    polygonCoordinates,
                     command.cropType(),
-                    command.variety()
+                    command.variety(),
+                    command.location(),
+                    command.campaign(),
+                    command.notes()
             );
 
-            return Result.success(plotRepository.save(plot));
+            var savedPlot = plotRepository.save(plot);
+            var imagery = agroMonitoringImageryService.isIntegrationEnabled()
+                    ? agroMonitoringImageryService.findCurrentImagery(savedPlot)
+                    : Optional.<SatelliteImagery>empty();
+
+            var linkedToProvider = agroMonitoringImageryService.isPlotLinked(savedPlot);
+            var climateMonitoring = linkedToProvider
+                    ? IntegrationLinkStatus.ACTIVE
+                    : IntegrationLinkStatus.NOT_LINKED;
+            var satelliteNdvi = imagery.isPresent()
+                    ? IntegrationLinkStatus.ACTIVE
+                    : linkedToProvider
+                    ? IntegrationLinkStatus.INITIALIZING
+                    : IntegrationLinkStatus.NOT_LINKED;
+
+            return Result.success(new PlotRegistration(
+                    savedPlot,
+                    climateMonitoring,
+                    satelliteNdvi,
+                    IntegrationLinkStatus.NOT_LINKED
+            ));
         } catch (IllegalArgumentException | InvalidPolygonCoordinatesException exception) {
             return Result.failure(ApplicationError.validationError(
                     "plot",
@@ -109,10 +153,6 @@ public class PlotCommandService {
                     ? new PlotName(command.name())
                     : plot.getName();
 
-            var updatedAreaSize = command.areaSizeHectares() != null
-                    ? new AreaSize(command.areaSizeHectares())
-                    : plot.getAreaSize();
-
             var updatedCropType = command.cropType() != null
                     ? command.cropType()
                     : plot.getCropType();
@@ -120,6 +160,18 @@ public class PlotCommandService {
             var updatedVariety = command.variety() != null
                     ? command.variety()
                     : plot.getVariety();
+
+            var updatedLocation = command.location() != null
+                    ? command.location()
+                    : plot.getLocation();
+
+            var updatedCampaign = command.campaign() != null
+                    ? command.campaign()
+                    : plot.getCampaign();
+
+            var updatedNotes = command.notes() != null
+                    ? command.notes()
+                    : plot.getNotes();
 
             var updatedPolygonCoordinates = command.polygonCoordinates() != null
                     ? toPolygonCoordinates(command.polygonCoordinates())
@@ -134,12 +186,16 @@ public class PlotCommandService {
 
             plot.updateInformation(
                     updatedName,
-                    updatedAreaSize,
                     updatedCropType,
-                    updatedVariety
+                    updatedVariety,
+                    updatedLocation,
+                    updatedCampaign,
+                    updatedNotes
             );
 
-            plot.updateBoundary(updatedPolygonCoordinates, updatedAreaSize);
+            if (command.polygonCoordinates() != null) {
+                plot.updateBoundary(updatedPolygonCoordinates);
+            }
 
             var updatedPlot = plotRepository.save(plot);
             return Result.success(updatedPlot);
@@ -150,6 +206,74 @@ public class PlotCommandService {
                     exception.getMessage()
             ));
         }
+    }
+
+    /**
+     * Handles the ConfigureChillRequirement command, storing a grower-declared
+     * chill requirement that overrides the crop-derived system default.
+     *
+     * @param command The command carrying the plot, owner and declared requirement.
+     * @return The effective chill requirement after the change, or an application error.
+     */
+    @Transactional
+    public Result<ChillRequirement, ApplicationError> handle(ConfigureChillRequirementCommand command) {
+        var plotId = new PlotId(command.plotId());
+        var plotOptional = plotRepository.findById(plotId);
+
+        if (plotOptional.isEmpty() || !plotOptional.get().isActive()) {
+            return Result.failure(ApplicationError.notFound("plot", command.plotId().toString()));
+        }
+
+        var plot = plotOptional.get();
+        if (!plot.belongsTo(new UserId(command.userId()))) {
+            return Result.failure(ApplicationError.forbidden(
+                    "plot-ownership",
+                    "User %d does not own plot %d.".formatted(command.userId(), command.plotId())
+            ));
+        }
+
+        try {
+            plot.configureChillRequirement(
+                    new ChillPortions(command.chillRequirementPortions()),
+                    ChillRequirementSource.USER_DECLARED
+            );
+            var savedPlot = plotRepository.save(plot);
+            return Result.success(chillRequirementResolver.resolveFor(savedPlot));
+        } catch (IllegalArgumentException exception) {
+            return Result.failure(ApplicationError.validationError(
+                    "chill-requirement",
+                    exception.getMessage()
+            ));
+        }
+    }
+
+    /**
+     * Handles the ResetChillRequirement command, clearing any declared override so
+     * the crop-derived system default applies again.
+     *
+     * @param command The command carrying the plot and owner.
+     * @return The effective (system-default) chill requirement, or an application error.
+     */
+    @Transactional
+    public Result<ChillRequirement, ApplicationError> handle(ResetChillRequirementCommand command) {
+        var plotId = new PlotId(command.plotId());
+        var plotOptional = plotRepository.findById(plotId);
+
+        if (plotOptional.isEmpty() || !plotOptional.get().isActive()) {
+            return Result.failure(ApplicationError.notFound("plot", command.plotId().toString()));
+        }
+
+        var plot = plotOptional.get();
+        if (!plot.belongsTo(new UserId(command.userId()))) {
+            return Result.failure(ApplicationError.forbidden(
+                    "plot-ownership",
+                    "User %d does not own plot %d.".formatted(command.userId(), command.plotId())
+            ));
+        }
+
+        plot.clearChillRequirement();
+        var savedPlot = plotRepository.save(plot);
+        return Result.success(chillRequirementResolver.resolveFor(savedPlot));
     }
 
     /**

@@ -8,6 +8,7 @@ import org.springframework.stereotype.Repository;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Optional;
 
 /**
  * Spring Data repository for agronomic statistic entity.
@@ -64,4 +65,14 @@ public interface SpringDataAgronomicStatisticRepository extends JpaRepository<Ag
             @Param("startDate") LocalDate startDate,
             @Param("endDate") LocalDate endDate
     );
+
+    /**
+     * Finds the snapshot for a plot on a specific date (idempotency check).
+     */
+    Optional<AgronomicStatisticEntity> findByPlotIdAndMeasurementDate(Long plotId, LocalDate measurementDate);
+
+    /**
+     * Finds the most recent snapshot for a plot (chill accumulation base).
+     */
+    Optional<AgronomicStatisticEntity> findTopByPlotIdOrderByMeasurementDateDesc(Long plotId);
 }

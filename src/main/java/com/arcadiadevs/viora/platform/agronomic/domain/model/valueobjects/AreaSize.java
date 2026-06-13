@@ -9,7 +9,7 @@ import java.math.BigDecimal;
  * AreaSize value object.
  *
  * <p>
- *     Represents the productive area size of a plot in hectares.
+ *     Represents the geodesic area enclosed by a plot boundary, in hectares.
  * </p>
  */
 @Getter
@@ -44,6 +44,19 @@ public class AreaSize {
         }
 
         this.hectares = hectares;
+    }
+
+    /**
+     * Calculates the area enclosed by a validated polygon.
+     *
+     * @param polygonCoordinates The plot boundary.
+     * @return The calculated area size.
+     */
+    public static AreaSize calculatedFrom(PolygonCoordinates polygonCoordinates) {
+        if (polygonCoordinates == null) {
+            throw new IllegalArgumentException("Polygon coordinates are required.");
+        }
+        return new AreaSize(polygonCoordinates.estimatedAreaHectares());
     }
 
     /**

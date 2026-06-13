@@ -1,6 +1,5 @@
 package com.arcadiadevs.viora.platform.agronomic.domain.model.commands;
 
-import java.math.BigDecimal;
 import java.util.List;
 
 /**
@@ -14,18 +13,44 @@ import java.util.List;
  * @param plotId The identifier of the plot to update.
  * @param name The new plot name.
  * @param polygonCoordinates The new geographic polygon coordinates.
- * @param areaSizeHectares The new area size in hectares.
  * @param cropType The new crop type.
  * @param variety The new crop variety.
+ * @param location The new plot location.
+ * @param campaign The new production campaign.
+ * @param notes The new grower notes.
  */
 public record UpdatePlotCommand(
         Long plotId,
         String name,
         List<List<Double>> polygonCoordinates,
-        BigDecimal areaSizeHectares,
         String cropType,
-        String variety
+        String variety,
+        String location,
+        String campaign,
+        String notes
 ) {
+    /**
+     * Backwards-compatible constructor for updates without descriptive metadata.
+     */
+    public UpdatePlotCommand(
+            Long plotId,
+            String name,
+            List<List<Double>> polygonCoordinates,
+            String cropType,
+            String variety
+    ) {
+        this(
+                plotId,
+                name,
+                polygonCoordinates,
+                cropType,
+                variety,
+                null,
+                null,
+                null
+        );
+    }
+
     /**
      * Compact constructor for UpdatePlotCommand.
      */
@@ -36,9 +61,11 @@ public record UpdatePlotCommand(
 
         if (name == null
                 && polygonCoordinates == null
-                && areaSizeHectares == null
                 && cropType == null
-                && variety == null) {
+                && variety == null
+                && location == null
+                && campaign == null
+                && notes == null) {
             throw new IllegalArgumentException("At least one plot field must be provided.");
         }
     }

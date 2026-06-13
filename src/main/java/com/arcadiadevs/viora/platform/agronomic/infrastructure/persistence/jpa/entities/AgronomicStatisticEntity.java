@@ -5,6 +5,7 @@ import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Index;
 import jakarta.persistence.Table;
+import jakarta.persistence.UniqueConstraint;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
@@ -25,6 +26,12 @@ import java.time.LocalDate;
                 @Index(
                         name = "idx_agronomic_statistics_user_plot_measurement_date",
                         columnList = "user_id, plot_id, measurement_date"
+                )
+        },
+        uniqueConstraints = {
+                @UniqueConstraint(
+                        name = "uq_agronomic_statistics_plot_measurement_date",
+                        columnNames = {"plot_id", "measurement_date"}
                 )
         }
 )
@@ -50,4 +57,16 @@ public class AgronomicStatisticEntity extends AuditableAbstractPersistenceEntity
 
     @Column(name = "chill_hours", nullable = false)
     private Double chillHours;
+
+    /** Dynamic Model carry-over: standing intermediate chilling product (x). */
+    @Column(name = "chill_intermediate_product")
+    private Double chillIntermediateProduct;
+
+    /** Dynamic Model carry-over: last processed hour's temperature (°C). */
+    @Column(name = "chill_state_last_temperature")
+    private Double chillStateLastTemperature;
+
+    /** Dynamic Model carry-over: temperature before the last processed hour. */
+    @Column(name = "chill_state_prior_temperature")
+    private Double chillStatePriorTemperature;
 }

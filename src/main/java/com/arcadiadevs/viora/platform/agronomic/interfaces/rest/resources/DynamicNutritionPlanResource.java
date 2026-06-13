@@ -14,6 +14,8 @@ public record DynamicNutritionPlanResource(
         List<NutritionInputRecommendationResource> inputRecommendations,
         NutritionApplicationWindowResource applicationWindow,
         PlanRationaleResource rationale,
-        LocalDate generatedDate
+        LocalDate generatedDate,
+        String certificationStatus,
+        NutritionApplicationResource application
 ) {
 }
