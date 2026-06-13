@@ -31,17 +31,23 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.Mockito.mock;
 
 class PlotCommandServiceTest {
 
     private static final ChillRequirementResolver CHILL_RESOLVER = new ChillRequirementResolver(
             new ChillRequirementPolicy(50.0, Map.of("olive", 40.0)));
 
+    // The initial-ingestion seeding is an after-commit side effect that never runs
+    // in these plain unit tests (no active transaction), so a no-op mock suffices.
+    private static final AgronomicStatisticIngestionService INGESTION_SERVICE =
+            mock(AgronomicStatisticIngestionService.class);
+
     @Test
     void updatesPlotAfterAllInputIsValidated() {
         var repository = new InMemoryPlotRepository();
         repository.plot = createPlot();
-        var service = new PlotCommandService(repository, new StubImageryService(false, false), CHILL_RESOLVER);
+        var service = new PlotCommandService(repository, new StubImageryService(false, false), INGESTION_SERVICE, CHILL_RESOLVER);
         var result = service.handle(new UpdatePlotCommand(
                 1L,
                 "North field",
@@ -66,7 +72,7 @@ class PlotCommandServiceTest {
     void invalidPolygonDoesNotMutatePlot() {
         var repository = new InMemoryPlotRepository();
         repository.plot = createPlot();
-        var service = new PlotCommandService(repository, new StubImageryService(false, false), CHILL_RESOLVER);
+        var service = new PlotCommandService(repository, new StubImageryService(false, false), INGESTION_SERVICE, CHILL_RESOLVER);
 
         var result = service.handle(new UpdatePlotCommand(
                 1L,
@@ -86,7 +92,7 @@ class PlotCommandServiceTest {
         var repository = new InMemoryPlotRepository();
         repository.plot = createPlot();
         repository.duplicateName = true;
-        var service = new PlotCommandService(repository, new StubImageryService(false, false), CHILL_RESOLVER);
+        var service = new PlotCommandService(repository, new StubImageryService(false, false), INGESTION_SERVICE, CHILL_RESOLVER);
 
         var result = service.handle(new UpdatePlotCommand(
                 1L,
@@ -106,7 +112,7 @@ class PlotCommandServiceTest {
         var repository = new InMemoryPlotRepository();
         repository.plot = createPlot();
         repository.relatedRecords = true;
-        var service = new PlotCommandService(repository, new StubImageryService(false, false), CHILL_RESOLVER);
+        var service = new PlotCommandService(repository, new StubImageryService(false, false), INGESTION_SERVICE, CHILL_RESOLVER);
 
         var result = service.handle(new DeletePlotCommand(1L));
 
@@ -122,6 +128,7 @@ class PlotCommandServiceTest {
         var service = new PlotCommandService(
                 repository,
                 new StubImageryService(true, true),
+                INGESTION_SERVICE,
                 CHILL_RESOLVER
         );
 
@@ -148,7 +155,7 @@ class PlotCommandServiceTest {
     void configureChillRequirementStoresUserDeclaredOverride() {
         var repository = new InMemoryPlotRepository();
         repository.plot = createPlot();
-        var service = new PlotCommandService(repository, new StubImageryService(false, false), CHILL_RESOLVER);
+        var service = new PlotCommandService(repository, new StubImageryService(false, false), INGESTION_SERVICE, CHILL_RESOLVER);
 
         var result = service.handle(new ConfigureChillRequirementCommand(1L, 10L, 35.0));
 
@@ -164,7 +171,7 @@ class PlotCommandServiceTest {
     void rejectsAbsurdChillRequirement() {
         var repository = new InMemoryPlotRepository();
         repository.plot = createPlot();
-        var service = new PlotCommandService(repository, new StubImageryService(false, false), CHILL_RESOLVER);
+        var service = new PlotCommandService(repository, new StubImageryService(false, false), INGESTION_SERVICE, CHILL_RESOLVER);
 
         var result = service.handle(new ConfigureChillRequirementCommand(1L, 10L, 5000.0));
 
@@ -177,7 +184,7 @@ class PlotCommandServiceTest {
     void resetChillRequirementRevertsToSystemDefault() {
         var repository = new InMemoryPlotRepository();
         repository.plot = createPlot();
-        var service = new PlotCommandService(repository, new StubImageryService(false, false), CHILL_RESOLVER);
+        var service = new PlotCommandService(repository, new StubImageryService(false, false), INGESTION_SERVICE, CHILL_RESOLVER);
         service.handle(new ConfigureChillRequirementCommand(1L, 10L, 35.0));
 
         var result = service.handle(new ResetChillRequirementCommand(1L, 10L));
@@ -194,7 +201,7 @@ class PlotCommandServiceTest {
     void configureChillRequirementForbiddenWhenUserDoesNotOwnPlot() {
         var repository = new InMemoryPlotRepository();
         repository.plot = createPlot();
-        var service = new PlotCommandService(repository, new StubImageryService(false, false), CHILL_RESOLVER);
+        var service = new PlotCommandService(repository, new StubImageryService(false, false), INGESTION_SERVICE, CHILL_RESOLVER);
 
         var result = service.handle(new ConfigureChillRequirementCommand(1L, 999L, 35.0));
 
