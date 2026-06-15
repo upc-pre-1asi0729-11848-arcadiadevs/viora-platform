@@ -28,6 +28,7 @@ import java.util.Objects;
  * @param currentNdvi Consolidated current NDVI (satellite first, latest persisted statistic as fallback), or null.
  * @param ndviTrend NDVI trend over the recent window, or null when no history exists.
  * @param chillPortions Latest persisted chill portions reading, or null when none exists.
+ * @param chillPortionsWeeklyDelta Chill portions accumulated over the last week (latest minus the reading ~7 days earlier), or null when there is not enough history.
  * @param chillRequirement The plot's resolved chill requirement (value, source and model).
  * @param healthStatus Consolidated health badge derived from the current NDVI.
  * @param phenologicalRisk Phenological risk derived from chill fulfilment, weather anomaly and NDVI trend.
@@ -44,6 +45,7 @@ public record PlotMonitoringSummary(
         Double currentNdvi,
         NdviTrend ndviTrend,
         Double chillPortions,
+        Double chillPortionsWeeklyDelta,
         ChillRequirement chillRequirement,
         GeneralHealthStatus healthStatus,
         ClimateRiskLevel phenologicalRisk,
