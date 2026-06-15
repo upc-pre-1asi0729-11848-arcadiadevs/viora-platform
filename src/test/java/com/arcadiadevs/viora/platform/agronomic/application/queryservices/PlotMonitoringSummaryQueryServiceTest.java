@@ -8,6 +8,7 @@ import com.arcadiadevs.viora.platform.agronomic.domain.model.queries.GetPlotMoni
 import com.arcadiadevs.viora.platform.agronomic.domain.model.services.ClimateRiskEvaluator;
 import com.arcadiadevs.viora.platform.agronomic.domain.model.services.MitigationRecommendationGenerator;
 import com.arcadiadevs.viora.platform.agronomic.domain.model.services.NdviTrendAnalyzer;
+import com.arcadiadevs.viora.platform.agronomic.domain.model.services.ChillSeasonEvaluator;
 import com.arcadiadevs.viora.platform.agronomic.domain.model.services.PhenologicalRiskEvaluator;
 import com.arcadiadevs.viora.platform.agronomic.domain.model.services.PlotHealthEvaluator;
 import com.arcadiadevs.viora.platform.agronomic.domain.model.services.ChillRequirementResolver;
@@ -83,6 +84,7 @@ class PlotMonitoringSummaryQueryServiceTest {
                 new NdviTrendAnalyzer(),
                 new PlotHealthEvaluator(),
                 new PhenologicalRiskEvaluator(),
+                new ChillSeasonEvaluator(),
                 new ClimateRiskEvaluator(),
                 new MitigationRecommendationGenerator(),
                 new YieldForecastEstimator(new YieldEstimationPolicy(4.0, 0.20, 0.80, 0.60)),

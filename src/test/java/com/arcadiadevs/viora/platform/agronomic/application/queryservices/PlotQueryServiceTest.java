@@ -10,6 +10,7 @@ import com.arcadiadevs.viora.platform.agronomic.domain.model.queries.GetPlotById
 import com.arcadiadevs.viora.platform.agronomic.domain.model.queries.GetPlotNdviTileQuery;
 import com.arcadiadevs.viora.platform.agronomic.domain.model.queries.GetPlotsWithCurrentImageryQuery;
 import com.arcadiadevs.viora.platform.agronomic.domain.model.services.ChillRequirementResolver;
+import com.arcadiadevs.viora.platform.agronomic.domain.model.services.ChillSeasonEvaluator;
 import com.arcadiadevs.viora.platform.agronomic.domain.model.services.PhenologicalRiskEvaluator;
 import com.arcadiadevs.viora.platform.agronomic.domain.model.services.PlotHealthEvaluator;
 import com.arcadiadevs.viora.platform.agronomic.domain.model.valueobjects.AccumulatedChillHours;
@@ -191,7 +192,8 @@ class PlotQueryServiceTest {
                 TEST_CLOCK,
                 new PlotHealthEvaluator(),
                 new PhenologicalRiskEvaluator(),
-                new ChillRequirementResolver(new ChillRequirementPolicy(50.0, Map.of("olive", 40.0)))
+                new ChillRequirementResolver(new ChillRequirementPolicy(50.0, Map.of("olive", 40.0))),
+                new ChillSeasonEvaluator()
         );
 
         var result = service.handle(new GetMyPlotsOverviewQuery(10L));
@@ -240,7 +242,8 @@ class PlotQueryServiceTest {
                 TEST_CLOCK,
                 new PlotHealthEvaluator(),
                 new PhenologicalRiskEvaluator(),
-                new ChillRequirementResolver(new ChillRequirementPolicy(50.0, Map.of("olive", 40.0)))
+                new ChillRequirementResolver(new ChillRequirementPolicy(50.0, Map.of("olive", 40.0))),
+                new ChillSeasonEvaluator()
         );
     }
 
