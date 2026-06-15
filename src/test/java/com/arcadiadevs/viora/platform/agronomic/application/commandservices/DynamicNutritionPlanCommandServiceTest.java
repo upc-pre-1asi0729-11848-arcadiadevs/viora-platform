@@ -4,14 +4,23 @@ import com.arcadiadevs.viora.platform.agronomic.application.internal.DynamicNutr
 import com.arcadiadevs.viora.platform.agronomic.application.internal.PlotOwnershipValidator;
 import com.arcadiadevs.viora.platform.agronomic.application.internal.outboundservices.AgroMonitoringImageryService;
 import com.arcadiadevs.viora.platform.agronomic.application.internal.outboundservices.WeatherDataService;
+import com.arcadiadevs.viora.platform.agronomic.domain.model.aggregates.AgronomicStatistic;
 import com.arcadiadevs.viora.platform.agronomic.domain.model.aggregates.DynamicNutritionPlan;
 import com.arcadiadevs.viora.platform.agronomic.domain.model.aggregates.Plot;
 import com.arcadiadevs.viora.platform.agronomic.domain.model.commands.CertifyNutritionApplicationCommand;
 import com.arcadiadevs.viora.platform.agronomic.domain.model.commands.RecommendDynamicNutritionCommand;
+import com.arcadiadevs.viora.platform.agronomic.domain.model.services.ChillRequirementResolver;
+import com.arcadiadevs.viora.platform.agronomic.domain.model.services.ChillSeasonEvaluator;
 import com.arcadiadevs.viora.platform.agronomic.domain.model.services.ClimateRiskEvaluator;
 import com.arcadiadevs.viora.platform.agronomic.domain.model.services.DynamicNutritionPlanGenerator;
+import com.arcadiadevs.viora.platform.agronomic.domain.model.services.PhenologicalRiskEvaluator;
+import com.arcadiadevs.viora.platform.agronomic.domain.model.valueobjects.AccumulatedChillHours;
 import com.arcadiadevs.viora.platform.agronomic.domain.model.valueobjects.AreaSize;
+import com.arcadiadevs.viora.platform.agronomic.domain.model.valueobjects.ChillPortions;
+import com.arcadiadevs.viora.platform.agronomic.domain.model.valueobjects.ChillRequirementPolicy;
 import com.arcadiadevs.viora.platform.agronomic.domain.model.valueobjects.ClimateRiskLevel;
+import com.arcadiadevs.viora.platform.agronomic.domain.model.valueobjects.DateRange;
+import com.arcadiadevs.viora.platform.agronomic.domain.model.valueobjects.NdviValue;
 import com.arcadiadevs.viora.platform.agronomic.domain.model.valueobjects.DynamicNutritionPlanId;
 import com.arcadiadevs.viora.platform.agronomic.domain.model.valueobjects.DynamicNutritionPolicy;
 import com.arcadiadevs.viora.platform.agronomic.domain.model.valueobjects.GeoPoint;
@@ -24,6 +33,7 @@ import com.arcadiadevs.viora.platform.agronomic.domain.model.valueobjects.Satell
 import com.arcadiadevs.viora.platform.agronomic.domain.model.valueobjects.UserId;
 import com.arcadiadevs.viora.platform.agronomic.domain.model.valueobjects.WeatherSnapshot;
 import com.arcadiadevs.viora.platform.agronomic.domain.model.valueobjects.WeatherStatus;
+import com.arcadiadevs.viora.platform.agronomic.domain.repositories.AgronomicStatisticRepository;
 import com.arcadiadevs.viora.platform.agronomic.domain.repositories.DynamicNutritionPlanRepository;
 import com.arcadiadevs.viora.platform.agronomic.domain.repositories.PlotRepository;
 import org.junit.jupiter.api.Test;
@@ -36,6 +46,7 @@ import java.time.LocalTime;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -63,6 +74,23 @@ class DynamicNutritionPlanCommandServiceTest {
         assertTrue(plan.getRationale().getSummary().contains("AgroMonitoring NDVI 0.20"));
         assertTrue(plan.getRationale().getSummary().contains("2026-06-09"));
         assertEquals(1, fixture.planRepository.saveCount);
+    }
+
+    @Test
+    void recommendsPlanFromPhenologicalChillDeficitInSeasonWhenClimateIsLow() {
+        var fixture = new Fixture();
+        // Southern-hemisphere plot inside its chill window (Jul–Nov).
+        fixture.clockNow = Instant.parse("2026-08-15T12:00:00Z");
+        fixture.plotRepository.plot = createPlot(10L, 1L);
+        fixture.imageryService.imagery = imagery(0.70); // healthy vigor → climate not high
+        fixture.statisticRepository.latest = chillStatistic(5.0); // 5 / 40 = severe deficit
+
+        var result = fixture.service().handle(new RecommendDynamicNutritionCommand(10L, 1L));
+
+        assertTrue(result.isSuccess());
+        assertEquals(
+                ClimateRiskLevel.HIGH,
+                result.success().orElseThrow().getRationale().getTriggeringRiskLevel());
     }
 
     @Test
@@ -291,23 +319,73 @@ class DynamicNutritionPlanCommandServiceTest {
         private final InMemoryPlotRepository plotRepository = new InMemoryPlotRepository();
         private final StubImageryService imageryService = new StubImageryService();
         private final StubWeatherDataService weatherDataService = new StubWeatherDataService();
+        private final StubStatisticRepository statisticRepository = new StubStatisticRepository();
         private final InMemoryDynamicNutritionPlanRepository planRepository =
                 new InMemoryDynamicNutritionPlanRepository();
+        private Instant clockNow = NOW;
 
         private DynamicNutritionPlanCommandService service() {
             var assemblerService = new DynamicNutritionPlanAssemblerService(
                     imageryService,
                     weatherDataService,
+                    statisticRepository,
                     new ClimateRiskEvaluator(),
+                    new PhenologicalRiskEvaluator(),
+                    new ChillSeasonEvaluator(),
+                    new ChillRequirementResolver(new ChillRequirementPolicy(50.0, Map.of("olive", 40.0))),
                     new DynamicNutritionPlanGenerator(),
                     policy(),
-                    Clock.fixed(NOW, ZoneOffset.UTC)
+                    Clock.fixed(clockNow, ZoneOffset.UTC)
             );
             return new DynamicNutritionPlanCommandService(
                     new PlotOwnershipValidator(plotRepository),
                     planRepository,
                     assemblerService
             );
+        }
+    }
+
+    private static AgronomicStatistic chillStatistic(double chillPortions) {
+        return new AgronomicStatistic(
+                new UserId(10L),
+                new PlotId(1L),
+                new MeasurementDate(LocalDate.of(2026, 8, 1)),
+                new NdviValue(0.70),
+                new ChillPortions(chillPortions),
+                new AccumulatedChillHours(0.0)
+        );
+    }
+
+    private static final class StubStatisticRepository implements AgronomicStatisticRepository {
+        private AgronomicStatistic latest;
+
+        @Override
+        public List<AgronomicStatistic> findAllByUserIdAndMeasurementDateBetween(
+                UserId userId, DateRange dateRange) {
+            return List.of();
+        }
+
+        @Override
+        public List<AgronomicStatistic> findAllByUserIdAndPlotIdAndMeasurementDateBetween(
+                UserId userId, PlotId plotId, DateRange dateRange) {
+            return latest == null ? List.of() : List.of(latest);
+        }
+
+        @Override
+        public Optional<AgronomicStatistic> findByPlotIdAndMeasurementDate(
+                PlotId plotId, MeasurementDate measurementDate) {
+            return Optional.empty();
+        }
+
+        @Override
+        public Optional<AgronomicStatistic> findLatestByPlotId(PlotId plotId) {
+            return Optional.ofNullable(latest);
+        }
+
+        @Override
+        public AgronomicStatistic save(AgronomicStatistic agronomicStatistic) {
+            latest = agronomicStatistic;
+            return agronomicStatistic;
         }
     }
 
