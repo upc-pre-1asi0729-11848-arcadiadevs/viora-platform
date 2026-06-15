@@ -43,6 +43,7 @@ public final class MyPlotsOverviewResourceAssembler {
                 overview.currentNdvi(),
                 overview.chillPortions(),
                 overview.healthStatus().name(),
+                overview.phenologicalRisk().name(),
                 overview.onlineDeviceCount(),
                 overview.activeAlertCount(),
                 overview.lastUpdatedAt(),

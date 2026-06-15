@@ -24,6 +24,7 @@ public record PlotMonitoringSummaryResource(
         String chillMetricModel,
         String chillUnit,
         String healthStatus,
+        String phenologicalRisk,
         Double yieldForecastTonnes,
         WeatherSnapshotResource weather,
         String climateRiskLevel,

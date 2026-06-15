@@ -8,6 +8,7 @@ import com.arcadiadevs.viora.platform.agronomic.domain.model.queries.GetPlotMoni
 import com.arcadiadevs.viora.platform.agronomic.domain.model.services.ClimateRiskEvaluator;
 import com.arcadiadevs.viora.platform.agronomic.domain.model.services.MitigationRecommendationGenerator;
 import com.arcadiadevs.viora.platform.agronomic.domain.model.services.NdviTrendAnalyzer;
+import com.arcadiadevs.viora.platform.agronomic.domain.model.services.PhenologicalRiskEvaluator;
 import com.arcadiadevs.viora.platform.agronomic.domain.model.services.PlotHealthEvaluator;
 import com.arcadiadevs.viora.platform.agronomic.domain.model.services.ChillRequirementResolver;
 import com.arcadiadevs.viora.platform.agronomic.domain.model.services.YieldForecastEstimator;
@@ -81,6 +82,7 @@ class PlotMonitoringSummaryQueryServiceTest {
                 weatherDataService,
                 new NdviTrendAnalyzer(),
                 new PlotHealthEvaluator(),
+                new PhenologicalRiskEvaluator(),
                 new ClimateRiskEvaluator(),
                 new MitigationRecommendationGenerator(),
                 new YieldForecastEstimator(new YieldEstimationPolicy(4.0, 0.20, 0.80, 0.60)),
@@ -126,6 +128,7 @@ class PlotMonitoringSummaryQueryServiceTest {
         assertEquals(40.0, summary.chillRequirement().value(), 1e-6);
         assertEquals(ChillRequirementSource.SYSTEM_DEFAULT, summary.chillRequirement().source());
         assertEquals(GeneralHealthStatus.HEALTHY, summary.healthStatus());
+        assertEquals(ClimateRiskLevel.MODERATE, summary.phenologicalRisk());
         // vigor 0.7 × chill modifier 1.0 × base 4.0 t/ha × 12.5 ha = 35.0 t.
         assertEquals(35.0, summary.yieldForecastTonnes(), 1e-6);
         assertEquals(ClimateRiskLevel.LOW, summary.climateRiskLevel());
@@ -156,6 +159,7 @@ class PlotMonitoringSummaryQueryServiceTest {
         assertNull(summary.ndviTrend());
         assertNull(summary.chillPortions());
         assertEquals(GeneralHealthStatus.UNKNOWN, summary.healthStatus());
+        assertEquals(ClimateRiskLevel.UNKNOWN, summary.phenologicalRisk());
         assertNull(summary.yieldForecastTonnes());
         assertNull(summary.weather());
         assertNull(summary.climateRiskLevel());
@@ -183,6 +187,7 @@ class PlotMonitoringSummaryQueryServiceTest {
 
         assertEquals(0.25, summary.currentNdvi());
         assertEquals(GeneralHealthStatus.CRITICAL, summary.healthStatus());
+        assertEquals(ClimateRiskLevel.HIGH, summary.phenologicalRisk());
     }
 
     @Test
