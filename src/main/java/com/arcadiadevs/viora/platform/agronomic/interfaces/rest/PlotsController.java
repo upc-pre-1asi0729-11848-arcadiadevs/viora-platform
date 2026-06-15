@@ -210,7 +210,7 @@ public class PlotsController {
     @Operation(
             summary = "Get plot monitoring summary",
             description = "Returns the real-time monitoring summary for a single plot: current NDVI, "
-                    + "NDVI trend, chill portions, consolidated health, weather and climate risk, "
+                    + "NDVI trend, chill portions, consolidated health, phenological risk, weather and climate risk, "
                     + "last update, mitigation recommendations and the availability and freshness of "
                     + "each external data source."
     )

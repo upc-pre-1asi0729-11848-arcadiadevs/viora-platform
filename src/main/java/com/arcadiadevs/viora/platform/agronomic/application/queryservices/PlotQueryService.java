@@ -12,8 +12,10 @@ import com.arcadiadevs.viora.platform.agronomic.domain.model.queries.GetPlotById
 import com.arcadiadevs.viora.platform.agronomic.domain.model.queries.GetPlotNdviTileQuery;
 import com.arcadiadevs.viora.platform.agronomic.domain.model.queries.GetPlotsByUserIdQuery;
 import com.arcadiadevs.viora.platform.agronomic.domain.model.queries.GetPlotsWithCurrentImageryQuery;
+import com.arcadiadevs.viora.platform.agronomic.domain.model.services.ChillRequirementResolver;
+import com.arcadiadevs.viora.platform.agronomic.domain.model.services.PhenologicalRiskEvaluator;
+import com.arcadiadevs.viora.platform.agronomic.domain.model.services.PlotHealthEvaluator;
 import com.arcadiadevs.viora.platform.agronomic.domain.model.valueobjects.DateRange;
-import com.arcadiadevs.viora.platform.agronomic.domain.model.valueobjects.GeneralHealthStatus;
 import com.arcadiadevs.viora.platform.agronomic.domain.model.valueobjects.IoTDeviceStatus;
 import com.arcadiadevs.viora.platform.agronomic.domain.model.valueobjects.MeasurementDate;
 import com.arcadiadevs.viora.platform.agronomic.domain.model.valueobjects.PlotId;
@@ -52,8 +54,6 @@ import java.util.Optional;
 public class PlotQueryService {
 
     private static final int OVERVIEW_STATISTICS_LOOKBACK_DAYS = 30;
-    private static final double CRITICAL_NDVI_THRESHOLD = 0.3;
-    private static final double WARNING_NDVI_THRESHOLD = 0.6;
 
     /**
      * Plot repository port.
@@ -79,6 +79,15 @@ public class PlotQueryService {
      * Application clock used to build deterministic monitoring date ranges.
      */
     private final Clock clock;
+
+    /** Crop-aware NDVI-to-health classifier (shared with the summaries). */
+    private final PlotHealthEvaluator plotHealthEvaluator;
+
+    /** Chill-fulfilment-based phenological risk classifier. */
+    private final PhenologicalRiskEvaluator phenologicalRiskEvaluator;
+
+    /** Resolves each plot's crop-specific winter-chill requirement. */
+    private final ChillRequirementResolver chillRequirementResolver;
 
     /**
      * Handles the GetPlotById query.
@@ -191,6 +200,13 @@ public class PlotQueryService {
                 .map(statistic -> statistic.getChillPortions().getValue())
                 .orElse(null);
 
+        var chillRequirement = chillRequirementResolver.resolveFor(plot).value();
+        var healthStatus = plotHealthEvaluator.evaluate(currentNdvi, plot.getCropType());
+        /* Overview lacks per-plot weather/NDVI history, so risk is chill-only here;
+         * the per-plot monitoring summary refines it with anomaly and trend. */
+        var phenologicalRisk = phenologicalRiskEvaluator.evaluate(
+                chillPortions, chillRequirement, null, false);
+
         var lastUpdatedAt = latestInstant(
                 imagery.map(SatelliteImagery::captureDate),
                 latestStatistic.map(AgronomicStatistic::getMeasurementDate)
@@ -218,26 +234,14 @@ public class PlotQueryService {
                 plot,
                 currentNdvi,
                 chillPortions,
-                toHealthStatus(currentNdvi),
+                healthStatus,
+                phenologicalRisk,
                 onlineDevices,
                 0,
                 lastUpdatedAt,
                 climateMonitoring,
                 satelliteNdvi
         );
-    }
-
-    private GeneralHealthStatus toHealthStatus(Double ndvi) {
-        if (ndvi == null) {
-            return GeneralHealthStatus.UNKNOWN;
-        }
-        if (ndvi < CRITICAL_NDVI_THRESHOLD) {
-            return GeneralHealthStatus.CRITICAL;
-        }
-        if (ndvi < WARNING_NDVI_THRESHOLD) {
-            return GeneralHealthStatus.WARNING;
-        }
-        return GeneralHealthStatus.HEALTHY;
     }
 
     private Instant latestInstant(Optional<Instant> first, Optional<Instant> second) {

@@ -9,9 +9,13 @@ import com.arcadiadevs.viora.platform.agronomic.domain.model.queries.GetMyPlotsO
 import com.arcadiadevs.viora.platform.agronomic.domain.model.queries.GetPlotByIdQuery;
 import com.arcadiadevs.viora.platform.agronomic.domain.model.queries.GetPlotNdviTileQuery;
 import com.arcadiadevs.viora.platform.agronomic.domain.model.queries.GetPlotsWithCurrentImageryQuery;
+import com.arcadiadevs.viora.platform.agronomic.domain.model.services.ChillRequirementResolver;
+import com.arcadiadevs.viora.platform.agronomic.domain.model.services.PhenologicalRiskEvaluator;
+import com.arcadiadevs.viora.platform.agronomic.domain.model.services.PlotHealthEvaluator;
 import com.arcadiadevs.viora.platform.agronomic.domain.model.valueobjects.AccumulatedChillHours;
 import com.arcadiadevs.viora.platform.agronomic.domain.model.valueobjects.AreaSize;
 import com.arcadiadevs.viora.platform.agronomic.domain.model.valueobjects.ChillPortions;
+import com.arcadiadevs.viora.platform.agronomic.domain.model.valueobjects.ChillRequirementPolicy;
 import com.arcadiadevs.viora.platform.agronomic.domain.model.valueobjects.DeviceName;
 import com.arcadiadevs.viora.platform.agronomic.domain.model.valueobjects.GeoPoint;
 import com.arcadiadevs.viora.platform.agronomic.domain.model.valueobjects.GeneralHealthStatus;
@@ -34,6 +38,7 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneOffset;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 import static org.mockito.ArgumentMatchers.any;
@@ -183,7 +188,10 @@ class PlotQueryServiceTest {
                 new StubImageryService(imagery, null, true),
                 statistics,
                 devices,
-                TEST_CLOCK
+                TEST_CLOCK,
+                new PlotHealthEvaluator(),
+                new PhenologicalRiskEvaluator(),
+                new ChillRequirementResolver(new ChillRequirementPolicy(50.0, Map.of("olive", 40.0)))
         );
 
         var result = service.handle(new GetMyPlotsOverviewQuery(10L));
@@ -199,6 +207,10 @@ class PlotQueryServiceTest {
         assertEquals(0.68, plotOverview.currentNdvi());
         assertEquals(72.0, plotOverview.chillPortions());
         assertEquals(GeneralHealthStatus.HEALTHY, plotOverview.healthStatus());
+        assertEquals(
+                com.arcadiadevs.viora.platform.agronomic.domain.model.valueobjects.ClimateRiskLevel.LOW,
+                plotOverview.phenologicalRisk()
+        );
         assertEquals(1, plotOverview.onlineDeviceCount());
         assertEquals(0, plotOverview.activeAlertCount());
         assertEquals(Instant.parse("2026-06-11T00:00:00Z"), plotOverview.lastUpdatedAt());
@@ -225,7 +237,10 @@ class PlotQueryServiceTest {
                 imageryService,
                 statistics,
                 devices,
-                TEST_CLOCK
+                TEST_CLOCK,
+                new PlotHealthEvaluator(),
+                new PhenologicalRiskEvaluator(),
+                new ChillRequirementResolver(new ChillRequirementPolicy(50.0, Map.of("olive", 40.0)))
         );
     }
 
