@@ -29,6 +29,7 @@ public final class PlotMonitoringSummaryResourceAssembler {
                 summary.currentNdvi(),
                 toNdviTrendResource(summary.ndviTrend()),
                 summary.chillPortions(),
+                summary.chillPortionsWeeklyDelta(),
                 summary.chillRequirement() == null ? null : summary.chillRequirement().value(),
                 summary.chillRequirement() == null ? null : summary.chillRequirement().source().name(),
                 summary.chillRequirement() == null ? null : summary.chillRequirement().model().name(),

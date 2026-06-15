@@ -60,6 +60,7 @@ import java.util.Optional;
 public class PlotMonitoringSummaryQueryService {
 
     private static final TimeRange MONITORING_WINDOW = TimeRange.LAST_90_DAYS;
+    private static final int CHILL_DELTA_WINDOW_DAYS = 7;
 
     private final PlotRepository plotRepository;
     private final AgronomicStatisticRepository agronomicStatisticRepository;
@@ -107,11 +108,15 @@ public class PlotMonitoringSummaryQueryService {
                 .map(ndviTrendAnalyzer::analyze)
                 .orElse(null);
 
-        var latestStatistic = latestStatistic(userId, plotId, window);
+        var statistics = agronomicStatisticRepository
+                .findAllByUserIdAndPlotIdAndMeasurementDateBetween(userId, plotId, window);
+        var latestStatistic = statistics.stream()
+                .max(Comparator.comparing(statistic -> statistic.getMeasurementDate().getValue()));
         var currentNdvi = consolidateNdvi(imagery, latestStatistic);
         var chillPortions = latestStatistic
                 .map(statistic -> statistic.getChillPortions().getValue())
                 .orElse(null);
+        var chillPortionsWeeklyDelta = chillPortionsWeeklyDelta(statistics, latestStatistic);
 
         var healthStatus = plotHealthEvaluator.evaluate(currentNdvi, plot.getCropType());
         var chillRequirement = chillRequirementResolver.resolveFor(plot);
@@ -138,6 +143,7 @@ public class PlotMonitoringSummaryQueryService {
                 currentNdvi,
                 ndviTrend,
                 chillPortions,
+                chillPortionsWeeklyDelta,
                 chillRequirement,
                 healthStatus,
                 phenologicalRisk,
@@ -169,11 +175,29 @@ public class PlotMonitoringSummaryQueryService {
         ).getValue();
     }
 
-    private Optional<AgronomicStatistic> latestStatistic(UserId userId, PlotId plotId, DateRange window) {
-        return agronomicStatisticRepository
-                .findAllByUserIdAndPlotIdAndMeasurementDateBetween(userId, plotId, window)
-                .stream()
-                .max(Comparator.comparing(statistic -> statistic.getMeasurementDate().getValue()));
+    /*
+     * Real week-over-week chill gain: latest accumulated portions minus the most
+     * recent reading on or before ~7 days earlier. Chill accumulation is monotonic,
+     * so this is never negative. Returns null when there is no baseline a week back
+     * (a plot younger than a week), so the client can hide the tag instead of
+     * showing a fabricated zero.
+     */
+    private Double chillPortionsWeeklyDelta(
+            List<AgronomicStatistic> statistics,
+            Optional<AgronomicStatistic> latestStatistic
+    ) {
+        if (latestStatistic.isEmpty()) {
+            return null;
+        }
+
+        var latest = latestStatistic.get();
+        var baselineCutoff = latest.getMeasurementDate().getValue().minusDays(CHILL_DELTA_WINDOW_DAYS);
+
+        return statistics.stream()
+                .filter(statistic -> !statistic.getMeasurementDate().getValue().isAfter(baselineCutoff))
+                .max(Comparator.comparing(statistic -> statistic.getMeasurementDate().getValue()))
+                .map(baseline -> latest.getChillPortions().getValue() - baseline.getChillPortions().getValue())
+                .orElse(null);
     }
 
     /* Prefers the real satellite NDVI; falls back to the latest persisted statistic. */

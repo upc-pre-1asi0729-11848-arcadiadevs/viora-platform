@@ -19,6 +19,7 @@ public record PlotMonitoringSummaryResource(
         Double currentNdvi,
         NdviTrendResource ndviTrend,
         Double chillPortions,
+        Double chillPortionsWeeklyDelta,
         Double chillRequirementPortions,
         String chillRequirementSource,
         String chillMetricModel,

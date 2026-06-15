@@ -127,6 +127,8 @@ class PlotMonitoringSummaryQueryServiceTest {
         assertEquals(0.62, summary.currentNdvi());
         assertEquals(NdviTrendDirection.RISING, summary.ndviTrend().direction());
         assertEquals(45.0, summary.chillPortions());
+        // A single reading has no baseline a week back, so the weekly delta is absent.
+        assertNull(summary.chillPortionsWeeklyDelta());
         assertEquals(40.0, summary.chillRequirement().value(), 1e-6);
         assertEquals(ChillRequirementSource.SYSTEM_DEFAULT, summary.chillRequirement().source());
         assertEquals(GeneralHealthStatus.HEALTHY, summary.healthStatus());
@@ -193,6 +195,32 @@ class PlotMonitoringSummaryQueryServiceTest {
     }
 
     @Test
+    void computesChillPortionsWeeklyDeltaFromTheReadingAroundAWeekEarlier() {
+        var plot = createPlot();
+        when(plotRepository.findById(any())).thenReturn(Optional.of(plot));
+        when(imageryService.findCurrentImagery(any())).thenReturn(Optional.empty());
+        when(imageryService.findNdviHistory(any(), any())).thenReturn(Optional.empty());
+        when(weatherDataService.getCurrentWeatherSnapshot(any())).thenReturn(Optional.empty());
+        // Monotonic accumulation: 66 CP a week back, 72 CP now → +6 CP this week.
+        // The intermediate 06-05 reading is after the cut-off and must be ignored.
+        when(statisticRepository.findAllByUserIdAndPlotIdAndMeasurementDateBetween(any(), any(), any()))
+                .thenReturn(List.of(
+                        statistic(LocalDate.of(2026, 6, 2), 0.50, 66.0, 50.0),
+                        statistic(LocalDate.of(2026, 6, 5), 0.51, 70.0, 52.0),
+                        statistic(LocalDate.of(2026, 6, 9), 0.52, 72.0, 54.0)
+                ));
+        when(weatherDataService.describeSource(any()))
+                .thenReturn(DataSourceMetadata.notConfigured("AgroMonitoring"));
+        when(imageryService.describeNdviSource(any()))
+                .thenReturn(DataSourceMetadata.notConfigured("AgroMonitoring"));
+
+        var summary = service.handle(new GetPlotMonitoringSummaryQuery(OWNER_ID, PLOT_ID)).success().orElseThrow();
+
+        assertEquals(72.0, summary.chillPortions());
+        assertEquals(6.0, summary.chillPortionsWeeklyDelta(), 1e-6);
+    }
+
+    @Test
     void returnsForbiddenWhenUserDoesNotOwnPlot() {
         when(plotRepository.findById(any())).thenReturn(Optional.of(createPlot()));
 
@@ -211,10 +239,14 @@ class PlotMonitoringSummaryQueryServiceTest {
     }
 
     private AgronomicStatistic statistic(double ndvi, double chillPortions, double chillHours) {
+        return statistic(LocalDate.of(2026, 6, 9), ndvi, chillPortions, chillHours);
+    }
+
+    private AgronomicStatistic statistic(LocalDate date, double ndvi, double chillPortions, double chillHours) {
         return new AgronomicStatistic(
                 new UserId(OWNER_ID),
                 new PlotId(PLOT_ID),
-                new MeasurementDate(LocalDate.of(2026, 6, 9)),
+                new MeasurementDate(date),
                 new NdviValue(ndvi),
                 new ChillPortions(chillPortions),
                 new AccumulatedChillHours(chillHours)
