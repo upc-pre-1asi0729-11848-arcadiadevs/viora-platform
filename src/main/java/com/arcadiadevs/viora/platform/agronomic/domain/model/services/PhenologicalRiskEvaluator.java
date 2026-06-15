@@ -39,17 +39,27 @@ public class PhenologicalRiskEvaluator {
     /**
      * Evaluates phenological risk for a plot.
      *
+     * <p>
+     * The chill-deficit component only contributes when {@code inChillRiskWindow}
+     * is true (late dormancy through flowering); outside that window a low chill
+     * reading is the normal off-season state and must not raise risk. Warm
+     * anomalies and a declining NDVI remain secondary signals year-round, capped
+     * at moderate.
+     * </p>
+     *
      * @param chillPortions Accumulated chill portions, or null when unavailable.
      * @param chillRequirement The crop's chill requirement in portions (> 0).
      * @param temperatureAnomalyCelsius Warm/cold anomaly vs reference, or null.
      * @param ndviFalling Whether the NDVI trend is declining.
+     * @param inChillRiskWindow Whether a chill deficit is phenologically relevant now.
      * @return The phenological risk level, {@code UNKNOWN} when chill is missing.
      */
     public ClimateRiskLevel evaluate(
             Double chillPortions,
             double chillRequirement,
             Double temperatureAnomalyCelsius,
-            boolean ndviFalling
+            boolean ndviFalling,
+            boolean inChillRiskWindow
     ) {
         if (chillPortions == null || chillRequirement <= 0.0) {
             return ClimateRiskLevel.UNKNOWN;
@@ -58,14 +68,18 @@ public class PhenologicalRiskEvaluator {
         double chillRatio = chillPortions / chillRequirement;
         double anomaly = temperatureAnomalyCelsius == null ? 0.0 : temperatureAnomalyCelsius;
 
-        if (chillRatio < SEVERE_CHILL_RATIO
-                || (anomaly >= WARM_ANOMALY_HIGH_CELSIUS && chillRatio < MODERATE_CHILL_RATIO)) {
-            return ClimateRiskLevel.HIGH;
+        if (inChillRiskWindow) {
+            if (chillRatio < SEVERE_CHILL_RATIO
+                    || (anomaly >= WARM_ANOMALY_HIGH_CELSIUS && chillRatio < MODERATE_CHILL_RATIO)) {
+                return ClimateRiskLevel.HIGH;
+            }
+
+            if (chillRatio < MODERATE_CHILL_RATIO) {
+                return ClimateRiskLevel.MODERATE;
+            }
         }
 
-        if (chillRatio < MODERATE_CHILL_RATIO
-                || anomaly >= WARM_ANOMALY_MODERATE_CELSIUS
-                || ndviFalling) {
+        if (anomaly >= WARM_ANOMALY_MODERATE_CELSIUS || ndviFalling) {
             return ClimateRiskLevel.MODERATE;
         }
 
