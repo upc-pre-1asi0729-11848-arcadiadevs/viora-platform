@@ -241,6 +241,7 @@ class PlotsControllerTest {
                                 Instant.parse("2026-06-01T00:00:00Z"), 0.62, null, null, null, null, null, null))
                 ),
                 45.0,
+                6.0,
                 new com.arcadiadevs.viora.platform.agronomic.domain.model.valueobjects.ChillRequirement(
                         new com.arcadiadevs.viora.platform.agronomic.domain.model.valueobjects.ChillPortions(40.0),
                         com.arcadiadevs.viora.platform.agronomic.domain.model.valueobjects.ChillRequirementSource.SYSTEM_DEFAULT,
@@ -270,6 +271,7 @@ class PlotsControllerTest {
                 .andExpect(jsonPath("$.plotId").value(1))
                 .andExpect(jsonPath("$.currentNdvi").value(0.62))
                 .andExpect(jsonPath("$.ndviTrend.direction").value("RISING"))
+                .andExpect(jsonPath("$.chillPortionsWeeklyDelta").value(6.0))
                 .andExpect(jsonPath("$.healthStatus").value("HEALTHY"))
                 .andExpect(jsonPath("$.phenologicalRisk").value("MODERATE"))
                 .andExpect(jsonPath("$.yieldForecastTonnes").value(42.0))

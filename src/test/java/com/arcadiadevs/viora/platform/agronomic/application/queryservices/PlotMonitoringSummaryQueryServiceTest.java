@@ -55,6 +55,7 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyDouble;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -67,6 +68,7 @@ class PlotMonitoringSummaryQueryServiceTest {
     private AgronomicStatisticRepository statisticRepository;
     private AgroMonitoringImageryService imageryService;
     private WeatherDataService weatherDataService;
+    private ChillSeasonEvaluator chillSeasonEvaluator;
     private PlotMonitoringSummaryQueryService service;
 
     @BeforeEach
@@ -75,6 +77,7 @@ class PlotMonitoringSummaryQueryServiceTest {
         statisticRepository = mock(AgronomicStatisticRepository.class);
         imageryService = mock(AgroMonitoringImageryService.class);
         weatherDataService = mock(WeatherDataService.class);
+        chillSeasonEvaluator = mock(ChillSeasonEvaluator.class);
 
         service = new PlotMonitoringSummaryQueryService(
                 plotRepository,
@@ -84,7 +87,7 @@ class PlotMonitoringSummaryQueryServiceTest {
                 new NdviTrendAnalyzer(),
                 new PlotHealthEvaluator(),
                 new PhenologicalRiskEvaluator(),
-                new ChillSeasonEvaluator(),
+                chillSeasonEvaluator,
                 new ClimateRiskEvaluator(),
                 new MitigationRecommendationGenerator(),
                 new YieldForecastEstimator(new YieldEstimationPolicy(4.0, 0.20, 0.80, 0.60)),
@@ -175,6 +178,7 @@ class PlotMonitoringSummaryQueryServiceTest {
     @Test
     void fallsBackToPersistedNdviWhenSatelliteHasNoMean() {
         var plot = createPlot();
+        when(chillSeasonEvaluator.isInChillRiskWindow(anyDouble(), any())).thenReturn(true);
         when(plotRepository.findById(any())).thenReturn(Optional.of(plot));
         when(imageryService.findCurrentImagery(any())).thenReturn(Optional.of(new SatelliteImagery(
                 "img-1", "https://tiles/{z}/{x}/{y}", Instant.parse("2026-06-10T00:00:00Z"), null, 4.0)));
