@@ -13,6 +13,7 @@ import com.arcadiadevs.viora.platform.agronomic.domain.model.queries.GetPlotNdvi
 import com.arcadiadevs.viora.platform.agronomic.domain.model.queries.GetPlotsByUserIdQuery;
 import com.arcadiadevs.viora.platform.agronomic.domain.model.queries.GetPlotsWithCurrentImageryQuery;
 import com.arcadiadevs.viora.platform.agronomic.domain.model.services.ChillRequirementResolver;
+import com.arcadiadevs.viora.platform.agronomic.domain.model.services.ChillSeasonEvaluator;
 import com.arcadiadevs.viora.platform.agronomic.domain.model.services.PhenologicalRiskEvaluator;
 import com.arcadiadevs.viora.platform.agronomic.domain.model.services.PlotHealthEvaluator;
 import com.arcadiadevs.viora.platform.agronomic.domain.model.valueobjects.DateRange;
@@ -88,6 +89,9 @@ public class PlotQueryService {
 
     /** Resolves each plot's crop-specific winter-chill requirement. */
     private final ChillRequirementResolver chillRequirementResolver;
+
+    /** Decides whether a chill deficit is phenologically relevant right now. */
+    private final ChillSeasonEvaluator chillSeasonEvaluator;
 
     /**
      * Handles the GetPlotById query.
@@ -202,10 +206,12 @@ public class PlotQueryService {
 
         var chillRequirement = chillRequirementResolver.resolveFor(plot).value();
         var healthStatus = plotHealthEvaluator.evaluate(currentNdvi, plot.getCropType());
+        var inChillRiskWindow = chillSeasonEvaluator.isInChillRiskWindow(
+                plot.getPolygonCoordinates().centroid().getLatitude(), endDate);
         /* Overview lacks per-plot weather/NDVI history, so risk is chill-only here;
          * the per-plot monitoring summary refines it with anomaly and trend. */
         var phenologicalRisk = phenologicalRiskEvaluator.evaluate(
-                chillPortions, chillRequirement, null, false);
+                chillPortions, chillRequirement, null, false, inChillRiskWindow);
 
         var lastUpdatedAt = latestInstant(
                 imagery.map(SatelliteImagery::captureDate),

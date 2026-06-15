@@ -6,6 +6,7 @@ import com.arcadiadevs.viora.platform.agronomic.application.readmodels.PlotMonit
 import com.arcadiadevs.viora.platform.agronomic.domain.model.aggregates.AgronomicStatistic;
 import com.arcadiadevs.viora.platform.agronomic.domain.model.aggregates.Plot;
 import com.arcadiadevs.viora.platform.agronomic.domain.model.queries.GetPlotMonitoringSummaryQuery;
+import com.arcadiadevs.viora.platform.agronomic.domain.model.services.ChillSeasonEvaluator;
 import com.arcadiadevs.viora.platform.agronomic.domain.model.services.ClimateRiskEvaluator;
 import com.arcadiadevs.viora.platform.agronomic.domain.model.services.MitigationRecommendationGenerator;
 import com.arcadiadevs.viora.platform.agronomic.domain.model.services.NdviTrendAnalyzer;
@@ -67,6 +68,7 @@ public class PlotMonitoringSummaryQueryService {
     private final NdviTrendAnalyzer ndviTrendAnalyzer;
     private final PlotHealthEvaluator plotHealthEvaluator;
     private final PhenologicalRiskEvaluator phenologicalRiskEvaluator;
+    private final ChillSeasonEvaluator chillSeasonEvaluator;
     private final ClimateRiskEvaluator climateRiskEvaluator;
     private final MitigationRecommendationGenerator mitigationRecommendationGenerator;
     private final YieldForecastEstimator yieldForecastEstimator;
@@ -113,12 +115,15 @@ public class PlotMonitoringSummaryQueryService {
 
         var healthStatus = plotHealthEvaluator.evaluate(currentNdvi, plot.getCropType());
         var chillRequirement = chillRequirementResolver.resolveFor(plot);
+        var inChillRiskWindow = chillSeasonEvaluator.isInChillRiskWindow(
+                plot.getPolygonCoordinates().centroid().getLatitude(), LocalDate.now());
         var phenologicalRisk = phenologicalRiskEvaluator.evaluate(
                 chillPortions,
                 chillRequirement.value(),
                 weather.map(snapshot -> snapshot.getTemperature()
                         - dynamicNutritionPolicy.temperatureReferenceCelsius()).orElse(null),
-                ndviTrend != null && ndviTrend.direction() == NdviTrendDirection.FALLING
+                ndviTrend != null && ndviTrend.direction() == NdviTrendDirection.FALLING,
+                inChillRiskWindow
         );
         var yieldForecastTonnes = estimateYield(plot, currentNdvi, chillPortions, chillRequirement);
         var climateRiskLevel = resolveClimateRisk(weather, currentNdvi);
