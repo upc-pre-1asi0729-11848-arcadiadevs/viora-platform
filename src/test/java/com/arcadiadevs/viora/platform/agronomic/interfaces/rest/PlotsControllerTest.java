@@ -21,6 +21,7 @@ import com.arcadiadevs.viora.platform.agronomic.domain.model.queries.GetPlotDeta
 import com.arcadiadevs.viora.platform.agronomic.domain.model.queries.GetPlotsWithCurrentImageryQuery;
 import com.arcadiadevs.viora.platform.agronomic.domain.model.valueobjects.AreaSize;
 import com.arcadiadevs.viora.platform.agronomic.domain.model.valueobjects.GeoPoint;
+import com.arcadiadevs.viora.platform.agronomic.domain.model.valueobjects.ClimateRiskLevel;
 import com.arcadiadevs.viora.platform.agronomic.domain.model.valueobjects.GeneralHealthStatus;
 import com.arcadiadevs.viora.platform.agronomic.domain.model.valueobjects.PlotId;
 import com.arcadiadevs.viora.platform.agronomic.domain.model.valueobjects.PlotName;
@@ -159,6 +160,7 @@ class PlotsControllerTest {
                 0.68,
                 72.0,
                 GeneralHealthStatus.HEALTHY,
+                ClimateRiskLevel.LOW,
                 2,
                 0,
                 Instant.parse("2026-06-11T12:00:00Z"),
@@ -184,7 +186,8 @@ class PlotsControllerTest {
                 .andExpect(jsonPath("$.plots[0].location").value("Tacna, Peru"))
                 .andExpect(jsonPath("$.plots[0].currentNdvi").value(0.68))
                 .andExpect(jsonPath("$.plots[0].chillPortions").value(72.0))
-                .andExpect(jsonPath("$.plots[0].healthStatus").value("HEALTHY"));
+                .andExpect(jsonPath("$.plots[0].healthStatus").value("HEALTHY"))
+                .andExpect(jsonPath("$.plots[0].phenologicalRisk").value("LOW"));
     }
 
     @Test
@@ -243,6 +246,7 @@ class PlotsControllerTest {
                         com.arcadiadevs.viora.platform.agronomic.domain.model.valueobjects.ChillRequirementSource.SYSTEM_DEFAULT,
                         com.arcadiadevs.viora.platform.agronomic.domain.model.valueobjects.ChillMetricModel.DYNAMIC),
                 GeneralHealthStatus.HEALTHY,
+                ClimateRiskLevel.MODERATE,
                 42.0,
                 null,
                 com.arcadiadevs.viora.platform.agronomic.domain.model.valueobjects.ClimateRiskLevel.LOW,
@@ -267,6 +271,7 @@ class PlotsControllerTest {
                 .andExpect(jsonPath("$.currentNdvi").value(0.62))
                 .andExpect(jsonPath("$.ndviTrend.direction").value("RISING"))
                 .andExpect(jsonPath("$.healthStatus").value("HEALTHY"))
+                .andExpect(jsonPath("$.phenologicalRisk").value("MODERATE"))
                 .andExpect(jsonPath("$.yieldForecastTonnes").value(42.0))
                 .andExpect(jsonPath("$.climateRiskLevel").value("LOW"))
                 .andExpect(jsonPath("$.ndviSource.availability").value("AVAILABLE"))

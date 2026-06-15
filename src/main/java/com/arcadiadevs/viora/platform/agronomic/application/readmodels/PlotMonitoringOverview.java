@@ -1,6 +1,7 @@
 package com.arcadiadevs.viora.platform.agronomic.application.readmodels;
 
 import com.arcadiadevs.viora.platform.agronomic.domain.model.aggregates.Plot;
+import com.arcadiadevs.viora.platform.agronomic.domain.model.valueobjects.ClimateRiskLevel;
 import com.arcadiadevs.viora.platform.agronomic.domain.model.valueobjects.GeneralHealthStatus;
 
 import java.time.Instant;
@@ -20,6 +21,7 @@ import java.time.Instant;
  * @param currentNdvi The most recent NDVI for the plot, or null when no data exists.
  * @param chillPortions The most recent chill portions reading, or null when no data exists.
  * @param healthStatus The health badge derived from the current NDVI.
+ * @param phenologicalRisk The phenological risk derived from chill fulfilment.
  * @param onlineDeviceCount Number of IoT devices currently in ACTIVE state.
  * @param activeAlertCount Number of active alerts (placeholder, always 0 for now).
  * @param lastUpdatedAt Instant of the latest monitoring data, or null when no data exists.
@@ -31,6 +33,7 @@ public record PlotMonitoringOverview(
         Double currentNdvi,
         Double chillPortions,
         GeneralHealthStatus healthStatus,
+        ClimateRiskLevel phenologicalRisk,
         long onlineDeviceCount,
         int activeAlertCount,
         Instant lastUpdatedAt,

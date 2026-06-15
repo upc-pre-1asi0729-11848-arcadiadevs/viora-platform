@@ -30,6 +30,7 @@ import java.util.Objects;
  * @param chillPortions Latest persisted chill portions reading, or null when none exists.
  * @param chillRequirement The plot's resolved chill requirement (value, source and model).
  * @param healthStatus Consolidated health badge derived from the current NDVI.
+ * @param phenologicalRisk Phenological risk derived from chill fulfilment, weather anomaly and NDVI trend.
  * @param yieldForecastTonnes Estimated yield in tonnes, or null when NDVI is unavailable.
  * @param weather Current weather snapshot, or null when unavailable.
  * @param climateRiskLevel Consolidated climate risk, or null when it cannot be determined.
@@ -45,6 +46,7 @@ public record PlotMonitoringSummary(
         Double chillPortions,
         ChillRequirement chillRequirement,
         GeneralHealthStatus healthStatus,
+        ClimateRiskLevel phenologicalRisk,
         Double yieldForecastTonnes,
         WeatherSnapshot weather,
         ClimateRiskLevel climateRiskLevel,
@@ -56,6 +58,7 @@ public record PlotMonitoringSummary(
     public PlotMonitoringSummary {
         Objects.requireNonNull(plot, "Plot is required.");
         Objects.requireNonNull(healthStatus, "Health status is required.");
+        Objects.requireNonNull(phenologicalRisk, "Phenological risk is required.");
         Objects.requireNonNull(climateSource, "Climate source metadata is required.");
         Objects.requireNonNull(ndviSource, "NDVI source metadata is required.");
         recommendations = recommendations == null ? List.of() : List.copyOf(recommendations);

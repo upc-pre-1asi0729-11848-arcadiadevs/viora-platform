@@ -129,8 +129,11 @@ public class MonitoringSummaryQueryService {
                 .average()
                 .orElse(0.0); // Default if no chill hours
 
-        // 5. Determine GeneralHealthStatus and estimate yield (transparent heuristic)
-        GeneralHealthStatus generalHealthStatus = plotHealthEvaluator.evaluate(consolidatedNdvi);
+        // 5. Determine GeneralHealthStatus and estimate yield (transparent heuristic).
+        // The aggregate spans the user's plots; use the first plot's crop as the
+        // representative threshold basis (crop-aware healthy cut-off).
+        GeneralHealthStatus generalHealthStatus = plotHealthEvaluator.evaluate(
+                consolidatedNdvi, userPlots.getFirst().getCropType());
         var latestStatisticByPlotId = latestPerPlot.stream()
                 .collect(Collectors.toMap(
                         statistic -> statistic.getPlotId().getValue(),

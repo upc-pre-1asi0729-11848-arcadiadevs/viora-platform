@@ -34,6 +34,7 @@ public final class PlotMonitoringSummaryResourceAssembler {
                 summary.chillRequirement() == null ? null : summary.chillRequirement().model().name(),
                 summary.chillRequirement() == null ? null : summary.chillRequirement().model().unitLabel(),
                 summary.healthStatus().name(),
+                summary.phenologicalRisk().name(),
                 summary.yieldForecastTonnes(),
                 toWeatherResource(summary.weather()),
                 summary.climateRiskLevel() == null ? null : summary.climateRiskLevel().name(),

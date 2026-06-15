@@ -20,6 +20,7 @@ public record MyPlotOverviewResource(
         Double currentNdvi,
         Double chillPortions,
         String healthStatus,
+        String phenologicalRisk,
         long onlineDeviceCount,
         int activeAlertCount,
         Instant lastUpdatedAt,

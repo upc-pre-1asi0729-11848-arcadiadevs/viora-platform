@@ -9,6 +9,7 @@ import com.arcadiadevs.viora.platform.agronomic.domain.model.queries.GetPlotMoni
 import com.arcadiadevs.viora.platform.agronomic.domain.model.services.ClimateRiskEvaluator;
 import com.arcadiadevs.viora.platform.agronomic.domain.model.services.MitigationRecommendationGenerator;
 import com.arcadiadevs.viora.platform.agronomic.domain.model.services.NdviTrendAnalyzer;
+import com.arcadiadevs.viora.platform.agronomic.domain.model.services.PhenologicalRiskEvaluator;
 import com.arcadiadevs.viora.platform.agronomic.domain.model.services.PlotHealthEvaluator;
 import com.arcadiadevs.viora.platform.agronomic.domain.model.services.ChillRequirementResolver;
 import com.arcadiadevs.viora.platform.agronomic.domain.model.services.YieldForecastEstimator;
@@ -18,6 +19,7 @@ import com.arcadiadevs.viora.platform.agronomic.domain.model.valueobjects.DateRa
 import com.arcadiadevs.viora.platform.agronomic.domain.model.valueobjects.DynamicNutritionPolicy;
 import com.arcadiadevs.viora.platform.agronomic.domain.model.valueobjects.MitigationRecommendation;
 import com.arcadiadevs.viora.platform.agronomic.domain.model.valueobjects.NdviTrend;
+import com.arcadiadevs.viora.platform.agronomic.domain.model.valueobjects.NdviTrendDirection;
 import com.arcadiadevs.viora.platform.agronomic.domain.model.valueobjects.NdviValue;
 import com.arcadiadevs.viora.platform.agronomic.domain.model.valueobjects.PlotId;
 import com.arcadiadevs.viora.platform.agronomic.domain.model.valueobjects.SatelliteImagery;
@@ -64,6 +66,7 @@ public class PlotMonitoringSummaryQueryService {
     private final WeatherDataService weatherDataService;
     private final NdviTrendAnalyzer ndviTrendAnalyzer;
     private final PlotHealthEvaluator plotHealthEvaluator;
+    private final PhenologicalRiskEvaluator phenologicalRiskEvaluator;
     private final ClimateRiskEvaluator climateRiskEvaluator;
     private final MitigationRecommendationGenerator mitigationRecommendationGenerator;
     private final YieldForecastEstimator yieldForecastEstimator;
@@ -108,8 +111,15 @@ public class PlotMonitoringSummaryQueryService {
                 .map(statistic -> statistic.getChillPortions().getValue())
                 .orElse(null);
 
-        var healthStatus = plotHealthEvaluator.evaluate(currentNdvi);
+        var healthStatus = plotHealthEvaluator.evaluate(currentNdvi, plot.getCropType());
         var chillRequirement = chillRequirementResolver.resolveFor(plot);
+        var phenologicalRisk = phenologicalRiskEvaluator.evaluate(
+                chillPortions,
+                chillRequirement.value(),
+                weather.map(snapshot -> snapshot.getTemperature()
+                        - dynamicNutritionPolicy.temperatureReferenceCelsius()).orElse(null),
+                ndviTrend != null && ndviTrend.direction() == NdviTrendDirection.FALLING
+        );
         var yieldForecastTonnes = estimateYield(plot, currentNdvi, chillPortions, chillRequirement);
         var climateRiskLevel = resolveClimateRisk(weather, currentNdvi);
         var recommendations = climateRiskLevel == null
@@ -125,6 +135,7 @@ public class PlotMonitoringSummaryQueryService {
                 chillPortions,
                 chillRequirement,
                 healthStatus,
+                phenologicalRisk,
                 yieldForecastTonnes,
                 weather.orElse(null),
                 climateRiskLevel,
