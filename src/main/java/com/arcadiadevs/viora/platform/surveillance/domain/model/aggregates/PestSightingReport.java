@@ -8,6 +8,7 @@ import com.arcadiadevs.viora.platform.surveillance.domain.model.valueobjects.Rep
 import com.arcadiadevs.viora.platform.surveillance.domain.model.valueobjects.RiskZone;
 import com.arcadiadevs.viora.platform.surveillance.domain.model.valueobjects.Symptoms;
 import com.arcadiadevs.viora.platform.surveillance.domain.model.valueobjects.ThreatType;
+import com.arcadiadevs.viora.platform.surveillance.domain.model.valueobjects.ReportStatus;
 import lombok.Getter;
 
 /**
@@ -34,10 +35,14 @@ public class PestSightingReport extends AbstractDomainAggregateRoot<PestSighting
     private boolean evaluated;
     private AlertSeverity calculatedRisk;
     private ThreatType probableThreat;
+    private ReportStatus status;
+    private boolean alertConfirmed;
 
     protected PestSightingReport() {
         this.evaluated = false;
         this.notes = "";
+        this.status = ReportStatus.UNDER_REVIEW;
+        this.alertConfirmed = false;
     }
 
     public PestSightingReport(
@@ -56,6 +61,8 @@ public class PestSightingReport extends AbstractDomainAggregateRoot<PestSighting
         this.observedSeverity = observedSeverity;
         this.notes = sanitizeText(notes, NOTES_MAX_LENGTH, "Notes");
         this.evaluated = false;
+        this.status = ReportStatus.UNDER_REVIEW;
+        this.alertConfirmed = false;
     }
 
     /**
@@ -88,16 +95,36 @@ public class PestSightingReport extends AbstractDomainAggregateRoot<PestSighting
     }
 
     /**
-     * Evaluates the biological risk of the report, setting the calculated risk and probable threat.
+     * Evaluates the biological risk of the report using current satellite NDVI data.
+     * 
+     * @param currentNdvi The current NDVI value fetched from Agronomic context.
+     * @param inferredThreat The threat inferred by the domain service.
      */
-    public PestSightingReport evaluateBiologicalRisk(AlertSeverity calculatedRisk, ThreatType probableThreat) {
-        if (calculatedRisk == null) throw new IllegalArgumentException("Calculated risk is required");
-        if (probableThreat == null) throw new IllegalArgumentException("Probable threat is required");
+    public PestSightingReport evaluateBiologicalRisk(Double currentNdvi, ThreatType inferredThreat) {
+        boolean ndviConfirmsDamage = (currentNdvi != null && currentNdvi < 0.40);
+        
+        if (this.observedSeverity == AlertSeverity.CRITICAL || (this.observedSeverity == AlertSeverity.HIGH && ndviConfirmsDamage)) {
+            this.alertConfirmed = true;
+            this.status = ReportStatus.CONFIRMED;
+            this.calculatedRisk = AlertSeverity.HIGH;
+            this.probableThreat = inferredThreat;
+        } else {
+            this.alertConfirmed = false;
+            this.status = ReportStatus.UNDER_REVIEW;
+            this.calculatedRisk = AlertSeverity.LOW;
+            this.probableThreat = inferredThreat;
+        }
 
+        this.evaluated = true;
+        return this;
+    }
+
+    public PestSightingReport restoreEvaluationState(AlertSeverity calculatedRisk, ThreatType probableThreat, ReportStatus status, boolean alertConfirmed) {
+        this.evaluated = true;
         this.calculatedRisk = calculatedRisk;
         this.probableThreat = probableThreat;
-        this.evaluated = true;
-        
+        this.status = status;
+        this.alertConfirmed = alertConfirmed;
         return this;
     }
 
