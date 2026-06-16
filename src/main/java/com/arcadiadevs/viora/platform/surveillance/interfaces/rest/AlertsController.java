@@ -113,4 +113,25 @@ public class AlertsController {
         var resource = AlertResourceFromAggregateAssembler.toResourceFromAggregate(alert.get());
         return ResponseEntity.ok(resource);
     }
+
+    /**
+     * Gets the most recent alerts across all plots owned by the user.
+     *
+     * @param userId the ID of the user
+     * @param limit the maximum number of alerts to return
+     * @return the list of recent alert summaries
+     */
+    @GetMapping("/recent")
+    @Operation(summary = "Get recent alerts", description = "Retrieves the most recent alerts for the given user, combined with plot details, matching the dashboard overview.")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Recent alerts retrieved successfully")
+    })
+    public ResponseEntity<java.util.List<com.arcadiadevs.viora.platform.surveillance.interfaces.rest.resources.AlertSummaryResource>> getRecentAlerts(
+            @org.springframework.web.bind.annotation.RequestParam Long userId,
+            @org.springframework.web.bind.annotation.RequestParam(defaultValue = "3") int limit
+    ) {
+        var query = new com.arcadiadevs.viora.platform.surveillance.domain.model.queries.GetRecentAlertsByUserIdQuery(userId, limit);
+        var summaries = alertQueryService.handle(query);
+        return ResponseEntity.ok(summaries);
+    }
 }
