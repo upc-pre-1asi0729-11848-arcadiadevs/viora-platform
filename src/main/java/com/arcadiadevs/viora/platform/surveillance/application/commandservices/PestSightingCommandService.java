@@ -15,6 +15,8 @@ import com.arcadiadevs.viora.platform.surveillance.domain.model.valueobjects.Thr
 import com.arcadiadevs.viora.platform.surveillance.infrastructure.persistence.jpa.assemblers.PestSightingReportEntityFromPestSightingReportAssembler;
 import com.arcadiadevs.viora.platform.surveillance.infrastructure.persistence.jpa.assemblers.PestSightingReportFromPestSightingReportEntityAssembler;
 import com.arcadiadevs.viora.platform.surveillance.infrastructure.persistence.jpa.repositories.SpringDataPestSightingReportRepository;
+import com.arcadiadevs.viora.platform.surveillance.application.internal.outboundservices.acl.ExternalAgronomicService;
+import com.arcadiadevs.viora.platform.surveillance.domain.model.services.ThreatInferenceService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationEventPublisher;
@@ -28,6 +30,8 @@ public class PestSightingCommandService {
 
     private final SpringDataPestSightingReportRepository repository;
     private final ApplicationEventPublisher eventPublisher;
+    private final ExternalAgronomicService externalAgronomicService;
+    private final ThreatInferenceService threatInferenceService;
 
     @Transactional
     public Result<PestSightingReport, ApplicationError> handle(CreatePestSightingReportCommand command) {
@@ -44,7 +48,13 @@ public class PestSightingCommandService {
                 command.notes()
         );
 
-        aggregate.evaluateBiologicalRisk(AlertSeverity.HIGH, ThreatType.PEST_SYMPTOM);
+        var currentNdvi = externalAgronomicService.fetchCurrentNdviByPlotId(
+                command.plotId(), command.reporterUserId()
+        ).orElse(null);
+
+        var inferredThreat = threatInferenceService.inferFromSymptoms(new Symptoms(symptomsList));
+
+        aggregate.evaluateBiologicalRisk(currentNdvi, inferredThreat);
 
         var entity = PestSightingReportEntityFromPestSightingReportAssembler.toEntityFromAggregate(aggregate);
         try {
@@ -57,7 +67,8 @@ public class PestSightingCommandService {
                     savedAggregate.getPlotId().value(),
                     savedAggregate.getReporterUserId().value(),
                     savedAggregate.getCalculatedRisk().name(),
-                    savedAggregate.getProbableThreat().name()
+                    savedAggregate.getProbableThreat().name(),
+                    savedAggregate.isAlertConfirmed()
             ));
             
             return Result.success(savedAggregate);
