@@ -26,6 +26,8 @@ public class PestSightingReportEntityFromPestSightingReportAssembler {
         entity.setEvaluated(aggregate.isEvaluated());
         entity.setCalculatedRisk(aggregate.getCalculatedRisk() != null ? aggregate.getCalculatedRisk().name() : null);
         entity.setProbableThreat(aggregate.getProbableThreat() != null ? aggregate.getProbableThreat().name() : null);
+        entity.setStatus(aggregate.getStatus() != null ? aggregate.getStatus().name() : null);
+        entity.setAlertConfirmed(aggregate.isAlertConfirmed());
         
         return entity;
     }

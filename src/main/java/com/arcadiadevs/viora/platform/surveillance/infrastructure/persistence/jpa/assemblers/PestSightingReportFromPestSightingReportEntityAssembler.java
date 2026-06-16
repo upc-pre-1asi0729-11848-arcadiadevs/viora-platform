@@ -6,8 +6,10 @@ import com.arcadiadevs.viora.platform.surveillance.domain.model.valueobjects.Pes
 import com.arcadiadevs.viora.platform.surveillance.domain.model.valueobjects.PlotId;
 import com.arcadiadevs.viora.platform.surveillance.domain.model.valueobjects.ReporterUserId;
 import com.arcadiadevs.viora.platform.surveillance.domain.model.valueobjects.RiskZone;
+import com.arcadiadevs.viora.platform.surveillance.domain.model.valueobjects.Symptom;
 import com.arcadiadevs.viora.platform.surveillance.domain.model.valueobjects.Symptoms;
 import com.arcadiadevs.viora.platform.surveillance.domain.model.valueobjects.ThreatType;
+import com.arcadiadevs.viora.platform.surveillance.domain.model.valueobjects.ReportStatus;
 import com.arcadiadevs.viora.platform.surveillance.infrastructure.persistence.jpa.entities.PestSightingReportEntity;
 
 import java.util.Arrays;
@@ -31,9 +33,11 @@ public class PestSightingReportFromPestSightingReportEntityAssembler {
         );
         
         if (entity.isEvaluated()) {
-            aggregate.evaluateBiologicalRisk(
+            aggregate.restoreEvaluationState(
                     entity.getCalculatedRisk() != null ? AlertSeverity.valueOf(entity.getCalculatedRisk()) : null,
-                    entity.getProbableThreat() != null ? ThreatType.valueOf(entity.getProbableThreat()) : null
+                    entity.getProbableThreat() != null ? ThreatType.valueOf(entity.getProbableThreat()) : null,
+                    entity.getStatus() != null ? ReportStatus.valueOf(entity.getStatus()) : null,
+                    entity.isAlertConfirmed()
             );
         }
         

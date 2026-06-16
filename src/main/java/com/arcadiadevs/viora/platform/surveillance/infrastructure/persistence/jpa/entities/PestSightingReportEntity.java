@@ -30,4 +30,6 @@ public class PestSightingReportEntity {
     private boolean evaluated;
     private String calculatedRisk;
     private String probableThreat;
+    private String status;
+    private boolean alertConfirmed;
 }

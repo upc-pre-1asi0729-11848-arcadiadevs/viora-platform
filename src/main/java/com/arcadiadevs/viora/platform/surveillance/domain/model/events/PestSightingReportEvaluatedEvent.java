@@ -41,6 +41,11 @@ public class PestSightingReportEvaluatedEvent extends ApplicationEvent {
     private final String probableThreat;
 
     /**
+     * True if the threat was confirmed and an alert should be created.
+     */
+    private final boolean alertConfirmed;
+
+    /**
      * Constructor for PestSightingReportEvaluatedEvent.
      *
      * @param source         The object that published the event (usually the aggregate or service).
@@ -49,6 +54,7 @@ public class PestSightingReportEvaluatedEvent extends ApplicationEvent {
      * @param reporterUserId The identifier of the user who reported the sighting.
      * @param calculatedRisk The calculated biological risk severity.
      * @param probableThreat The probable threat identified.
+     * @param alertConfirmed Whether an alert should be generated.
      */
     public PestSightingReportEvaluatedEvent(
             Object source,
@@ -56,7 +62,8 @@ public class PestSightingReportEvaluatedEvent extends ApplicationEvent {
             Long plotId,
             Long reporterUserId,
             String calculatedRisk,
-            String probableThreat
+            String probableThreat,
+            boolean alertConfirmed
     ) {
         super(source);
         this.reportId = reportId;
@@ -64,5 +71,6 @@ public class PestSightingReportEvaluatedEvent extends ApplicationEvent {
         this.reporterUserId = reporterUserId;
         this.calculatedRisk = calculatedRisk;
         this.probableThreat = probableThreat;
+        this.alertConfirmed = alertConfirmed;
     }
 }
