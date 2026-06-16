@@ -1,6 +1,6 @@
 package com.arcadiadevs.viora.platform.surveillance.infrastructure.persistence.jpa.entities;
 
-import com.arcadiadevs.viora.platform.shared.infrastructure.persistence.jpa.entities.AuditableEntity;
+import com.arcadiadevs.viora.platform.shared.infrastructure.persistence.jpa.entities.AuditableAbstractPersistenceEntity;
 import com.arcadiadevs.viora.platform.surveillance.domain.model.valueobjects.AlertSeverity;
 import com.arcadiadevs.viora.platform.surveillance.domain.model.valueobjects.AlertSource;
 import com.arcadiadevs.viora.platform.surveillance.domain.model.valueobjects.AlertStatus;
@@ -20,7 +20,7 @@ import java.util.Map;
 @Getter
 @Setter
 @NoArgsConstructor
-public class AlertEntity extends AuditableEntity {
+public class AlertEntity extends AuditableAbstractPersistenceEntity {
 
     private Long plotId;
 
