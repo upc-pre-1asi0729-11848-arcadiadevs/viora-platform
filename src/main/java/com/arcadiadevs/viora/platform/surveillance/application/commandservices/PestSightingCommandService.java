@@ -58,7 +58,7 @@ public class PestSightingCommandService {
             return Result.failure(ApplicationError.validationError("pestSightingReport", exception.getMessage()));
         } catch (Exception exception) {
             log.error("Error handling CreatePestSightingReportCommand", exception);
-            return Result.failure(ApplicationError.internal("pestSightingReport", "An unexpected error occurred"));
+            return Result.failure(ApplicationError.unexpected("pestSightingReport", "An unexpected error occurred"));
         }
     }
 }
