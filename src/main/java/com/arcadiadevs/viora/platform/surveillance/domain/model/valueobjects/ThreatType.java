@@ -11,5 +11,8 @@ public enum ThreatType {
     LOW_NDVI,
     HYDRIC_STRESS,
     XYLELLA_RELATED,
+    OLIVE_FRUIT_FLY,
+    OLIVE_MOTH,
+    PEACOCK_SPOT,
     UNKNOWN
 }
