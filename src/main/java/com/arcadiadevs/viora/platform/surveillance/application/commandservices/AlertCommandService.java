@@ -57,7 +57,7 @@ public class AlertCommandService {
             return Result.success(savedAlert.getId().value());
         } catch (Exception e) {
             log.error("Failed to create alert", e);
-            return Result.failure(new ApplicationError("Failed to create alert: " + e.getMessage()));
+            return Result.failure(new ApplicationError("Failed to create alert: ", e.getMessage()));
         }
     }
 }
