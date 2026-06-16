@@ -1,6 +1,6 @@
 package com.arcadiadevs.viora.platform.surveillance.infrastructure.persistence.jpa.entities;
 
-import com.arcadiadevs.viora.platform.shared.domain.model.entities.AuditableModel;
+import com.arcadiadevs.viora.platform.shared.infrastructure.persistence.jpa.entities.AuditableAbstractPersistenceEntity;
 import jakarta.persistence.Entity;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
@@ -12,7 +12,7 @@ import lombok.NoArgsConstructor;
 @Table(name = "alert_timeline_records")
 @Getter
 @NoArgsConstructor
-public class AlertTimelineRecordEntity extends AuditableModel {
+public class AlertTimelineRecordEntity extends AuditableAbstractPersistenceEntity {
 
     private String tag;
     private String title;

@@ -1,6 +1,6 @@
 package com.arcadiadevs.viora.platform.surveillance.infrastructure.persistence.jpa.adapters;
 
-import com.arcadiadevs.viora.platform.surveillance.domain.model.aggregates.SymptomDictionaryItem;
+import com.arcadiadevs.viora.platform.surveillance.domain.model.entities.SymptomDictionaryItem;
 import com.arcadiadevs.viora.platform.surveillance.domain.repositories.SymptomDictionaryItemRepository;
 import com.arcadiadevs.viora.platform.surveillance.infrastructure.persistence.jpa.repositories.SpringDataSymptomDictionaryItemRepository;
 import lombok.RequiredArgsConstructor;

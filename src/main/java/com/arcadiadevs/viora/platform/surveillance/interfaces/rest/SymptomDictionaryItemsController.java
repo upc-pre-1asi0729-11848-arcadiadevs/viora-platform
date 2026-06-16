@@ -3,7 +3,7 @@ package com.arcadiadevs.viora.platform.surveillance.interfaces.rest;
 import com.arcadiadevs.viora.platform.surveillance.application.queryservices.SymptomQueryService;
 import com.arcadiadevs.viora.platform.surveillance.domain.model.queries.GetAllSymptomsQuery;
 import com.arcadiadevs.viora.platform.surveillance.interfaces.rest.resources.SymptomResource;
-import com.arcadiadevs.viora.platform.surveillance.interfaces.rest.transform.SymptomResourceFromAggregateAssembler;
+import com.arcadiadevs.viora.platform.surveillance.interfaces.rest.transform.SymptomResourceFromEntityAssembler;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -56,7 +56,7 @@ public class SymptomDictionaryItemsController {
         var symptoms = symptomQueryService.handle(query);
 
         var resources = symptoms.stream()
-                .map(aggregate -> SymptomResourceFromAggregateAssembler.toResourceFromAggregate(aggregate, language))
+                .map(entity -> SymptomResourceFromEntityAssembler.toResourceFromEntity(entity, language))
                 .collect(Collectors.toList());
 
         return ResponseEntity.ok(resources);

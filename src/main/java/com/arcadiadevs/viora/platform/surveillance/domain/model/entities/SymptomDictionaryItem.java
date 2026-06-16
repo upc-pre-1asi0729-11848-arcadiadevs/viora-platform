@@ -1,10 +1,9 @@
-package com.arcadiadevs.viora.platform.surveillance.domain.model.aggregates;
+package com.arcadiadevs.viora.platform.surveillance.domain.model.entities;
 
-import com.arcadiadevs.viora.platform.shared.domain.model.aggregates.AbstractDomainAggregateRoot;
 import lombok.Getter;
 
 @Getter
-public class SymptomDictionaryItem extends AbstractDomainAggregateRoot<SymptomDictionaryItem> {
+public class SymptomDictionaryItem {
     private String id;
     private String descriptionEn;
     private String descriptionEs;
