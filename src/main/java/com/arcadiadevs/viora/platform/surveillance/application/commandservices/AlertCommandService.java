@@ -5,6 +5,9 @@ import com.arcadiadevs.viora.platform.shared.application.result.Result;
 import com.arcadiadevs.viora.platform.surveillance.domain.model.aggregates.Alert;
 import com.arcadiadevs.viora.platform.surveillance.domain.repositories.AlertRepository;
 import com.arcadiadevs.viora.platform.surveillance.domain.model.commands.CreateAlertCommand;
+import com.arcadiadevs.viora.platform.surveillance.domain.model.commands.MarkAlertAsReviewedCommand;
+import com.arcadiadevs.viora.platform.surveillance.domain.exceptions.AlertAlreadyReviewedException;
+import com.arcadiadevs.viora.platform.surveillance.interfaces.events.AlertReviewedIntegrationEvent;
 import com.arcadiadevs.viora.platform.surveillance.domain.model.valueobjects.PlotId;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -77,6 +80,36 @@ public class AlertCommandService {
         } catch (Exception e) {
             log.error("Failed to add timeline record", e);
             return Result.failure(new ApplicationError("Failed to add timeline record: ", e.getMessage()));
+        }
+    }
+
+    public Result<Long, ApplicationError> handle(MarkAlertAsReviewedCommand command) {
+        log.info("Handling MarkAlertAsReviewedCommand for Alert ID: {}", command.alertId());
+        try {
+            var alertOptional = alertRepository.findById(command.alertId());
+            if (alertOptional.isEmpty()) {
+                return Result.failure(ApplicationError.notFound("alert", command.alertId().toString()));
+            }
+
+            var alert = alertOptional.get();
+            try {
+                alert.markAsReviewed();
+            } catch (AlertAlreadyReviewedException e) {
+                return Result.failure(ApplicationError.validationError("Alert status", "Alert is already reviewed"));
+            }
+            
+            var savedAlert = alertRepository.save(alert);
+            log.info("Alert marked as reviewed successfully. ID: {}", savedAlert.getId().value());
+
+            eventPublisher.publishEvent(new AlertReviewedIntegrationEvent(
+                    this,
+                    savedAlert.getId().value()
+            ));
+
+            return Result.success(savedAlert.getId().value());
+        } catch (Exception e) {
+            log.error("Failed to mark alert as reviewed", e);
+            return Result.failure(new ApplicationError("Failed to mark alert as reviewed: ", e.getMessage()));
         }
     }
 }
