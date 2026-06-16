@@ -64,7 +64,7 @@ public class AlertCommandService {
     public Result<Void, ApplicationError> handle(com.arcadiadevs.viora.platform.surveillance.domain.model.commands.AddAlertTimelineRecordCommand command) {
         log.info("Handling AddAlertTimelineRecordCommand for Alert ID: {}", command.alertId());
         try {
-            var alertOptional = alertRepository.findById(new com.arcadiadevs.viora.platform.surveillance.domain.model.valueobjects.AlertId(command.alertId()));
+            var alertOptional = alertRepository.findById(command.alertId());
             if (alertOptional.isEmpty()) {
                 return Result.failure(ApplicationError.notFound("alert", command.alertId().toString()));
             }
