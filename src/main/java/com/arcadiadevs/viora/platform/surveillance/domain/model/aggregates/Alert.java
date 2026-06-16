@@ -8,6 +8,7 @@ import com.arcadiadevs.viora.platform.surveillance.domain.model.valueobjects.Ale
 import com.arcadiadevs.viora.platform.surveillance.domain.model.valueobjects.AlertStatus;
 import com.arcadiadevs.viora.platform.surveillance.domain.model.valueobjects.PlotId;
 import com.arcadiadevs.viora.platform.surveillance.domain.model.valueobjects.ThreatType;
+import com.arcadiadevs.viora.platform.surveillance.domain.exceptions.AlertAlreadyReviewedException;
 import lombok.Getter;
 
 import java.util.ArrayList;
@@ -101,10 +102,11 @@ public class Alert extends AbstractDomainAggregateRoot<Alert> {
     }
 
     public Alert markAsReviewed() {
-        if (this.status != AlertStatus.UNDER_REVIEW) {
-            this.status = AlertStatus.UNDER_REVIEW;
-            addTimelineRecord("Info", "Alert marked as reviewed", "A specialist has acknowledged and is reviewing this alert.");
+        if (this.status == AlertStatus.UNDER_REVIEW || this.status == AlertStatus.RESOLVED || this.status == AlertStatus.DISMISSED) {
+            throw new AlertAlreadyReviewedException(this.id.value());
         }
+        this.status = AlertStatus.UNDER_REVIEW;
+        addTimelineRecord("Info", "Alert marked as reviewed", "A specialist has acknowledged and is reviewing this alert.");
         return this;
     }
 
