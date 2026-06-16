@@ -1,6 +1,6 @@
 package com.arcadiadevs.viora.platform.surveillance.application.queryservices;
 
-import com.arcadiadevs.viora.platform.surveillance.domain.model.aggregates.SymptomDictionaryItem;
+import com.arcadiadevs.viora.platform.surveillance.domain.model.entities.SymptomDictionaryItem;
 import com.arcadiadevs.viora.platform.surveillance.domain.model.queries.GetAllSymptomsQuery;
 import com.arcadiadevs.viora.platform.surveillance.domain.repositories.SymptomDictionaryItemRepository;
 import lombok.RequiredArgsConstructor;

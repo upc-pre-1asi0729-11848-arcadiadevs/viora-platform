@@ -82,7 +82,7 @@ public class DynamicNutritionPlansController {
             @Parameter(description = "Plot identifier", required = true)
             @RequestParam Long plotId
     ) {
-        var command = new RecommendDynamicNutritionCommand(userId, plotId);
+        var command = new RecommendDynamicNutritionCommand(userId, plotId, null);
         var result = dynamicNutritionPlanCommandService.handle(command);
 
         return ResponseEntityAssembler.toResponseEntityFromResult(

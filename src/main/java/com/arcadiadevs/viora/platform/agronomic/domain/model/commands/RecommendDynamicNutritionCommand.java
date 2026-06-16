@@ -10,10 +10,12 @@ package com.arcadiadevs.viora.platform.agronomic.domain.model.commands;
  *
  * @param userId The owner user identifier.
  * @param plotId The plot identifier the plan will be generated for.
+ * @param alertId The alert identifier associated with the recommendation.
  */
 public record RecommendDynamicNutritionCommand(
         Long userId,
-        Long plotId
+        Long plotId,
+        Long alertId
 ) {
 
     public RecommendDynamicNutritionCommand {

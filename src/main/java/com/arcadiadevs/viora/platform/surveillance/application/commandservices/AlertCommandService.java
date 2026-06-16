@@ -60,4 +60,23 @@ public class AlertCommandService {
             return Result.failure(new ApplicationError("Failed to create alert: ", e.getMessage()));
         }
     }
+
+    public Result<Void, ApplicationError> handle(com.arcadiadevs.viora.platform.surveillance.domain.model.commands.AddAlertTimelineRecordCommand command) {
+        log.info("Handling AddAlertTimelineRecordCommand for Alert ID: {}", command.alertId());
+        try {
+            var alertOptional = alertRepository.findById(command.alertId());
+            if (alertOptional.isEmpty()) {
+                return Result.failure(ApplicationError.notFound("alert", command.alertId().toString()));
+            }
+
+            var alert = alertOptional.get();
+            alert.addTimelineRecord(command.tag(), command.title(), command.description());
+            alertRepository.save(alert);
+            
+            return Result.success(null);
+        } catch (Exception e) {
+            log.error("Failed to add timeline record", e);
+            return Result.failure(new ApplicationError("Failed to add timeline record: ", e.getMessage()));
+        }
+    }
 }

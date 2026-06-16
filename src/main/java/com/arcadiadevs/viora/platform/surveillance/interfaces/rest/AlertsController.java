@@ -39,7 +39,7 @@ public class AlertsController {
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "Alert found",
                     content = @Content(schema = @Schema(implementation = AlertResource.class))),
-            @ApiResponse(responseCode = "404", description = "Alert not found", content = @Content)
+            @ApiResponse(responseCode = "404", description = "Alert not found", content = @Content(mediaType = "application/json", schema = @Schema(type = "object", example = "{}")))
     })
     public ResponseEntity<AlertResource> getAlertById(@PathVariable Long alertId) {
         var query = new GetAlertByIdQuery(alertId);
@@ -51,5 +51,29 @@ public class AlertsController {
 
         var resource = AlertResourceFromAggregateAssembler.toResourceFromAggregate(alert.get());
         return ResponseEntity.ok(resource);
+    }
+
+    /**
+     * Gets the timeline of an Alert.
+     *
+     * @param alertId the ID of the alert
+     * @return the list of timeline records
+     */
+    @GetMapping("/{alertId}/timeline")
+    @Operation(summary = "Get alert timeline", description = "Retrieves only the historical timeline records of an alert.")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Timeline retrieved"),
+            @ApiResponse(responseCode = "404", description = "Alert not found", content = @Content(mediaType = "application/json", schema = @Schema(type = "object", example = "{}")))
+    })
+    public ResponseEntity<java.util.List<com.arcadiadevs.viora.platform.surveillance.interfaces.rest.resources.AlertTimelineRecordResource>> getAlertTimelineById(@PathVariable Long alertId) {
+        var query = new GetAlertByIdQuery(alertId);
+        var alert = alertQueryService.handle(query);
+
+        if (alert.isEmpty()) {
+            return ResponseEntity.notFound().build();
+        }
+
+        var resources = com.arcadiadevs.viora.platform.surveillance.interfaces.rest.transform.AlertTimelineRecordResourceFromEntityAssembler.toResourceListFromEntities(alert.get().getTimeline());
+        return ResponseEntity.ok(resources);
     }
 }
