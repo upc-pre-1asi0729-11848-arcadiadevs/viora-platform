@@ -33,9 +33,6 @@ public class AgronomicContextFacadeImpl implements AgronomicContextFacade {
     public Optional<Double> fetchCurrentNdviByPlotId(Long plotId, Long userId) {
         var query = new GetPlotMonitoringSummaryQuery(userId, plotId);
         var result = plotMonitoringSummaryQueryService.handle(query);
-        if (result.isSuccess() && result.value().isPresent()) {
-            return Optional.ofNullable(result.value().get().currentNdvi());
-        }
-        return Optional.empty();
+        return result.toOptional().map(summary -> summary.currentNdvi());
     }
 }
