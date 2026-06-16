@@ -15,7 +15,9 @@ import com.arcadiadevs.viora.platform.agronomic.domain.model.valueobjects.UserId
 import com.arcadiadevs.viora.platform.agronomic.domain.repositories.DynamicNutritionPlanRepository;
 import com.arcadiadevs.viora.platform.shared.application.result.ApplicationError;
 import com.arcadiadevs.viora.platform.shared.application.result.Result;
+import com.arcadiadevs.viora.platform.agronomic.interfaces.events.DynamicNutritionPlanGeneratedIntegrationEvent;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -35,6 +37,7 @@ public class DynamicNutritionPlanCommandService {
     private final PlotOwnershipValidator plotOwnershipValidator;
     private final DynamicNutritionPlanRepository dynamicNutritionPlanRepository;
     private final DynamicNutritionPlanAssemblerService dynamicNutritionPlanAssemblerService;
+    private final ApplicationEventPublisher eventPublisher;
 
     /**
      * Recommends a new dynamic nutrition plan for the specified plot.
@@ -50,7 +53,7 @@ public class DynamicNutritionPlanCommandService {
             var plotId = new PlotId(command.plotId());
 
             return plotOwnershipValidator.validate(userId, plotId)
-                    .flatMap(plot -> recommendForPlot(plot, userId, plotId));
+                    .flatMap(plot -> recommendForPlot(plot, userId, plotId, command.alertId()));
 
         } catch (DynamicNutritionPlanUnavailableException exception) {
             return Result.failure(ApplicationError.businessRuleViolation(
@@ -123,7 +126,8 @@ public class DynamicNutritionPlanCommandService {
     private Result<DynamicNutritionPlan, ApplicationError> recommendForPlot(
             Plot plot,
             UserId userId,
-            PlotId plotId
+            PlotId plotId,
+            Long alertId
     ) {
         var plan = dynamicNutritionPlanAssemblerService.assembleForPlot(plot);
 
@@ -133,6 +137,16 @@ public class DynamicNutritionPlanCommandService {
                     dynamicNutritionPlanRepository.save(previousPlan);
                 });
 
-        return Result.success(dynamicNutritionPlanRepository.save(plan));
+        var savedPlan = dynamicNutritionPlanRepository.save(plan);
+        if (alertId != null) {
+            eventPublisher.publishEvent(new DynamicNutritionPlanGeneratedIntegrationEvent(
+                    this,
+                    savedPlan.getId().getValue(),
+                    plotId.getValue(),
+                    alertId
+            ));
+        }
+
+        return Result.success(savedPlan);
     }
 }

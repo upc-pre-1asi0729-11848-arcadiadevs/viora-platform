@@ -31,7 +31,7 @@ public class AlertGeneratedEventHandler {
 
             // We need the user ID to generate the plan. Let's get it from the Plot owner.
             plotRepository.findById(new PlotId(event.getPlotId())).ifPresentOrElse(plot -> {
-                var command = new RecommendDynamicNutritionCommand(plot.getUserId().getValue(), plot.getId().getValue());
+                var command = new RecommendDynamicNutritionCommand(plot.getUserId().getValue(), plot.getId().getValue(), event.getAlertId());
                 var result = dynamicNutritionPlanCommandService.handle(command);
                 
                 if (result.isSuccess()) {
