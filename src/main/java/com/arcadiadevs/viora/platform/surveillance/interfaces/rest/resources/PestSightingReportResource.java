@@ -14,8 +14,10 @@ import java.util.List;
  * @param observedSeverity Observed severity of the symptoms
  * @param notes            Additional notes or observations
  * @param evaluated        Indicates whether this report has been automatically evaluated
- * @param calculatedRisk   Automatically calculated biological risk severity
- * @param probableThreat   Probable biological threat type based on evaluation
+ * @param calculatedRisk   The calculated risk severity if evaluated.
+ * @param probableThreat   The identified probable threat if evaluated.
+ * @param status           The current status of the report (e.g., UNDER_REVIEW, CONFIRMED).
+ * @param alertConfirmed   Whether an alert was generated based on this report.
  */
 @NullMarked
 public record PestSightingReportResource(
@@ -28,5 +30,7 @@ public record PestSightingReportResource(
         String notes,
         boolean evaluated,
         String calculatedRisk,
-        String probableThreat
+        String probableThreat,
+        String status,
+        boolean alertConfirmed
 ) {}

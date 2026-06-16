@@ -15,7 +15,9 @@ public class PestSightingReportResourceFromPestSightingReportAssembler {
                 aggregate.getNotes(),
                 aggregate.isEvaluated(),
                 aggregate.getCalculatedRisk() != null ? aggregate.getCalculatedRisk().name() : null,
-                aggregate.getProbableThreat() != null ? aggregate.getProbableThreat().name() : null
+                aggregate.getProbableThreat() != null ? aggregate.getProbableThreat().name() : null,
+                aggregate.getStatus() != null ? aggregate.getStatus().name() : null,
+                aggregate.isAlertConfirmed()
         );
     }
 }
