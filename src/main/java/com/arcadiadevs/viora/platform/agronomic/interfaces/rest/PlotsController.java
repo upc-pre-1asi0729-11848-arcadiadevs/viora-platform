@@ -29,22 +29,19 @@ import com.arcadiadevs.viora.platform.agronomic.interfaces.rest.transform.ChillR
 import com.arcadiadevs.viora.platform.agronomic.interfaces.rest.transform.ConfigureChillRequirementCommandFromResourceAssembler;
 import com.arcadiadevs.viora.platform.agronomic.interfaces.rest.transform.CreatePlotCommandFromResourceAssembler;
 import com.arcadiadevs.viora.platform.agronomic.interfaces.rest.transform.MyPlotsOverviewResourceAssembler;
-import com.arcadiadevs.viora.platform.agronomic.interfaces.rest.transform.PlotDetailResourceAssembler;
-import com.arcadiadevs.viora.platform.agronomic.interfaces.rest.transform.PlotMonitoringSummaryResourceAssembler;
-import com.arcadiadevs.viora.platform.agronomic.interfaces.rest.transform.PlotResourceFromPlotAssembler;
-import com.arcadiadevs.viora.platform.agronomic.interfaces.rest.transform.PlotWeatherForecastResourceAssembler;
-import com.arcadiadevs.viora.platform.agronomic.interfaces.rest.transform.PlotRegistrationResourceAssembler;
-import com.arcadiadevs.viora.platform.agronomic.interfaces.rest.transform.PlotWithCurrentImageryResourceAssembler;
-import com.arcadiadevs.viora.platform.agronomic.interfaces.rest.transform.UpdatePlotCommandFromResourceAssembler;
+import com.arcadiadevs.viora.platform.agronomic.domain.model.queries.*;
+import com.arcadiadevs.viora.platform.agronomic.interfaces.rest.resources.*;
+import com.arcadiadevs.viora.platform.agronomic.interfaces.rest.transform.*;
 import com.arcadiadevs.viora.platform.shared.interfaces.rest.resources.MessageResource;
 import com.arcadiadevs.viora.platform.shared.interfaces.rest.transform.ResponseEntityAssembler;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.ArraySchema;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
-import io.swagger.v3.oas.annotations.tags.Tag;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -56,8 +53,9 @@ import org.springframework.web.bind.annotation.*;
  * Plots REST controller.
  *
  * <p>
- *     Exposes endpoints for managing productive agricultural plots
- *     in the agronomic bounded context.
+ * Exposes endpoints to manage agronomic plots. This controller uses a clean REST architecture
+ * where the Plot is treated as an autonomous Aggregate Root. Projections (views) such as
+ * details, monitoring summaries, and weather forecasts are handled via the `view` query parameter.
  * </p>
  */
 @RestController
@@ -66,29 +64,10 @@ import org.springframework.web.bind.annotation.*;
 @Tag(name = "Plots", description = "Plots Management Endpoints")
 public class PlotsController {
 
-    /**
-     * Plot query service.
-     */
     private final PlotQueryService plotQueryService;
-
-    /**
-     * Plot Detail query service.
-     */
     private final PlotDetailQueryService plotDetailQueryService;
-
-    /**
-     * Per-plot monitoring summary query service.
-     */
     private final PlotMonitoringSummaryQueryService plotMonitoringSummaryQueryService;
-
-    /**
-     * Per-plot weather forecast query service.
-     */
     private final PlotWeatherForecastQueryService plotWeatherForecastQueryService;
-
-    /**
-     * Plot command service.
-     */
     private final PlotCommandService plotCommandService;
 
     /**
@@ -105,13 +84,7 @@ public class PlotsController {
                     + "The plot area is calculated by the backend from the boundary."
     )
     @ApiResponses(value = {
-            @ApiResponse(
-                    responseCode = "201",
-                    description = "Plot created",
-                    content = @Content(schema = @Schema(
-                            implementation = PlotRegistrationResource.class
-                    ))
-            ),
+            @ApiResponse(responseCode = "201", description = "Plot created", content = @Content(schema = @Schema(implementation = PlotRegistrationResource.class))),
             @ApiResponse(responseCode = "400", description = "Invalid request data"),
             @ApiResponse(responseCode = "409", description = "Plot name conflict"),
             @ApiResponse(responseCode = "500", description = "Unexpected error")
@@ -128,285 +101,51 @@ public class PlotsController {
     }
 
     /**
-     * Gets the cards and per-plot monitoring rows for the My Plots screen.
+     * Gets a collection of plots.
      *
      * @param userId The owner user identifier.
-     * @return The My Plots overview projection.
-     */
-    @GetMapping("/overview")
-    @Operation(
-            summary = "Get My Plots overview",
-            description = "Returns registered plot totals, monitored area, climate links, "
-                    + "online IoT devices and the latest monitoring signals per plot."
-    )
-    @ApiResponses(value = {
-            @ApiResponse(
-                    responseCode = "200",
-                    description = "My Plots overview retrieved",
-                    content = @Content(schema = @Schema(
-                            implementation = MyPlotsOverviewResource.class
-                    ))
-            ),
-            @ApiResponse(responseCode = "400", description = "Invalid user ID"),
-            @ApiResponse(responseCode = "500", description = "Unexpected error")
-    })
-    public ResponseEntity<?> getMyPlotsOverview(@RequestParam Long userId) {
-        var result = plotQueryService.handle(new GetMyPlotsOverviewQuery(userId));
-
-        return ResponseEntityAssembler.toResponseEntityFromResult(
-                result,
-                MyPlotsOverviewResourceAssembler::toResourceFromReadModel,
-                HttpStatus.OK
-        );
-    }
-
-    /**
-     * Gets the configuration and monitoring detail for one plot.
-     *
-     * @param plotId Plot identifier.
-     * @param userId Owner user identifier.
-     * @return Plot detail projection.
-     */
-    @GetMapping("/{plotId}/detail")
-    @Operation(
-            summary = "Get plot detail",
-            description = "Returns plot configuration, boundary status, monitoring links, "
-                    + "IoT activity and recent persisted configuration activity."
-    )
-    @ApiResponses(value = {
-            @ApiResponse(
-                    responseCode = "200",
-                    description = "Plot detail retrieved",
-                    content = @Content(schema = @Schema(
-                            implementation = PlotDetailResource.class
-                    ))
-            ),
-            @ApiResponse(responseCode = "400", description = "Invalid request parameters"),
-            @ApiResponse(responseCode = "403", description = "User does not own the plot"),
-            @ApiResponse(responseCode = "404", description = "Plot not found"),
-            @ApiResponse(responseCode = "500", description = "Unexpected error")
-    })
-    public ResponseEntity<?> getPlotDetail(
-            @PathVariable Long plotId,
-            @RequestParam Long userId
-    ) {
-        var result = plotDetailQueryService.handle(new GetPlotDetailQuery(userId, plotId));
-
-        return ResponseEntityAssembler.toResponseEntityFromResult(
-                result,
-                PlotDetailResourceAssembler::toResourceFromReadModel,
-                HttpStatus.OK
-        );
-    }
-
-    /**
-     * Gets the real-time monitoring summary for one plot.
-     *
-     * @param plotId Plot identifier.
-     * @param userId Owner user identifier.
-     * @return Per-plot monitoring summary projection.
-     */
-    @GetMapping("/{plotId}/monitoring-summary")
-    @Operation(
-            summary = "Get plot monitoring summary",
-            description = "Returns the real-time monitoring summary for a single plot: current NDVI, "
-                    + "NDVI trend, chill portions, consolidated health, phenological risk, weather and climate risk, "
-                    + "last update, mitigation recommendations and the availability and freshness of "
-                    + "each external data source."
-    )
-    @ApiResponses(value = {
-            @ApiResponse(
-                    responseCode = "200",
-                    description = "Plot monitoring summary retrieved",
-                    content = @Content(schema = @Schema(
-                            implementation = PlotMonitoringSummaryResource.class
-                    ))
-            ),
-            @ApiResponse(responseCode = "400", description = "Invalid request parameters"),
-            @ApiResponse(responseCode = "403", description = "User does not own the plot"),
-            @ApiResponse(responseCode = "404", description = "Plot not found"),
-            @ApiResponse(responseCode = "500", description = "Unexpected error")
-    })
-    public ResponseEntity<?> getPlotMonitoringSummary(
-            @PathVariable Long plotId,
-            @RequestParam Long userId
-    ) {
-        var result = plotMonitoringSummaryQueryService.handle(
-                new GetPlotMonitoringSummaryQuery(userId, plotId)
-        );
-
-        return ResponseEntityAssembler.toResponseEntityFromResult(
-                result,
-                PlotMonitoringSummaryResourceAssembler::toResourceFromReadModel,
-                HttpStatus.OK
-        );
-    }
-
-    /**
-     * Gets the weather forecast for one plot.
-     *
-     * @param plotId Plot identifier.
-     * @param userId Owner user identifier.
-     * @return Per-plot weather forecast projection.
-     */
-    @GetMapping("/{plotId}/weather-forecast")
-    @Operation(
-            summary = "Get plot weather forecast",
-            description = "Returns the detailed weather forecast for a plot (about five days, the "
-                    + "provider's available window): hourly readings, daily minimum/maximum, humidity, "
-                    + "wind and gusts, precipitation, thermal anomaly and agronomic warnings, plus the "
-                    + "availability and freshness of the weather source."
-    )
-    @ApiResponses(value = {
-            @ApiResponse(
-                    responseCode = "200",
-                    description = "Weather forecast retrieved",
-                    content = @Content(schema = @Schema(
-                            implementation = PlotWeatherForecastResource.class
-                    ))
-            ),
-            @ApiResponse(responseCode = "400", description = "Invalid request parameters"),
-            @ApiResponse(responseCode = "403", description = "User does not own the plot"),
-            @ApiResponse(responseCode = "404", description = "Plot not found"),
-            @ApiResponse(responseCode = "500", description = "Unexpected error")
-    })
-    public ResponseEntity<?> getPlotWeatherForecast(
-            @PathVariable Long plotId,
-            @RequestParam Long userId
-    ) {
-        var result = plotWeatherForecastQueryService.handle(
-                new GetPlotWeatherForecastQuery(userId, plotId)
-        );
-
-        return ResponseEntityAssembler.toResponseEntityFromResult(
-                result,
-                PlotWeatherForecastResourceAssembler::toResourceFromReadModel,
-                HttpStatus.OK
-        );
-    }
-
-    /**
-     * Declares the winter-chill requirement for a plot from its agronomic
-     * configuration.
-     *
-     * @param plotId Plot identifier.
-     * @param userId Owner user identifier.
-     * @param resource The declared chill requirement.
-     * @return The plot's effective chill requirement after the change.
-     */
-    @PutMapping(value = "/{plotId}/chill-requirement", consumes = MediaType.APPLICATION_JSON_VALUE)
-    @Operation(
-            summary = "Configure plot chill requirement",
-            description = "Declares the plot's winter-chill requirement (Dynamic Model chill portions), "
-                    + "overriding the crop-derived system default. The stored value is tagged as "
-                    + "USER_DECLARED provenance and shared by the trend chart's reference line and the "
-                    + "yield-forecast chill modifier."
-    )
-    @ApiResponses(value = {
-            @ApiResponse(
-                    responseCode = "200",
-                    description = "Chill requirement configured",
-                    content = @Content(schema = @Schema(implementation = ChillRequirementResource.class))
-            ),
-            @ApiResponse(responseCode = "400", description = "Invalid request data"),
-            @ApiResponse(responseCode = "403", description = "User does not own the plot"),
-            @ApiResponse(responseCode = "404", description = "Plot not found"),
-            @ApiResponse(responseCode = "500", description = "Unexpected error")
-    })
-    public ResponseEntity<?> configureChillRequirement(
-            @PathVariable Long plotId,
-            @RequestParam Long userId,
-            @Valid @RequestBody ConfigureChillRequirementResource resource
-    ) {
-        var command = ConfigureChillRequirementCommandFromResourceAssembler
-                .toCommandFromResource(plotId, userId, resource);
-        var result = plotCommandService.handle(command);
-
-        return ResponseEntityAssembler.toResponseEntityFromResult(
-                result,
-                ChillRequirementResourceAssembler::toResourceFromValueObject,
-                HttpStatus.OK
-        );
-    }
-
-    /**
-     * Clears a plot's declared chill requirement, reverting to the crop-derived
-     * system default.
-     *
-     * @param plotId Plot identifier.
-     * @param userId Owner user identifier.
-     * @return The plot's effective (system-default) chill requirement.
-     */
-    @DeleteMapping("/{plotId}/chill-requirement")
-    @Operation(
-            summary = "Reset plot chill requirement",
-            description = "Clears the declared chill requirement so the crop-derived system default "
-                    + "applies again."
-    )
-    @ApiResponses(value = {
-            @ApiResponse(
-                    responseCode = "200",
-                    description = "Chill requirement reset",
-                    content = @Content(schema = @Schema(implementation = ChillRequirementResource.class))
-            ),
-            @ApiResponse(responseCode = "400", description = "Invalid request parameters"),
-            @ApiResponse(responseCode = "403", description = "User does not own the plot"),
-            @ApiResponse(responseCode = "404", description = "Plot not found"),
-            @ApiResponse(responseCode = "500", description = "Unexpected error")
-    })
-    public ResponseEntity<?> resetChillRequirement(
-            @PathVariable Long plotId,
-            @RequestParam Long userId
-    ) {
-        var result = plotCommandService.handle(new ResetChillRequirementCommand(plotId, userId));
-
-        return ResponseEntityAssembler.toResponseEntityFromResult(
-                result,
-                ChillRequirementResourceAssembler::toResourceFromValueObject,
-                HttpStatus.OK
-        );
-    }
-
-    /**
-     * Gets all active plots owned by a user.
-     *
-     * @param userId The owner user identifier.
-     * @param includeCurrentImagery Whether current satellite imagery should be included.
-     * @return The active plot resources.
+     * @param view The projection to fetch (e.g. 'overview').
+     * @param includeCurrentImagery Whether to include current satellite imagery.
+     * @return A collection of plot resources or a specific overview projection.
      */
     @GetMapping
     @Operation(
-            summary = "Get plots by user",
-            description = "Gets all active plots owned by a user. When includeCurrentImagery is true, "
-                    + "the response is enriched with current satellite imagery for the Viora dashboard."
+            summary = "Get plots collection",
+            description = "Gets all active plots owned by a user. Use ?view=overview to get the My Plots overview projection, "
+                    + "which returns registered plot totals, monitored area, climate links, online IoT devices and the latest monitoring signals per plot. "
+                    + "If includeCurrentImagery is true, the response is enriched with current satellite imagery."
     )
     @ApiResponses(value = {
             @ApiResponse(
                     responseCode = "200",
-                    description = "Plots retrieved",
-                    content = @Content(
-                            array = @ArraySchema(
-                                    schema = @Schema(
-                                            implementation = PlotWithCurrentImageryResource.class
-                                    )
-                            )
-                    )
+                    description = "Plots retrieved successfully",
+                    content = @Content(array = @ArraySchema(schema = @Schema(implementation = PlotResource.class)))
             ),
-            @ApiResponse(responseCode = "400", description = "Invalid user ID"),
+            @ApiResponse(responseCode = "400", description = "Invalid request parameters"),
             @ApiResponse(responseCode = "500", description = "Unexpected error")
     })
-    public ResponseEntity<?> getPlotsByUserId(
+    public ResponseEntity<?> getPlots(
+            @Parameter(description = "The owner user identifier", required = true)
             @RequestParam Long userId,
+            @Parameter(description = "Projection view. Supported values: 'overview'")
+            @RequestParam(required = false) String view,
+            @Parameter(description = "Include current satellite imagery data")
             @RequestParam(defaultValue = "false") boolean includeCurrentImagery
     ) {
-        if (includeCurrentImagery) {
-            var imageryResult = plotQueryService.handle(
-                    new GetPlotsWithCurrentImageryQuery(userId)
+        if ("overview".equalsIgnoreCase(view)) {
+            var result = plotQueryService.handle(new GetMyPlotsOverviewQuery(userId));
+            return ResponseEntityAssembler.toResponseEntityFromResult(
+                    result,
+                    MyPlotsOverviewResourceAssembler::toResourceFromReadModel,
+                    HttpStatus.OK
             );
+        }
 
+        if (includeCurrentImagery) {
+            var imageryResult = plotQueryService.handle(new GetPlotsWithCurrentImageryQuery(userId));
             return ResponseEntityAssembler.toResponseEntityFromResult(
                     imageryResult,
-                    plots -> plots.stream()
+                    (java.util.List<com.arcadiadevs.viora.platform.agronomic.application.readmodels.PlotWithCurrentImagery> plots) -> plots.stream()
                             .map(PlotWithCurrentImageryResourceAssembler::toResourceFromReadModel)
                             .toList(),
                     HttpStatus.OK
@@ -414,10 +153,9 @@ public class PlotsController {
         }
 
         var result = plotQueryService.handle(new GetPlotsByUserIdQuery(userId));
-
         return ResponseEntityAssembler.toResponseEntityFromResult(
                 result,
-                plots -> plots.stream()
+                (java.util.List<com.arcadiadevs.viora.platform.agronomic.domain.model.aggregates.Plot> plots) -> plots.stream()
                         .map(PlotResourceFromPlotAssembler::toResourceFromAggregate)
                         .toList(),
                 HttpStatus.OK
@@ -425,26 +163,59 @@ public class PlotsController {
     }
 
     /**
-     * Gets a plot by its ID.
+     * Gets a single plot or its specific projections (detail, monitoring, weather).
      *
      * @param plotId The plot identifier.
-     * @return The plot resource if found, or a standardized error response.
+     * @param view The specific projection to fetch (detail, monitoring, weather).
+     * @param userId The user identifier, required for fetching complex projections.
+     * @return The requested plot projection.
      */
     @GetMapping("/{plotId}")
     @Operation(
-            summary = "Get plot by ID",
-            description = "Gets the details of a productive agricultural plot by its unique identifier."
+            summary = "Get plot by ID or specific projection",
+            description = "Gets the details of a plot. Use ?view=detail for full configuration, "
+                    + "?view=monitoring for the real-time agronomic summary, or ?view=weather for the 5-day forecast."
     )
     @ApiResponses(value = {
-            @ApiResponse(responseCode = "200", description = "Plot found"),
-            @ApiResponse(responseCode = "400", description = "Invalid plot ID"),
-            @ApiResponse(responseCode = "404", description = "Plot not found"),
-            @ApiResponse(responseCode = "500", description = "Unexpected error")
+            @ApiResponse(responseCode = "200", description = "Plot data retrieved successfully"),
+            @ApiResponse(responseCode = "400", description = "Invalid plot ID or missing userId for view"),
+            @ApiResponse(responseCode = "404", description = "Plot not found")
     })
-    public ResponseEntity<?> getPlotById(@PathVariable Long plotId) {
-        var getPlotByIdQuery = new GetPlotByIdQuery(plotId);
-        var result = plotQueryService.handle(getPlotByIdQuery);
+    public ResponseEntity<?> getPlot(
+            @Parameter(description = "Plot identifier", required = true)
+            @PathVariable Long plotId,
+            @Parameter(description = "Projection view. Supported values: 'detail', 'monitoring', 'weather'")
+            @RequestParam(required = false) String view,
+            @Parameter(description = "User identifier (required when using a view projection)")
+            @RequestParam(required = false) Long userId
+    ) {
+        if ("detail".equalsIgnoreCase(view)) {
+            if (userId == null) return ResponseEntity.badRequest().body(new MessageResource("userId is required for detail view"));
+            var result = plotDetailQueryService.handle(new GetPlotDetailQuery(userId, plotId));
+            return ResponseEntityAssembler.toResponseEntityFromResult(
+                    result,
+                    PlotDetailResourceAssembler::toResourceFromReadModel,
+                    HttpStatus.OK
+            );
+        } else if ("monitoring".equalsIgnoreCase(view)) {
+            if (userId == null) return ResponseEntity.badRequest().body(new MessageResource("userId is required for monitoring view"));
+            var result = plotMonitoringSummaryQueryService.handle(new GetPlotMonitoringSummaryQuery(userId, plotId));
+            return ResponseEntityAssembler.toResponseEntityFromResult(
+                    result,
+                    PlotMonitoringSummaryResourceAssembler::toResourceFromReadModel,
+                    HttpStatus.OK
+            );
+        } else if ("weather".equalsIgnoreCase(view)) {
+            if (userId == null) return ResponseEntity.badRequest().body(new MessageResource("userId is required for weather view"));
+            var result = plotWeatherForecastQueryService.handle(new GetPlotWeatherForecastQuery(userId, plotId));
+            return ResponseEntityAssembler.toResponseEntityFromResult(
+                    result,
+                    PlotWeatherForecastResourceAssembler::toResourceFromReadModel,
+                    HttpStatus.OK
+            );
+        }
 
+        var result = plotQueryService.handle(new GetPlotByIdQuery(plotId));
         return ResponseEntityAssembler.toResponseEntityFromResult(
                 result,
                 PlotResourceFromPlotAssembler::toResourceFromAggregate,
@@ -453,30 +224,46 @@ public class PlotsController {
     }
 
     /**
-     * Updates a plot by its ID.
+     * Updates an existing plot.
      *
      * @param plotId The plot identifier.
-     * @param resource The update plot request body.
-     * @return The updated plot resource if successful, or a standardized error response.
+     * @param userId The user identifier.
+     * @param resource The plot update information, including optional chill requirement updates.
+     * @return The updated plot resource.
      */
     @PatchMapping(value = "/{plotId}", consumes = MediaType.APPLICATION_JSON_VALUE)
     @Operation(
             summary = "Update plot",
-            description = "Updates the information and/or geographic boundary of an existing productive agricultural plot. "
-                    + "When the boundary changes, the backend recalculates the plot area."
+            description = "Updates the information and/or geographic boundary of an existing plot. "
+                    + "If 'chillRequirement' is provided, it declares or overrides the winter-chill requirement. "
+                    + "If 'clearChillRequirement' is true, it reverts to the crop-derived system default."
     )
     @ApiResponses(value = {
-            @ApiResponse(responseCode = "200", description = "Plot updated"),
+            @ApiResponse(responseCode = "200", description = "Plot updated successfully", content = @Content(schema = @Schema(implementation = PlotResource.class))),
             @ApiResponse(responseCode = "400", description = "Invalid request data"),
-            @ApiResponse(responseCode = "404", description = "Plot not found"),
-            @ApiResponse(responseCode = "409", description = "Plot conflict"),
-            @ApiResponse(responseCode = "422", description = "Business rule violation"),
-            @ApiResponse(responseCode = "500", description = "Unexpected error")
+            @ApiResponse(responseCode = "404", description = "Plot not found")
     })
     public ResponseEntity<?> updatePlot(
+            @Parameter(description = "Plot identifier", required = true)
             @PathVariable Long plotId,
+            @Parameter(description = "User identifier (required when modifying chill requirement)")
+            @RequestParam(required = false) Long userId,
             @Valid @RequestBody UpdatePlotResource resource
     ) {
+        if (resource.chillRequirement() != null && userId != null) {
+            var command = ConfigureChillRequirementCommandFromResourceAssembler.toCommandFromResource(plotId, userId, resource.chillRequirement());
+            var result = plotCommandService.handle(command);
+            if (result.isFailure()) {
+                return ResponseEntityAssembler.toResponseEntityFromResult(result, Object::toString, HttpStatus.OK);
+            }
+        } else if (Boolean.TRUE.equals(resource.clearChillRequirement()) && userId != null) {
+            var command = new ResetChillRequirementCommand(plotId, userId);
+            var result = plotCommandService.handle(command);
+            if (result.isFailure()) {
+                return ResponseEntityAssembler.toResponseEntityFromResult(result, Object::toString, HttpStatus.OK);
+            }
+        }
+
         var updatePlotCommand = UpdatePlotCommandFromResourceAssembler.toCommandFromResource(plotId, resource);
         var result = plotCommandService.handle(updatePlotCommand);
 
@@ -491,7 +278,7 @@ public class PlotsController {
      * Deletes a plot by its ID.
      *
      * @param plotId The plot identifier.
-     * @return A success message if deleted, or a standardized error response.
+     * @return A success message if deleted.
      */
     @DeleteMapping("/{plotId}")
     @Operation(
@@ -499,13 +286,14 @@ public class PlotsController {
             description = "Deletes an existing productive agricultural plot by its unique identifier."
     )
     @ApiResponses(value = {
-            @ApiResponse(responseCode = "200", description = "Plot deleted"),
+            @ApiResponse(responseCode = "200", description = "Plot deleted successfully", content = @Content(schema = @Schema(implementation = MessageResource.class))),
             @ApiResponse(responseCode = "400", description = "Invalid plot ID"),
-            @ApiResponse(responseCode = "404", description = "Plot not found"),
-            @ApiResponse(responseCode = "422", description = "Business rule violation"),
-            @ApiResponse(responseCode = "500", description = "Unexpected error")
+            @ApiResponse(responseCode = "404", description = "Plot not found")
     })
-    public ResponseEntity<?> deletePlot(@PathVariable Long plotId) {
+    public ResponseEntity<?> deletePlot(
+            @Parameter(description = "Plot identifier", required = true)
+            @PathVariable Long plotId
+    ) {
         var deletePlotCommand = new DeletePlotCommand(plotId);
         var result = plotCommandService.handle(deletePlotCommand);
 
