@@ -1,5 +1,7 @@
 package com.arcadiadevs.viora.platform.surveillance.interfaces.rest.resources;
 
+import java.util.List;
+
 public record AlertSummaryResource(
     Long id,
     String type,
@@ -7,5 +9,6 @@ public record AlertSummaryResource(
     String severity,
     String date,
     String status,
+    List<String> sources,
     PlotSummaryResource plot
 ) {}
