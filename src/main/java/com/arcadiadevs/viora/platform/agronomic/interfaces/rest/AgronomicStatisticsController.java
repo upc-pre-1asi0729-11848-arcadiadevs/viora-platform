@@ -48,14 +48,13 @@ public class AgronomicStatisticsController {
 
     @GetMapping
     @Operation(
-            summary = "Get agronomic statistics",
-            description = "Gets agronomic statistics by user, optionally filtered by plot and constrained by a time range."
+            summary = "Get agronomic statistics or series",
+            description = "Gets agronomic statistics by user, optionally filtered by plot and constrained by a time range. Use ?view=series for trend series."
     )
     @ApiResponses({
             @ApiResponse(
                     responseCode = "200",
-                    description = "Agronomic statistics retrieved successfully",
-                    content = @Content(schema = @Schema(implementation = AgronomicStatisticResource.class))
+                    description = "Agronomic statistics retrieved successfully"
             ),
             @ApiResponse(responseCode = "400", description = "Invalid request parameters"),
             @ApiResponse(responseCode = "403", description = "Authenticated user cannot access the requested statistics")
@@ -73,12 +72,30 @@ public class AgronomicStatisticsController {
             )
             @RequestParam String timeRange,
 
+            @Parameter(description = "View projection (e.g. 'series')")
+            @RequestParam(required = false) String view,
+
             @Parameter(description = "Authenticated user identifier")
             @RequestHeader(value = "X-Authenticated-User-Id", required = false) Long authenticatedUserId
     ) {
         var effectiveAuthenticatedUserId = authenticatedUserId != null
                 ? authenticatedUserId
                 : userId;
+
+        if ("series".equalsIgnoreCase(view)) {
+            var query = new GetAgronomicStatisticSeriesQuery(
+                    userId,
+                    effectiveAuthenticatedUserId,
+                    plotId,
+                    TimeRange.from(timeRange)
+            );
+            var result = agronomicStatisticSeriesQueryService.handle(query);
+            return ResponseEntityAssembler.toResponseEntityFromResult(
+                    result,
+                    AgronomicStatisticSeriesResourceAssembler::toResourceFromReadModel,
+                    HttpStatus.OK
+            );
+        }
 
         var query = new GetAgronomicStatisticsQuery(
                 userId,
@@ -91,67 +108,16 @@ public class AgronomicStatisticsController {
 
         return ResponseEntityAssembler.toResponseEntityFromResult(
                 result,
-                statistics -> statistics.stream()
+                (java.util.List<com.arcadiadevs.viora.platform.agronomic.domain.model.aggregates.AgronomicStatistic> statistics) -> statistics.stream()
                         .map(AgronomicStatisticResourceFromAgronomicStatisticAssembler::toResourceFromAggregate)
                         .toList(),
                 HttpStatus.OK
         );
     }
 
-    @GetMapping("/series")
+    @PostMapping
     @Operation(
-            summary = "Get agronomic statistic trend series",
-            description = "Builds a chart-oriented series (NDVI and chill) for a time range with the "
-                    + "difference relative to the previous comparable period."
-    )
-    @ApiResponses({
-            @ApiResponse(
-                    responseCode = "200",
-                    description = "Series retrieved successfully",
-                    content = @Content(schema = @Schema(implementation = AgronomicStatisticSeriesResource.class))
-            ),
-            @ApiResponse(responseCode = "400", description = "Invalid request parameters"),
-            @ApiResponse(responseCode = "403", description = "Authenticated user cannot access the requested statistics")
-    })
-    public ResponseEntity<?> getAgronomicStatisticSeries(
-            @Parameter(description = "User identifier", required = true)
-            @RequestParam Long userId,
-
-            @Parameter(description = "Optional plot identifier")
-            @RequestParam(required = false) Long plotId,
-
-            @Parameter(
-                    description = "Time range. Allowed values: LAST_7_DAYS, LAST_30_DAYS, LAST_90_DAYS, LAST_180_DAYS, LAST_365_DAYS, CAMPAIGN",
-                    required = true
-            )
-            @RequestParam String timeRange,
-
-            @Parameter(description = "Authenticated user identifier")
-            @RequestHeader(value = "X-Authenticated-User-Id", required = false) Long authenticatedUserId
-    ) {
-        var effectiveAuthenticatedUserId = authenticatedUserId != null
-                ? authenticatedUserId
-                : userId;
-
-        var query = new GetAgronomicStatisticSeriesQuery(
-                userId,
-                effectiveAuthenticatedUserId,
-                plotId,
-                TimeRange.from(timeRange)
-        );
-
-        var result = agronomicStatisticSeriesQueryService.handle(query);
-
-        return ResponseEntityAssembler.toResponseEntityFromResult(
-                result,
-                AgronomicStatisticSeriesResourceAssembler::toResourceFromReadModel,
-                HttpStatus.OK
-        );
-    }
-
-    @PostMapping("/ingest")
-    @Operation(
-            summary = "Ingest agronomic statistic snapshots",
+            summary = "Trigger agronomic statistic snapshots ingestion",
             description = "Ingests today's snapshot (real NDVI plus weather-derived chill) for each active "
                     + "plot of the user. Idempotent: a plot already snapshotted today is skipped."
     )
