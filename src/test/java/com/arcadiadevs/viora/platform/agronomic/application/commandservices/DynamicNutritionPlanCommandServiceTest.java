@@ -63,7 +63,7 @@ class DynamicNutritionPlanCommandServiceTest {
         fixture.plotRepository.plot = createPlot(10L, 1L);
         fixture.imageryService.imagery = imagery(0.20);
 
-        var result = fixture.service().handle(new RecommendDynamicNutritionCommand(10L, 1L));
+        var result = fixture.service().handle(new RecommendDynamicNutritionCommand(10L, 1L, null));
 
         assertTrue(result.isSuccess());
         var plan = result.success().orElseThrow();
@@ -85,7 +85,7 @@ class DynamicNutritionPlanCommandServiceTest {
         fixture.imageryService.imagery = imagery(0.70); // healthy vigor → climate not high
         fixture.statisticRepository.latest = chillStatistic(5.0); // 5 / 40 = severe deficit
 
-        var result = fixture.service().handle(new RecommendDynamicNutritionCommand(10L, 1L));
+        var result = fixture.service().handle(new RecommendDynamicNutritionCommand(10L, 1L, null));
 
         assertTrue(result.isSuccess());
         assertEquals(
@@ -100,11 +100,11 @@ class DynamicNutritionPlanCommandServiceTest {
         fixture.imageryService.imagery = imagery(0.20);
 
         var firstPlan = fixture.service()
-                .handle(new RecommendDynamicNutritionCommand(10L, 1L))
+                .handle(new RecommendDynamicNutritionCommand(10L, 1L, null))
                 .success()
                 .orElseThrow();
 
-        var secondResult = fixture.service().handle(new RecommendDynamicNutritionCommand(10L, 1L));
+        var secondResult = fixture.service().handle(new RecommendDynamicNutritionCommand(10L, 1L, null));
 
         assertTrue(secondResult.isSuccess());
         var supersededPlan = fixture.planRepository.findById(firstPlan.getId()).orElseThrow();
@@ -118,7 +118,7 @@ class DynamicNutritionPlanCommandServiceTest {
         fixture.plotRepository.plot = createPlot(10L, 1L);
         fixture.imageryService.imagery = imagery(0.70);
 
-        var result = fixture.service().handle(new RecommendDynamicNutritionCommand(10L, 1L));
+        var result = fixture.service().handle(new RecommendDynamicNutritionCommand(10L, 1L, null));
 
         assertTrue(result.isFailure());
         assertEquals("BUSINESS_RULE_VIOLATION", result.failure().orElseThrow().code());
@@ -130,7 +130,7 @@ class DynamicNutritionPlanCommandServiceTest {
         var fixture = new Fixture();
         fixture.plotRepository.plot = createPlot(10L, 1L);
 
-        var result = fixture.service().handle(new RecommendDynamicNutritionCommand(10L, 1L));
+        var result = fixture.service().handle(new RecommendDynamicNutritionCommand(10L, 1L, null));
 
         assertTrue(result.isFailure());
         assertEquals("BUSINESS_RULE_VIOLATION", result.failure().orElseThrow().code());
@@ -144,7 +144,7 @@ class DynamicNutritionPlanCommandServiceTest {
         fixture.imageryService.imagery = imagery(0.20);
         fixture.weatherDataService.weather = Optional.empty();
 
-        var result = fixture.service().handle(new RecommendDynamicNutritionCommand(10L, 1L));
+        var result = fixture.service().handle(new RecommendDynamicNutritionCommand(10L, 1L, null));
 
         assertTrue(result.isFailure());
         assertEquals("BUSINESS_RULE_VIOLATION", result.failure().orElseThrow().code());
@@ -154,7 +154,7 @@ class DynamicNutritionPlanCommandServiceTest {
     @Test
     void returnsNotFoundWhenPlotDoesNotExist() {
         var result = new Fixture().service()
-                .handle(new RecommendDynamicNutritionCommand(10L, 1L));
+                .handle(new RecommendDynamicNutritionCommand(10L, 1L, null));
 
         assertTrue(result.isFailure());
         assertEquals("PLOT_NOT_FOUND", result.failure().orElseThrow().code());
@@ -165,7 +165,7 @@ class DynamicNutritionPlanCommandServiceTest {
         var fixture = new Fixture();
         fixture.plotRepository.plot = createPlot(99L, 1L);
 
-        var result = fixture.service().handle(new RecommendDynamicNutritionCommand(10L, 1L));
+        var result = fixture.service().handle(new RecommendDynamicNutritionCommand(10L, 1L, null));
 
         assertTrue(result.isFailure());
         assertEquals("PLOT_OWNERSHIP_FORBIDDEN", result.failure().orElseThrow().code());
@@ -278,7 +278,7 @@ class DynamicNutritionPlanCommandServiceTest {
         fixture.plotRepository.plot = createPlot(10L, 1L);
         fixture.imageryService.imagery = imagery(0.20);
         return fixture.service()
-                .handle(new RecommendDynamicNutritionCommand(10L, 1L))
+                .handle(new RecommendDynamicNutritionCommand(10L, 1L, null))
                 .success()
                 .orElseThrow();
     }
@@ -340,7 +340,8 @@ class DynamicNutritionPlanCommandServiceTest {
             return new DynamicNutritionPlanCommandService(
                     new PlotOwnershipValidator(plotRepository),
                     planRepository,
-                    assemblerService
+                    assemblerService,
+                    event -> { }
             );
         }
     }
