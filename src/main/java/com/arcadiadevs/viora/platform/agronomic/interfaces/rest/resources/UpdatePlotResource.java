@@ -33,6 +33,12 @@ public record UpdatePlotResource(
         @Size(max = 80) String variety,
         @Size(max = 120) String location,
         @Size(max = 60) String campaign,
-        @Size(max = 500) String notes
+        @Size(max = 500) String notes,
+        
+        @Schema(description = "Set to true to explicitly remove the user-declared chill requirement.")
+        Boolean clearChillRequirement,
+        
+        @Schema(description = "The declared chill requirement. Setting this will override any existing requirement.")
+        ConfigureChillRequirementResource chillRequirement
 ) {
 }

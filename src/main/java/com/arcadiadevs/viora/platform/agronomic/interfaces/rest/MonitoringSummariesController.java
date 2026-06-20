@@ -39,18 +39,12 @@ public class MonitoringSummariesController {
     private final MonitoringSummaryQueryService monitoringSummaryQueryService;
     private final MonitoringSummaryResourceFromMonitoringSummaryAssembler assembler;
 
-    /**
-     * Retrieves the current monitoring summary for the specified user.
-     *
-     * @param userId the identifier of the user requesting the summary
-     * @return 200 OK with {@link MonitoringSummaryResource}, or 404 if no data is available
-     */
-    @GetMapping("/current")
+    @GetMapping
     @Operation(
-            summary = "Get current monitoring summary",
-            description = "Retrieves the current agronomic monitoring summary for a given user, " +
+            summary = "Get monitoring summaries",
+            description = "Retrieves the agronomic monitoring summary for a given user, " +
                     "including health status, NDVI, weather snapshot, climate risk level, " +
-                    "and mitigation recommendations."
+                    "and mitigation recommendations. By default, it returns the current (latest) summary."
     )
     @ApiResponses({
             @ApiResponse(
@@ -61,15 +55,20 @@ public class MonitoringSummariesController {
             @ApiResponse(responseCode = "400", description = "Invalid userId parameter"),
             @ApiResponse(responseCode = "404", description = "No monitoring summary found for the given user")
     })
-    public ResponseEntity<?> getCurrentMonitoringSummary(
+    public ResponseEntity<?> getMonitoringSummaries(
             @Parameter(description = "User identifier", required = true)
-            @RequestParam Long userId
+            @RequestParam Long userId,
+            @Parameter(description = "Limit the number of results (defaults to 1 for current summary)")
+            @RequestParam(defaultValue = "1") int limit
     ) {
+        // Currently, the query only supports fetching the current one (limit 1 implicitly).
         var query = new GetCurrentMonitoringSummaryQuery(new UserId(userId));
         var result = monitoringSummaryQueryService.handle(query);
 
-        return result
-                .map(summary -> ResponseEntity.status(HttpStatus.OK).body(assembler.toResource(summary)))
-                .orElse(ResponseEntity.notFound().build());
+        if (result.isPresent()) {
+            return ResponseEntity.status(HttpStatus.OK).body(assembler.toResource(result.get()));
+        } else {
+            return ResponseEntity.notFound().build();
+        }
     }
 }

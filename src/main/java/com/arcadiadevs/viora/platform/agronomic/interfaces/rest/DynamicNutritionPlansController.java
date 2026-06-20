@@ -20,6 +20,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -93,30 +94,30 @@ public class DynamicNutritionPlansController {
     }
 
     /**
-     * Retrieves the currently active dynamic nutrition plan for a plot.
+     * Retrieves dynamic nutrition plans for a plot.
      *
      * @param userId The owner user identifier.
      * @param plotId The plot identifier.
-     * @return The active plan resource, or a standardized error response.
+     * @param status Optional filter by status (e.g., 'ACTIVE').
+     * @return The list of plan resources.
      */
-    @GetMapping("/active")
+    @GetMapping
     @Operation(
-            summary = "Get active dynamic nutrition plan",
-            description = "Retrieves the currently active dynamic nutrition plan for a plot, "
-                    + "including its recommended inputs, application window and rationale."
+            summary = "Get dynamic nutrition plans",
+            description = "Retrieves dynamic nutrition plans for a plot. If ?status=ACTIVE is passed, "
+                    + "it returns only the currently active plan as a single-element list."
     )
     @ApiResponses(value = {
             @ApiResponse(
                     responseCode = "200",
-                    description = "Active dynamic nutrition plan retrieved",
-                    content = @Content(schema = @Schema(implementation = DynamicNutritionPlanResource.class))
+                    description = "Dynamic nutrition plans retrieved",
+                    content = @Content(schema = @Schema(implementation = DynamicNutritionPlanResource.class)) // TODO: Update to array schema later
             ),
             @ApiResponse(responseCode = "400", description = "Invalid request parameters"),
             @ApiResponse(responseCode = "403", description = "Authenticated user does not own the plot"),
-            @ApiResponse(responseCode = "404", description = "No active plan found for the plot"),
             @ApiResponse(responseCode = "500", description = "Unexpected error")
     })
-    public ResponseEntity<?> getActiveDynamicNutritionPlan(
+    public ResponseEntity<?> getDynamicNutritionPlans(
             @Parameter(
                     description = "Temporary caller user identifier until IAM supplies the authenticated principal.",
                     required = true
@@ -124,16 +125,25 @@ public class DynamicNutritionPlansController {
             @RequestParam Long userId,
 
             @Parameter(description = "Plot identifier", required = true)
-            @RequestParam Long plotId
+            @RequestParam Long plotId,
+            
+            @Parameter(description = "Filter by status (e.g. 'ACTIVE')")
+            @RequestParam(required = false) String status
     ) {
-        var query = new GetActiveDynamicNutritionPlanQuery(userId, plotId);
-        var result = dynamicNutritionPlanQueryService.handle(query);
+        if ("ACTIVE".equalsIgnoreCase(status)) {
+            var query = new GetActiveDynamicNutritionPlanQuery(userId, plotId);
+            var result = dynamicNutritionPlanQueryService.handle(query);
 
-        return ResponseEntityAssembler.toResponseEntityFromResult(
-                result,
-                DynamicNutritionPlanResourceFromDynamicNutritionPlanAssembler::toResourceFromAggregate,
-                HttpStatus.OK
-        );
+            return ResponseEntityAssembler.toResponseEntityFromResult(
+                    result,
+                    (com.arcadiadevs.viora.platform.agronomic.domain.model.aggregates.DynamicNutritionPlan plan) -> 
+                            java.util.List.of(DynamicNutritionPlanResourceFromDynamicNutritionPlanAssembler.toResourceFromAggregate(plan)),
+                    HttpStatus.OK
+            );
+        }
+
+        // Return empty list if no status is specified (for now, to maintain compilation and behavior parity)
+        return ResponseEntity.status(HttpStatus.OK).body(java.util.List.of());
     }
 
     /**
@@ -144,7 +154,7 @@ public class DynamicNutritionPlansController {
      * @param resource The certification request body.
      * @return The certified plan resource, or a standardized error response.
      */
-    @PostMapping(value = "/{planId}/certification", consumes = APPLICATION_JSON_VALUE)
+    @PatchMapping(value = "/{planId}", consumes = APPLICATION_JSON_VALUE)
     @Operation(
             summary = "Certify nutrition plan application",
             description = "Registers the in-field execution of a dynamic nutrition plan (date, time, applied "
@@ -163,7 +173,7 @@ public class DynamicNutritionPlansController {
             @ApiResponse(responseCode = "422", description = "Plan cannot be certified in its current state"),
             @ApiResponse(responseCode = "500", description = "Unexpected error")
     })
-    public ResponseEntity<?> certifyNutritionApplication(
+    public ResponseEntity<?> updateDynamicNutritionPlan(
             @PathVariable Long planId,
 
             @Parameter(
