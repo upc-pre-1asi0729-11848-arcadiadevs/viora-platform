@@ -49,6 +49,9 @@ public class AlertQueryService {
                     entity.getSeverity() != null ? entity.getSeverity().name() : "Unknown",
                     entity.getCreatedAt() != null ? entity.getCreatedAt().toString() : "",
                     entity.getStatus() != null ? entity.getStatus().name() : "Unknown",
+                    entity.getSources() != null
+                            ? entity.getSources().stream().map(Enum::name).collect(Collectors.toList())
+                            : List.of(),
                     plotSummary
             );
         }).collect(Collectors.toList());
