@@ -49,4 +49,26 @@ public class GeoPoint {
         this.latitude = latitude;
         this.longitude = longitude;
     }
+
+    /**
+     * Computes the great-circle distance to another point using the Haversine
+     * formula, in kilometers.
+     *
+     * @param other The other geographic point.
+     * @return The distance between the two points in kilometers.
+     */
+    public double haversineKilometers(GeoPoint other) {
+        final double earthRadiusKm = 6_371.0088;
+
+        double deltaLatitude = Math.toRadians(other.latitude - this.latitude);
+        double deltaLongitude = Math.toRadians(other.longitude - this.longitude);
+        double originLatitude = Math.toRadians(this.latitude);
+        double targetLatitude = Math.toRadians(other.latitude);
+
+        double a = Math.sin(deltaLatitude / 2) * Math.sin(deltaLatitude / 2)
+                + Math.sin(deltaLongitude / 2) * Math.sin(deltaLongitude / 2)
+                * Math.cos(originLatitude) * Math.cos(targetLatitude);
+
+        return earthRadiusKm * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    }
 }
