@@ -1,8 +1,10 @@
 package com.arcadiadevs.viora.platform.surveillance.application.internal.outboundservices.acl;
 
 import com.arcadiadevs.viora.platform.agronomic.interfaces.acl.AgronomicContextFacade;
+import com.arcadiadevs.viora.platform.agronomic.interfaces.acl.NeighborPlot;
 import org.springframework.stereotype.Service;
 
+import java.util.List;
 import java.util.Optional;
 
 /**
@@ -10,7 +12,7 @@ import java.util.Optional;
  */
 @Service
 public class ExternalAgronomicService {
-    
+
     private final AgronomicContextFacade agronomicContextFacade;
 
     public ExternalAgronomicService(AgronomicContextFacade agronomicContextFacade) {
@@ -26,5 +28,26 @@ public class ExternalAgronomicService {
      */
     public Optional<Double> fetchCurrentNdviByPlotId(Long plotId, Long userId) {
         return agronomicContextFacade.fetchCurrentNdviByPlotId(plotId, userId);
+    }
+
+    /**
+     * Resolves the display name of a plot.
+     *
+     * @param plotId the plot identifier
+     * @return the plot name if it exists
+     */
+    public Optional<String> getPlotName(Long plotId) {
+        return agronomicContextFacade.getPlotName(plotId);
+    }
+
+    /**
+     * Finds anonymized neighbor plots within a radius of the reference plot.
+     *
+     * @param referencePlotId the plot at the center of the search radius
+     * @param radiusKm        the search radius in kilometers
+     * @return the neighbor plots (id + distance) within the radius
+     */
+    public List<NeighborPlot> findNeighborPlotsWithinRadius(Long referencePlotId, double radiusKm) {
+        return agronomicContextFacade.findNeighborPlotsWithinRadius(referencePlotId, radiusKm);
     }
 }
