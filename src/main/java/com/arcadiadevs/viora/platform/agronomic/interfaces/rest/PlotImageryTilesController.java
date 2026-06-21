@@ -33,7 +33,7 @@ import static org.springframework.http.MediaType.IMAGE_PNG_VALUE;
  * </p>
  */
 @RestController
-@RequestMapping("/api/v1/plots/{plotId}/imagery/tile")
+@RequestMapping("/api/v1/plots/{plotId}/images")
 @RequiredArgsConstructor
 @Tag(name = "Plots", description = "Plots Management Endpoints")
 public class PlotImageryTilesController {
@@ -52,7 +52,7 @@ public class PlotImageryTilesController {
      * @param userId The owner user identifier.
      * @return The PNG tile bytes, or a standardized error response.
      */
-    @GetMapping(value = "/{zoom}/{x}/{y}", produces = {IMAGE_PNG_VALUE, APPLICATION_JSON_VALUE})
+    @GetMapping(produces = {IMAGE_PNG_VALUE, APPLICATION_JSON_VALUE})
     @Operation(
             summary = "Get current NDVI imagery tile",
             description = "Streams a raster NDVI tile of the plot's current satellite imagery "
@@ -70,13 +70,13 @@ public class PlotImageryTilesController {
             @PathVariable Long plotId,
 
             @Parameter(description = "Web-map zoom level", required = true)
-            @PathVariable int zoom,
+            @RequestParam int zoom,
 
             @Parameter(description = "Tile column", required = true)
-            @PathVariable int x,
+            @RequestParam int x,
 
             @Parameter(description = "Tile row", required = true)
-            @PathVariable int y,
+            @RequestParam int y,
 
             @Parameter(description = "User identifier", required = true)
             @RequestParam Long userId
