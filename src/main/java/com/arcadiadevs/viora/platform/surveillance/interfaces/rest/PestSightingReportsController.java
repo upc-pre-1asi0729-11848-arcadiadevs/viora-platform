@@ -2,10 +2,13 @@ package com.arcadiadevs.viora.platform.surveillance.interfaces.rest;
 
 import com.arcadiadevs.viora.platform.shared.interfaces.rest.transform.ResponseEntityAssembler;
 import com.arcadiadevs.viora.platform.surveillance.application.commandservices.PestSightingCommandService;
+import com.arcadiadevs.viora.platform.surveillance.application.queryservices.PestSightingReportQueryService;
+import com.arcadiadevs.viora.platform.surveillance.domain.model.queries.GetPestSightingReportsByUserQuery;
 import com.arcadiadevs.viora.platform.surveillance.interfaces.rest.resources.CreatePestSightingReportResource;
 import com.arcadiadevs.viora.platform.surveillance.interfaces.rest.transform.CreatePestSightingReportCommandFromResourceAssembler;
 import com.arcadiadevs.viora.platform.surveillance.interfaces.rest.transform.PestSightingReportResourceFromPestSightingReportAssembler;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -16,9 +19,11 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
@@ -31,6 +36,30 @@ import org.springframework.web.bind.annotation.RestController;
 public class PestSightingReportsController {
 
     private final PestSightingCommandService commandService;
+    private final PestSightingReportQueryService queryService;
+
+    /**
+     * Lists the pest sighting reports submitted by a user (symptom report history).
+     *
+     * @param reporterUserId the reporter user identifier
+     * @return the user's reports, newest first
+     */
+    @GetMapping
+    @Operation(
+            summary = "Get pest sighting reports",
+            description = "Returns the symptom report history submitted by the given user, newest first."
+    )
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Reports retrieved successfully"),
+            @ApiResponse(responseCode = "400", description = "Invalid request parameters")
+    })
+    public ResponseEntity<?> getReports(
+            @Parameter(description = "Reporter user identifier", required = true)
+            @RequestParam Long reporterUserId
+    ) {
+        var reports = queryService.handle(new GetPestSightingReportsByUserQuery(reporterUserId));
+        return ResponseEntity.ok(reports);
+    }
 
     /**
      * Registers a new manual pest sighting report and triggers an automatic biological risk evaluation.
