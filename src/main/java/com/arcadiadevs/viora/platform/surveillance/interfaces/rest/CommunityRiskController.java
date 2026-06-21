@@ -32,7 +32,7 @@ public class CommunityRiskController {
      * Gets the community-risk snapshot around a reference plot.
      *
      * @param plotId   the reference plot identifier
-     * @param radiusKm the monitoring radius in kilometers (defaults to 5)
+     * @param radiusKm the monitoring radius in kilometers (defaults to 10)
      * @return the community-risk snapshot, or 404 if the plot does not exist
      */
     @GetMapping
@@ -54,7 +54,7 @@ public class CommunityRiskController {
             @Parameter(description = "Reference plot identifier", required = true)
             @RequestParam Long plotId,
             @Parameter(description = "Monitoring radius in kilometers")
-            @RequestParam(defaultValue = "5") double radiusKm
+            @RequestParam(defaultValue = "10") double radiusKm
     ) {
         var query = new GetCommunityRiskByPlotQuery(plotId, radiusKm);
 
