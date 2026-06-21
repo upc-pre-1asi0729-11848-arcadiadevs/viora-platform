@@ -1,5 +1,6 @@
 package com.arcadiadevs.viora.platform.surveillance.infrastructure.persistence.jpa.repositories;
 
+import com.arcadiadevs.viora.platform.surveillance.domain.model.valueobjects.AlertStatus;
 import com.arcadiadevs.viora.platform.surveillance.infrastructure.persistence.jpa.entities.AlertEntity;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
@@ -13,4 +14,6 @@ import java.util.List;
 @Repository
 public interface SpringDataAlertRepository extends JpaRepository<AlertEntity, Long> {
     List<AlertEntity> findByPlotIdInOrderByCreatedAtDesc(List<Long> plotIds, Pageable pageable);
+
+    List<AlertEntity> findByPlotIdInAndStatus(List<Long> plotIds, AlertStatus status);
 }

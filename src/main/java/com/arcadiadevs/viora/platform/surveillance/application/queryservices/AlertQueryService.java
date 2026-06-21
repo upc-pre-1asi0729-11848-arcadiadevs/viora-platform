@@ -52,6 +52,7 @@ public class AlertQueryService {
                     entity.getSources() != null
                             ? entity.getSources().stream().map(Enum::name).collect(Collectors.toList())
                             : List.of(),
+                    entity.getPlotId(),
                     plotSummary
             );
         }).collect(Collectors.toList());
