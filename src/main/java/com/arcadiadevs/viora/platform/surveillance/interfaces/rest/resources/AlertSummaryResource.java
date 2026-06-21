@@ -10,5 +10,6 @@ public record AlertSummaryResource(
     String date,
     String status,
     List<String> sources,
+    Long plotId,
     PlotSummaryResource plot
 ) {}
