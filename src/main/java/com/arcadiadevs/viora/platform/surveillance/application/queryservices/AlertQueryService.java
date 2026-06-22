@@ -38,7 +38,11 @@ public class AlertQueryService {
 
         var plotIds = plotSummaries.keySet().stream().toList();
         var pageable = PageRequest.of(0, query.limit());
-        var alertEntities = springDataAlertRepository.findByPlotIdInOrderByCreatedAtDesc(plotIds, pageable);
+        // Dismissed alerts (e.g. reports ruled out after inspection) drop out of the panel.
+        var alertEntities = springDataAlertRepository.findByPlotIdInAndStatusNotOrderByCreatedAtDesc(
+                plotIds,
+                com.arcadiadevs.viora.platform.surveillance.domain.model.valueobjects.AlertStatus.DISMISSED,
+                pageable);
 
         return alertEntities.stream().map(entity -> {
             var plotSummary = plotSummaries.get(entity.getPlotId());

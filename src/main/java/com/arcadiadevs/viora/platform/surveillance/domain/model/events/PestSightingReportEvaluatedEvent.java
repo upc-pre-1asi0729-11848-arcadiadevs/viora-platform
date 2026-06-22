@@ -41,9 +41,15 @@ public class PestSightingReportEvaluatedEvent extends ApplicationEvent {
     private final String probableThreat;
 
     /**
-     * True if the threat was confirmed and an alert should be created.
+     * True if the threat was confirmed and a high-priority alert should be created.
      */
     private final boolean alertConfirmed;
+
+    /**
+     * The triage outcome ({@code LOGGED}, {@code NEEDS_INSPECTION}, {@code CONFIRMED}),
+     * used to decide whether and what kind of alert to raise.
+     */
+    private final String status;
 
     /**
      * Constructor for PestSightingReportEvaluatedEvent.
@@ -54,7 +60,8 @@ public class PestSightingReportEvaluatedEvent extends ApplicationEvent {
      * @param reporterUserId The identifier of the user who reported the sighting.
      * @param calculatedRisk The calculated biological risk severity.
      * @param probableThreat The probable threat identified.
-     * @param alertConfirmed Whether an alert should be generated.
+     * @param alertConfirmed Whether a high-priority alert should be generated.
+     * @param status         The triage outcome of the report.
      */
     public PestSightingReportEvaluatedEvent(
             Object source,
@@ -63,7 +70,8 @@ public class PestSightingReportEvaluatedEvent extends ApplicationEvent {
             Long reporterUserId,
             String calculatedRisk,
             String probableThreat,
-            boolean alertConfirmed
+            boolean alertConfirmed,
+            String status
     ) {
         super(source);
         this.reportId = reportId;
@@ -72,5 +80,6 @@ public class PestSightingReportEvaluatedEvent extends ApplicationEvent {
         this.calculatedRisk = calculatedRisk;
         this.probableThreat = probableThreat;
         this.alertConfirmed = alertConfirmed;
+        this.status = status;
     }
 }

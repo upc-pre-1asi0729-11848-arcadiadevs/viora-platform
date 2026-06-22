@@ -19,6 +19,10 @@ public class AlertEntityToAggregateAssembler {
         );
 
         aggregate.restoreIdentity(new AlertId(entity.getId()));
+
+        if (entity.getReportId() != null) {
+            aggregate.linkReport(entity.getReportId());
+        }
         
         // Use reflection or direct package access if needed, but since fields are mostly read-only, 
         // we might need to recreate the state via public methods or a restoreState method.

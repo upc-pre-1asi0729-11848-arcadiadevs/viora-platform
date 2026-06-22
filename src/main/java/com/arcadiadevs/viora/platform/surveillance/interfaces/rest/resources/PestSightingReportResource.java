@@ -16,7 +16,7 @@ import java.util.List;
  * @param evaluated        Indicates whether this report has been automatically evaluated
  * @param calculatedRisk   The calculated risk severity if evaluated.
  * @param probableThreat   The identified probable threat if evaluated.
- * @param status           The current status of the report (e.g., UNDER_REVIEW, CONFIRMED).
+ * @param status           The triage outcome of the report (LOGGED, NEEDS_INSPECTION, CONFIRMED).
  * @param alertConfirmed   Whether an alert was generated based on this report.
  */
 @NullMarked

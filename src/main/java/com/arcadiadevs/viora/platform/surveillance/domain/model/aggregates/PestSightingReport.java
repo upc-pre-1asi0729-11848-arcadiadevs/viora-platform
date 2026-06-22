@@ -11,6 +11,9 @@ import com.arcadiadevs.viora.platform.surveillance.domain.model.valueobjects.Thr
 import com.arcadiadevs.viora.platform.surveillance.domain.model.valueobjects.ReportStatus;
 import lombok.Getter;
 
+import java.util.EnumSet;
+import java.util.Set;
+
 /**
  * Pest Sighting Report aggregate root.
  *
@@ -23,6 +26,19 @@ import lombok.Getter;
 public class PestSightingReport extends AbstractDomainAggregateRoot<PestSightingReport> {
 
     private static final int NOTES_MAX_LENGTH = 1000;
+
+    /**
+     * NDVI below this value indicates canopy stress severe enough to corroborate
+     * field-reported damage. It raises confidence; it never gates a report on its own.
+     */
+    private static final double NDVI_DAMAGE_THRESHOLD = 0.40;
+
+    /**
+     * Quarantine pathogens that must be escalated on any credible suspicion,
+     * regardless of the reporter's severity or current NDVI (e.g. Xylella fastidiosa,
+     * an EU-regulated quarantine organism).
+     */
+    private static final Set<ThreatType> QUARANTINE_THREATS = EnumSet.of(ThreatType.XYLELLA_RELATED);
 
     private PestSightingReportId id;
     private PlotId plotId;
@@ -41,7 +57,7 @@ public class PestSightingReport extends AbstractDomainAggregateRoot<PestSighting
     protected PestSightingReport() {
         this.evaluated = false;
         this.notes = "";
-        this.status = ReportStatus.UNDER_REVIEW;
+        this.status = ReportStatus.LOGGED;
         this.alertConfirmed = false;
     }
 
@@ -61,7 +77,7 @@ public class PestSightingReport extends AbstractDomainAggregateRoot<PestSighting
         this.observedSeverity = observedSeverity;
         this.notes = sanitizeText(notes, NOTES_MAX_LENGTH, "Notes");
         this.evaluated = false;
-        this.status = ReportStatus.UNDER_REVIEW;
+        this.status = ReportStatus.LOGGED;
         this.alertConfirmed = false;
     }
 
@@ -95,28 +111,85 @@ public class PestSightingReport extends AbstractDomainAggregateRoot<PestSighting
     }
 
     /**
-     * Evaluates the biological risk of the report using current satellite NDVI data.
-     * 
-     * @param currentNdvi The current NDVI value fetched from Agronomic context.
+     * Triages the report by combining the grower's observed severity (subjective field
+     * signal), the plot's current satellite NDVI (objective but lagging signal), and the
+     * inferred threat. NDVI raises confidence; it never gates a report on its own. Every
+     * report ends in a coherent terminal state — there is no passive "review" limbo.
+     *
+     * @param currentNdvi The current NDVI value fetched from the Agronomic context (nullable).
      * @param inferredThreat The threat inferred by the domain service.
      */
     public PestSightingReport evaluateBiologicalRisk(Double currentNdvi, ThreatType inferredThreat) {
-        boolean ndviConfirmsDamage = (currentNdvi != null && currentNdvi < 0.40);
-        
-        if (this.observedSeverity == AlertSeverity.CRITICAL || (this.observedSeverity == AlertSeverity.HIGH && ndviConfirmsDamage)) {
-            this.alertConfirmed = true;
+        boolean ndviConfirmsDamage = (currentNdvi != null && currentNdvi < NDVI_DAMAGE_THRESHOLD);
+        boolean quarantineThreat = inferredThreat != null && QUARANTINE_THREATS.contains(inferredThreat);
+
+        this.probableThreat = inferredThreat;
+        this.evaluated = true;
+
+        // Quarantine pathogens are escalated on any credible suspicion, regardless of
+        // the reporter's severity or current NDVI.
+        if (quarantineThreat) {
             this.status = ReportStatus.CONFIRMED;
-            this.calculatedRisk = AlertSeverity.HIGH;
-            this.probableThreat = inferredThreat;
-        } else {
-            this.alertConfirmed = false;
-            this.status = ReportStatus.UNDER_REVIEW;
-            this.calculatedRisk = AlertSeverity.LOW;
-            this.probableThreat = inferredThreat;
+            this.alertConfirmed = true;
+            this.calculatedRisk = AlertSeverity.CRITICAL;
+            return this;
         }
 
-        this.evaluated = true;
+        // CONFIRMED: subjective and objective signals agree (or self-reported as critical).
+        if (this.observedSeverity == AlertSeverity.CRITICAL
+                || (this.observedSeverity == AlertSeverity.HIGH && ndviConfirmsDamage)) {
+            this.status = ReportStatus.CONFIRMED;
+            this.alertConfirmed = true;
+            this.calculatedRisk = AlertSeverity.HIGH;
+            return this;
+        }
+
+        // NEEDS_INSPECTION: a real signal exists but is not yet corroborated.
+        if (this.observedSeverity == AlertSeverity.HIGH
+                || (this.observedSeverity == AlertSeverity.MEDIUM && ndviConfirmsDamage)) {
+            this.status = ReportStatus.NEEDS_INSPECTION;
+            this.alertConfirmed = false;
+            this.calculatedRisk = AlertSeverity.MEDIUM;
+            return this;
+        }
+
+        // LOGGED: weak signal — recorded for community epidemiology, no alert raised.
+        this.status = ReportStatus.LOGGED;
+        this.alertConfirmed = false;
+        this.calculatedRisk = AlertSeverity.LOW;
         return this;
+    }
+
+    /**
+     * Confirms the report after a field inspection corroborated the threat. Only valid for a
+     * report awaiting inspection; escalates it so a high-priority alert is raised.
+     */
+    public PestSightingReport confirmAfterInspection() {
+        requireAwaitingInspection();
+        this.status = ReportStatus.CONFIRMED;
+        this.alertConfirmed = true;
+        this.calculatedRisk = AlertSeverity.HIGH;
+        return this;
+    }
+
+    /**
+     * Rules out the report after a field inspection found no real threat (verified false
+     * positive). Only valid for a report awaiting inspection; no alert is raised.
+     */
+    public PestSightingReport dismissAfterInspection() {
+        requireAwaitingInspection();
+        this.status = ReportStatus.RULED_OUT;
+        this.alertConfirmed = false;
+        this.calculatedRisk = AlertSeverity.LOW;
+        return this;
+    }
+
+    /** A report can only be resolved by inspection while it is awaiting one. */
+    private void requireAwaitingInspection() {
+        if (this.status != ReportStatus.NEEDS_INSPECTION && this.status != ReportStatus.UNDER_REVIEW) {
+            throw new IllegalStateException(
+                    "Only a report awaiting inspection can be confirmed or ruled out.");
+        }
     }
 
     public PestSightingReport restoreEvaluationState(AlertSeverity calculatedRisk, ThreatType probableThreat, ReportStatus status, boolean alertConfirmed) {
