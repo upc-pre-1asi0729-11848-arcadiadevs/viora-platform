@@ -27,4 +27,10 @@ public class AlertRepositoryAdapter implements AlertRepository {
     public Optional<Alert> findById(Long id) {
         return repository.findById(id).map(AlertEntityToAggregateAssembler::toAggregate);
     }
+
+    @Override
+    public Optional<Alert> findByReportId(Long reportId) {
+        return repository.findFirstByReportIdOrderByIdDesc(reportId)
+                .map(AlertEntityToAggregateAssembler::toAggregate);
+    }
 }

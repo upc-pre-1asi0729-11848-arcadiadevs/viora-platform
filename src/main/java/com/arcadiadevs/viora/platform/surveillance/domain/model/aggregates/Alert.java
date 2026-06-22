@@ -27,7 +27,10 @@ public class Alert extends AbstractDomainAggregateRoot<Alert> {
     
     private AlertId id;
     private PlotId plotId;
-    
+
+    /** Originating pest sighting report, when this alert was raised from a manual report. */
+    private Long reportId;
+
     private ThreatType type;
     private AlertSeverity severity;
     private AlertStatus status;
@@ -98,6 +101,39 @@ public class Alert extends AbstractDomainAggregateRoot<Alert> {
             this.severity = newSeverity;
             addTimelineRecord(newSeverity.name(), "Alert escalated to " + newSeverity.name().toLowerCase() + " severity", reason);
         }
+        return this;
+    }
+
+    /** Links this alert to the pest sighting report that originated it. */
+    public Alert linkReport(Long reportId) {
+        this.reportId = reportId;
+        return this;
+    }
+
+    /**
+     * Confirms the alert after a grower's field inspection corroborated the threat:
+     * escalates it to high priority and records the confirmation in the timeline.
+     */
+    public Alert confirmFromInspection() {
+        this.severity = AlertSeverity.HIGH;
+        this.status = AlertStatus.ACTIVE;
+        addTimelineRecord(
+                "High",
+                "Threat confirmed after field inspection",
+                "The grower inspected the plot and confirmed the threat. The alert was escalated to high priority.");
+        return this;
+    }
+
+    /**
+     * Dismisses the alert (e.g. a grower ruled it out as a verified false positive after
+     * inspection). Dismissed alerts drop out of the active panel.
+     */
+    public Alert dismiss(String reason) {
+        this.status = AlertStatus.DISMISSED;
+        addTimelineRecord(
+                "Info",
+                "Alert dismissed",
+                reason != null && !reason.isBlank() ? reason : "The alert was dismissed.");
         return this;
     }
 
