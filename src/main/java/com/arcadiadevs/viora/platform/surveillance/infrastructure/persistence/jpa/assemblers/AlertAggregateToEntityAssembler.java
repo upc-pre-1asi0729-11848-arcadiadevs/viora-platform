@@ -18,6 +18,7 @@ public class AlertAggregateToEntityAssembler {
         }
         
         entity.setPlotId(aggregate.getPlotId().value());
+        entity.setReportId(aggregate.getReportId());
         entity.setType(aggregate.getType());
         entity.setSeverity(aggregate.getSeverity());
         entity.setStatus(aggregate.getStatus());

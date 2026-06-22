@@ -9,5 +9,8 @@ import java.util.Optional;
 public interface AlertRepository {
     Alert save(Alert alert);
     Optional<Alert> findById(Long id);
+
+    /** Finds the most recent alert raised from the given pest sighting report, if any. */
+    Optional<Alert> findByReportId(Long reportId);
     // Other finders as necessary
 }

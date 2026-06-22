@@ -24,6 +24,9 @@ public class AlertEntity extends AuditableAbstractPersistenceEntity {
 
     private Long plotId;
 
+    /** Originating pest sighting report id, when raised from a manual report (nullable). */
+    private Long reportId;
+
     @Enumerated(EnumType.STRING)
     private ThreatType type;
 

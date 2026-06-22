@@ -50,14 +50,21 @@ public class PestSightingReportEvaluatedEventHandler {
      */
     @EventListener
     public void on(PestSightingReportEvaluatedEvent event) {
-        if (!event.isAlertConfirmed()) {
-            log.info("Pest sighting report {} evaluated but not confirmed. Alert creation skipped.", event.getReportId());
-            return;
+        switch (event.getStatus()) {
+            case "CONFIRMED" -> raiseAlert(event, buildConfirmedAlert(event));
+            case "NEEDS_INSPECTION" -> raiseAlert(event, buildInspectionAlert(event));
+            default -> log.info(
+                    "Pest sighting report {} triaged as {}. No alert created.",
+                    event.getReportId(), event.getStatus());
         }
+    }
 
-        log.info("Pest sighting report {} confirmed. Triggering alert creation.", event.getReportId());
-
-        var command = new CreateAlertCommand(
+    /**
+     * High-priority alert for a confirmed threat (corroborated signals or a suspected
+     * quarantine pathogen). Demands immediate inspection.
+     */
+    private CreateAlertCommand buildConfirmedAlert(PestSightingReportEvaluatedEvent event) {
+        return new CreateAlertCommand(
                 event.getPlotId(),
                 ThreatType.valueOf(event.getProbableThreat()),
                 AlertSeverity.valueOf(event.getCalculatedRisk()),
@@ -67,7 +74,29 @@ public class PestSightingReportEvaluatedEventHandler {
                 List.of("Viora Manual Reporting"),
                 Map.of("Report ID", String.valueOf(event.getReportId()))
         );
-        
+    }
+
+    /**
+     * Lighter alert for a report that shows a real but uncorroborated signal: it asks the
+     * grower to go and inspect the plot so the threat can be confirmed or ruled out.
+     */
+    private CreateAlertCommand buildInspectionAlert(PestSightingReportEvaluatedEvent event) {
+        return new CreateAlertCommand(
+                event.getPlotId(),
+                ThreatType.valueOf(event.getProbableThreat()),
+                AlertSeverity.valueOf(event.getCalculatedRisk()),
+                "Field inspection recommended",
+                "A manual report shows symptoms that are not yet corroborated by satellite data. A field inspection is recommended to confirm or rule out a threat.",
+                List.of(AlertSource.MANUAL_REPORT),
+                List.of("Viora Manual Reporting"),
+                Map.of("Report ID", String.valueOf(event.getReportId()))
+        );
+    }
+
+    private void raiseAlert(PestSightingReportEvaluatedEvent event, CreateAlertCommand command) {
+        log.info("Pest sighting report {} triaged as {}. Triggering alert creation.",
+                event.getReportId(), event.getStatus());
+
         var result = alertCommandService.handle(command);
 
         if (result.isFailure()) {

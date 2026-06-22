@@ -3,8 +3,10 @@ package com.arcadiadevs.viora.platform.surveillance.interfaces.rest;
 import com.arcadiadevs.viora.platform.shared.interfaces.rest.transform.ResponseEntityAssembler;
 import com.arcadiadevs.viora.platform.surveillance.application.commandservices.PestSightingCommandService;
 import com.arcadiadevs.viora.platform.surveillance.application.queryservices.PestSightingReportQueryService;
+import com.arcadiadevs.viora.platform.surveillance.domain.model.commands.ReviewPestSightingReportCommand;
 import com.arcadiadevs.viora.platform.surveillance.domain.model.queries.GetPestSightingReportsByUserQuery;
 import com.arcadiadevs.viora.platform.surveillance.interfaces.rest.resources.CreatePestSightingReportResource;
+import com.arcadiadevs.viora.platform.surveillance.interfaces.rest.resources.ReviewPestSightingReportResource;
 import com.arcadiadevs.viora.platform.surveillance.interfaces.rest.transform.CreatePestSightingReportCommandFromResourceAssembler;
 import com.arcadiadevs.viora.platform.surveillance.interfaces.rest.transform.PestSightingReportResourceFromPestSightingReportAssembler;
 import io.swagger.v3.oas.annotations.Operation;
@@ -20,6 +22,8 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -87,6 +91,48 @@ public class PestSightingReportsController {
                 result,
                 PestSightingReportResourceFromPestSightingReportAssembler::toResourceFromAggregate,
                 HttpStatus.CREATED
+        );
+    }
+
+    /**
+     * Resolves a report after a field inspection: confirms the threat (escalating to a
+     * high-priority alert) or rules it out as a verified false positive.
+     *
+     * @param reportId       the report to resolve
+     * @param reporterUserId the reporter resolving it (must own the report)
+     * @param resource       the inspection outcome (CONFIRMED or RULED_OUT)
+     * @return 200 OK with the updated PestSightingReportResource
+     */
+    @PatchMapping(value = "/{reportId}", consumes = MediaType.APPLICATION_JSON_VALUE)
+    @Operation(
+            summary = "Resolve pest sighting report after inspection",
+            description = "Confirms the threat (raising a high-priority alert) or rules it out as a "
+                    + "verified false positive, after the grower inspects the plot."
+    )
+    @ApiResponses({
+            @ApiResponse(
+                    responseCode = "200",
+                    description = "Report resolved successfully",
+                    content = @Content(schema = @Schema(implementation = com.arcadiadevs.viora.platform.surveillance.interfaces.rest.resources.PestSightingReportResource.class))),
+            @ApiResponse(responseCode = "400", description = "Invalid outcome or report not awaiting inspection"),
+            @ApiResponse(responseCode = "404", description = "Report not found")
+    })
+    public ResponseEntity<?> reviewReport(
+            @Parameter(description = "Report identifier", required = true)
+            @PathVariable Long reportId,
+
+            @Parameter(description = "Reporter user identifier", required = true)
+            @RequestParam Long reporterUserId,
+
+            @RequestBody ReviewPestSightingReportResource resource
+    ) {
+        var command = new ReviewPestSightingReportCommand(reportId, reporterUserId, resource.outcome());
+        var result = commandService.handle(command);
+
+        return ResponseEntityAssembler.toResponseEntityFromResult(
+                result,
+                PestSightingReportResourceFromPestSightingReportAssembler::toResourceFromAggregate,
+                HttpStatus.OK
         );
     }
 }

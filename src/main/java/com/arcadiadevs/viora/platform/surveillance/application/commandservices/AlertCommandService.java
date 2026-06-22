@@ -4,7 +4,9 @@ import com.arcadiadevs.viora.platform.shared.application.result.ApplicationError
 import com.arcadiadevs.viora.platform.shared.application.result.Result;
 import com.arcadiadevs.viora.platform.surveillance.domain.model.aggregates.Alert;
 import com.arcadiadevs.viora.platform.surveillance.domain.repositories.AlertRepository;
+import com.arcadiadevs.viora.platform.surveillance.domain.model.commands.ConfirmAlertFromInspectionCommand;
 import com.arcadiadevs.viora.platform.surveillance.domain.model.commands.CreateAlertCommand;
+import com.arcadiadevs.viora.platform.surveillance.domain.model.commands.DismissReportAlertCommand;
 import com.arcadiadevs.viora.platform.surveillance.domain.model.commands.MarkAlertAsReviewedCommand;
 import com.arcadiadevs.viora.platform.surveillance.domain.exceptions.AlertAlreadyReviewedException;
 import com.arcadiadevs.viora.platform.surveillance.interfaces.events.AlertReviewedIntegrationEvent;
@@ -46,6 +48,18 @@ public class AlertCommandService {
                 command.supportingData().forEach(alert::addSupportingData);
             }
 
+            // Link the originating report so its inspection lifecycle can later find this alert.
+            var reportIdValue = command.supportingData() != null
+                    ? command.supportingData().get("Report ID")
+                    : null;
+            if (reportIdValue != null) {
+                try {
+                    alert.linkReport(Long.valueOf(reportIdValue));
+                } catch (NumberFormatException ignored) {
+                    // Non-numeric report id: leave the alert unlinked.
+                }
+            }
+
             var savedAlert = alertRepository.save(alert);
             log.info("Alert created successfully with ID: {}", savedAlert.getId().value());
 
@@ -80,6 +94,52 @@ public class AlertCommandService {
         } catch (Exception e) {
             log.error("Failed to add timeline record", e);
             return Result.failure(new ApplicationError("Failed to add timeline record: ", e.getMessage()));
+        }
+    }
+
+    /**
+     * Confirms (escalates to high priority) the alert raised by a pest sighting report,
+     * after the grower's field inspection corroborated the threat. No-op success if the
+     * report has no linked alert.
+     */
+    public Result<Long, ApplicationError> handle(ConfirmAlertFromInspectionCommand command) {
+        log.info("Handling ConfirmAlertFromInspectionCommand for Report ID: {}", command.reportId());
+        try {
+            var alertOptional = alertRepository.findByReportId(command.reportId());
+            if (alertOptional.isEmpty()) {
+                // 0L signals "no linked alert"; the caller may raise a fresh one.
+                return Result.success(0L);
+            }
+
+            var alert = alertOptional.get();
+            alert.confirmFromInspection();
+            var savedAlert = alertRepository.save(alert);
+            return Result.success(savedAlert.getId().value());
+        } catch (Exception e) {
+            log.error("Failed to confirm alert from inspection", e);
+            return Result.failure(new ApplicationError("Failed to confirm alert: ", e.getMessage()));
+        }
+    }
+
+    /**
+     * Dismisses the alert raised by a pest sighting report (verified false positive after
+     * inspection) so it drops out of the active panel. No-op success if there is no linked alert.
+     */
+    public Result<Long, ApplicationError> handle(DismissReportAlertCommand command) {
+        log.info("Handling DismissReportAlertCommand for Report ID: {}", command.reportId());
+        try {
+            var alertOptional = alertRepository.findByReportId(command.reportId());
+            if (alertOptional.isEmpty()) {
+                return Result.success(0L);
+            }
+
+            var alert = alertOptional.get();
+            alert.dismiss(command.reason());
+            var savedAlert = alertRepository.save(alert);
+            return Result.success(savedAlert.getId().value());
+        } catch (Exception e) {
+            log.error("Failed to dismiss report alert", e);
+            return Result.failure(new ApplicationError("Failed to dismiss alert: ", e.getMessage()));
         }
     }
 
