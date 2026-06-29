@@ -17,9 +17,13 @@ public interface IoTDeviceRepository {
 
     List<IoTDevice> findAllByPlotId(Long plotId);
 
+    List<IoTDevice> findAllByPlotIdIn(List<Long> plotIds);
+
     Optional<IoTDevice> findByIdAndPlotId(Long id, Long plotId);
 
     boolean existsByIdAndPlotId(Long id, Long plotId);
+
+    boolean existsByActivationCode(String activationCode);
 
     void delete(IoTDevice device);
 }

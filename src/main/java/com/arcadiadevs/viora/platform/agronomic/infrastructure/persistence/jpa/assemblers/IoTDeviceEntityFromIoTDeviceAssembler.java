@@ -28,6 +28,8 @@ public final class IoTDeviceEntityFromIoTDeviceAssembler {
         entity.setPlotId(device.getPlotId());
         entity.setDeviceName(device.getDeviceName());
         entity.setStatus(device.getStatus());
+        entity.setActivationCode(device.getActivationCode() != null ? device.getActivationCode().value() : null);
+        entity.setDeviceType(device.getDeviceType());
         return entity;
     }
 }

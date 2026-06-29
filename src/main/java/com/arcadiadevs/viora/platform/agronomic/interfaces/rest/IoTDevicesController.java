@@ -117,8 +117,8 @@ public class IoTDevicesController {
 
         return ResponseEntityAssembler.toResponseEntityFromResult(
                 result,
-                devices -> devices.stream()
-                        .map(IoTDeviceResourceFromIoTDeviceAssembler::toResourceFromEntity)
+                readouts -> readouts.stream()
+                        .map(IoTDeviceResourceFromIoTDeviceAssembler::toResourceFromReadout)
                         .toList(),
                 HttpStatus.OK
         );

@@ -46,6 +46,17 @@ public class JpaIoTDeviceRepositoryAdapter implements IoTDeviceRepository {
     }
 
     @Override
+    public List<IoTDevice> findAllByPlotIdIn(List<Long> plotIds) {
+        if (plotIds == null || plotIds.isEmpty()) {
+            return List.of();
+        }
+        return springDataIoTDeviceRepository.findAllByPlotIdIn(plotIds)
+                .stream()
+                .map(IoTDeviceFromIoTDeviceEntityAssembler::toAggregateFromEntity)
+                .toList();
+    }
+
+    @Override
     public Optional<IoTDevice> findByIdAndPlotId(Long id, Long plotId) {
         return springDataIoTDeviceRepository.findByIdAndPlotId(id, plotId)
                 .map(IoTDeviceFromIoTDeviceEntityAssembler::toAggregateFromEntity);
@@ -54,6 +65,11 @@ public class JpaIoTDeviceRepositoryAdapter implements IoTDeviceRepository {
     @Override
     public boolean existsByIdAndPlotId(Long id, Long plotId) {
         return springDataIoTDeviceRepository.existsByIdAndPlotId(id, plotId);
+    }
+
+    @Override
+    public boolean existsByActivationCode(String activationCode) {
+        return springDataIoTDeviceRepository.existsByActivationCode(activationCode);
     }
 
     @Override
