@@ -4,6 +4,8 @@ import com.arcadiadevs.viora.platform.agronomic.domain.model.aggregates.IoTDevic
 import com.arcadiadevs.viora.platform.agronomic.domain.model.commands.CreateIoTDeviceCommand;
 import com.arcadiadevs.viora.platform.agronomic.domain.model.commands.DeleteIoTDeviceCommand;
 import com.arcadiadevs.viora.platform.agronomic.domain.model.commands.UpdateIoTDeviceCommand;
+import com.arcadiadevs.viora.platform.agronomic.domain.model.services.ActivationCodeCatalog;
+import com.arcadiadevs.viora.platform.agronomic.domain.model.valueobjects.ActivationCode;
 import com.arcadiadevs.viora.platform.agronomic.domain.model.valueobjects.DeviceName;
 import com.arcadiadevs.viora.platform.agronomic.domain.model.valueobjects.PlotId;
 import com.arcadiadevs.viora.platform.agronomic.domain.repositories.IoTDeviceRepository;
@@ -23,12 +25,15 @@ public class IoTDeviceCommandService {
 
     private final IoTDeviceRepository ioTDeviceRepository;
     private final PlotRepository plotRepository;
+    private final ActivationCodeCatalog activationCodeCatalog;
 
     public IoTDeviceCommandService(
             IoTDeviceRepository ioTDeviceRepository,
-            PlotRepository plotRepository) {
+            PlotRepository plotRepository,
+            ActivationCodeCatalog activationCodeCatalog) {
         this.ioTDeviceRepository = ioTDeviceRepository;
         this.plotRepository = plotRepository;
+        this.activationCodeCatalog = activationCodeCatalog;
     }
 
     /**
@@ -48,10 +53,33 @@ public class IoTDeviceCommandService {
                     String.valueOf(command.plotId())));
         }
 
-        var device = new IoTDevice(
+        // Parse the claim code: a malformed code is a client input error (400).
+        ActivationCode activationCode;
+        try {
+            activationCode = new ActivationCode(command.activationCode());
+        } catch (IllegalArgumentException e) {
+            return Result.failure(ApplicationError.validationError("activationCode", e.getMessage()));
+        }
+
+        // The code must correspond to a real issued unit (422 otherwise).
+        if (!activationCodeCatalog.isIssued(activationCode)) {
+            return Result.failure(ApplicationError.businessRuleViolation(
+                    "activation-code",
+                    "Activation code %s is not recognized.".formatted(activationCode.value())));
+        }
+
+        // A physical unit can only be claimed once (409 otherwise).
+        if (ioTDeviceRepository.existsByActivationCode(activationCode.value())) {
+            return Result.failure(ApplicationError.conflict(
+                    "activation-code",
+                    "Activation code %s has already been claimed.".formatted(activationCode.value())));
+        }
+
+        var device = IoTDevice.claim(
                 plotId,
                 new DeviceName(command.deviceName()),
-                command.status()
+                command.status(),
+                activationCode
         );
 
         var saved = ioTDeviceRepository.save(device);

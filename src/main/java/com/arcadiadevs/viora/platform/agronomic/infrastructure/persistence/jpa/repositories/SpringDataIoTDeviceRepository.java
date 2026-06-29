@@ -16,7 +16,11 @@ public interface SpringDataIoTDeviceRepository extends JpaRepository<IoTDeviceEn
 
     List<IoTDeviceEntity> findAllByPlotId(Long plotId);
 
+    List<IoTDeviceEntity> findAllByPlotIdIn(List<Long> plotIds);
+
     Optional<IoTDeviceEntity> findByIdAndPlotId(Long id, Long plotId);
 
     boolean existsByIdAndPlotId(Long id, Long plotId);
+
+    boolean existsByActivationCode(String activationCode);
 }
