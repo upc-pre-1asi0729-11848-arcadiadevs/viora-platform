@@ -9,7 +9,8 @@ import com.arcadiadevs.viora.platform.agronomic.domain.model.valueobjects.IoTDev
  * @param id           the device identifier
  * @param plotId       the associated plot identifier
  * @param deviceName   the human-readable device name
- * @param status       the operational status of the device
+ * @param status       the operational status (user-controlled: ACTIVE | INACTIVE)
+ * @param health       the derived health/alert level (HEALTHY | WARNING | CRITICAL | UNKNOWN), or null
  * @param deviceType   the sensor kind (SOIL_PROBE | LEAF_WETNESS | WEATHER_STATION), or null
  * @param soilMoisture current soil moisture percentage, or null if not reported
  * @param temperature  current soil temperature in °C, or null if not reported
@@ -21,6 +22,7 @@ public record IoTDeviceResource(
         Long plotId,
         String deviceName,
         IoTDeviceStatus status,
+        String health,
         String deviceType,
         Integer soilMoisture,
         Double temperature,
