@@ -5,6 +5,7 @@ import com.arcadiadevs.viora.platform.agronomic.domain.model.aggregates.IoTDevic
 import com.arcadiadevs.viora.platform.agronomic.domain.model.aggregates.Plot;
 import com.arcadiadevs.viora.platform.agronomic.domain.model.queries.GetIoTDevicesByPlotIdQuery;
 import com.arcadiadevs.viora.platform.agronomic.domain.model.queries.GetIoTDevicesByUserIdQuery;
+import com.arcadiadevs.viora.platform.agronomic.domain.model.services.SensorHealthEvaluator;
 import com.arcadiadevs.viora.platform.agronomic.domain.model.services.SoilReadingSimulator;
 import com.arcadiadevs.viora.platform.agronomic.domain.model.valueobjects.GeoPoint;
 import com.arcadiadevs.viora.platform.agronomic.domain.model.valueobjects.IoTDeviceType;
@@ -40,16 +41,19 @@ public class IoTDeviceQueryService {
     private final PlotRepository plotRepository;
     private final AgronomicStatisticRepository agronomicStatisticRepository;
     private final SoilReadingSimulator soilReadingSimulator;
+    private final SensorHealthEvaluator sensorHealthEvaluator;
 
     public IoTDeviceQueryService(
             IoTDeviceRepository ioTDeviceRepository,
             PlotRepository plotRepository,
             AgronomicStatisticRepository agronomicStatisticRepository,
-            SoilReadingSimulator soilReadingSimulator) {
+            SoilReadingSimulator soilReadingSimulator,
+            SensorHealthEvaluator sensorHealthEvaluator) {
         this.ioTDeviceRepository = ioTDeviceRepository;
         this.plotRepository = plotRepository;
         this.agronomicStatisticRepository = agronomicStatisticRepository;
         this.soilReadingSimulator = soilReadingSimulator;
+        this.sensorHealthEvaluator = sensorHealthEvaluator;
     }
 
     /**
@@ -134,7 +138,7 @@ public class IoTDeviceQueryService {
         SensorReadings readings = soilReadingSimulator.simulate(
                 device.getActivationCode(), type, location, latestNdvi, now);
 
-        return new IoTDeviceReadout(device, readings);
+        return new IoTDeviceReadout(device, readings, sensorHealthEvaluator.evaluate(readings));
     }
 
     /** Most recent NDVI for a plot, or null when the plot has no statistics yet. */
