@@ -1,6 +1,7 @@
 package com.arcadiadevs.viora.platform.agronomic.infrastructure.persistence.jpa.assemblers;
 
 import com.arcadiadevs.viora.platform.agronomic.domain.model.aggregates.IoTDevice;
+import com.arcadiadevs.viora.platform.agronomic.domain.model.valueobjects.ActivationCode;
 import com.arcadiadevs.viora.platform.agronomic.domain.model.valueobjects.DeviceName;
 import com.arcadiadevs.viora.platform.agronomic.domain.model.valueobjects.PlotId;
 import com.arcadiadevs.viora.platform.agronomic.infrastructure.persistence.jpa.entities.IoTDeviceEntity;
@@ -29,6 +30,10 @@ public final class IoTDeviceFromIoTDeviceEntityAssembler {
                 entity.getStatus()
         );
         device.setId(entity.getId());
+        if (entity.getActivationCode() != null) {
+            device.setActivationCode(new ActivationCode(entity.getActivationCode()));
+        }
+        device.setDeviceType(entity.getDeviceType());
         return device;
     }
 }

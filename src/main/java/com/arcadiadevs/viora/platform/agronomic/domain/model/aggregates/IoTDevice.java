@@ -1,8 +1,10 @@
 package com.arcadiadevs.viora.platform.agronomic.domain.model.aggregates;
 
 import com.arcadiadevs.viora.platform.agronomic.domain.model.events.IoTDeviceUpdated;
+import com.arcadiadevs.viora.platform.agronomic.domain.model.valueobjects.ActivationCode;
 import com.arcadiadevs.viora.platform.agronomic.domain.model.valueobjects.DeviceName;
 import com.arcadiadevs.viora.platform.agronomic.domain.model.valueobjects.IoTDeviceStatus;
+import com.arcadiadevs.viora.platform.agronomic.domain.model.valueobjects.IoTDeviceType;
 import com.arcadiadevs.viora.platform.agronomic.domain.model.valueobjects.PlotId;
 import com.arcadiadevs.viora.platform.shared.domain.model.aggregates.AbstractDomainAggregateRoot;
 import lombok.Getter;
@@ -37,6 +39,21 @@ public class IoTDevice extends AbstractDomainAggregateRoot<IoTDevice> {
     private IoTDeviceStatus status;
 
     /**
+     * The one-time activation (claim) code the producer used to register the
+     * device. Doubles as the device serial and the simulation seed. May be null
+     * for legacy rows created before activation codes existed.
+     */
+    @Setter
+    private ActivationCode activationCode;
+
+    /**
+     * The kind of sensor, derived from the activation code; decides which metrics
+     * the device reports. May be null for legacy rows.
+     */
+    @Setter
+    private IoTDeviceType deviceType;
+
+    /**
      * Creates a new IoTDevice from a PlotId, DeviceName and IoTDeviceStatus.
      *
      * @param plotId     the plot this device belongs to
@@ -49,6 +66,25 @@ public class IoTDevice extends AbstractDomainAggregateRoot<IoTDevice> {
         this.plotId = plotId.getValue();
         this.deviceName = deviceName.value();
         this.status = status;
+    }
+
+    /**
+     * Claims a physical device for a plot using its activation code. The sensor
+     * kind is derived from the code prefix.
+     *
+     * @param plotId     the plot this device belongs to
+     * @param deviceName the human-readable name of the device
+     * @param status     the initial operational status
+     * @param code       the validated, issued activation code
+     * @return the claimed device aggregate
+     */
+    public static IoTDevice claim(PlotId plotId, DeviceName deviceName, IoTDeviceStatus status, ActivationCode code) {
+        if (code == null)
+            throw new IllegalArgumentException("IoTDevice requires an activation code to be claimed");
+        var device = new IoTDevice(plotId, deviceName, status);
+        device.activationCode = code;
+        device.deviceType = code.deviceType();
+        return device;
     }
 
     /**

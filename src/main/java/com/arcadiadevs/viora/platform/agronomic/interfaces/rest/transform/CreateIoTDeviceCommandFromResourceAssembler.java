@@ -28,7 +28,8 @@ public final class CreateIoTDeviceCommandFromResourceAssembler {
         return new CreateIoTDeviceCommand(
                 plotId,
                 resource.deviceName(),
-                effectiveStatus
+                effectiveStatus,
+                resource.activationCode()
         );
     }
 }

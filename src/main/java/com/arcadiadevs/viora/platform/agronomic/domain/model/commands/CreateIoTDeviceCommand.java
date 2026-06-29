@@ -6,20 +6,24 @@ import com.arcadiadevs.viora.platform.agronomic.domain.model.valueobjects.IoTDev
  * Command to register a new IoT device associated with a plot.
  * (TS13-002) When status is not provided, ACTIVE is assigned by default.
  *
- * @param plotId      the plot to associate the device with
- * @param deviceName  the human-readable name of the device
- * @param status      the desired status; defaults to ACTIVE if null
+ * @param plotId         the plot to associate the device with
+ * @param deviceName     the human-readable name of the device
+ * @param status         the desired status; defaults to ACTIVE if null
+ * @param activationCode the claim code printed on the device (validated downstream)
  */
 public record CreateIoTDeviceCommand(
         Long plotId,
         String deviceName,
-        IoTDeviceStatus status
+        IoTDeviceStatus status,
+        String activationCode
 ) {
     public CreateIoTDeviceCommand {
         if (plotId == null || plotId <= 0)
             throw new IllegalArgumentException("CreateIoTDeviceCommand requires a valid plotId");
         if (deviceName == null || deviceName.isBlank())
             throw new IllegalArgumentException("CreateIoTDeviceCommand requires a non-blank deviceName");
+        if (activationCode == null || activationCode.isBlank())
+            throw new IllegalArgumentException("CreateIoTDeviceCommand requires a non-blank activationCode");
         if (status == null)
             status = IoTDeviceStatus.ACTIVE;
     }
