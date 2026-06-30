@@ -2,7 +2,7 @@ package com.arcadiadevs.viora.platform.intervention.application.queryservices;
 
 import com.arcadiadevs.viora.platform.intervention.domain.model.queries.GetGrowerRequestMetricsQuery;
 import com.arcadiadevs.viora.platform.intervention.domain.model.queries.GetSpecialistRequestMetricsQuery;
-import com.arcadiadevs.viora.platform.intervention.domain.services.InterventionRequestMetricsQueryService;
+import com.arcadiadevs.viora.platform.intervention.application.queryservices.InterventionRequestMetricsQueryService;
 import com.arcadiadevs.viora.platform.intervention.interfaces.rest.resources.ActiveAlertResource;
 import com.arcadiadevs.viora.platform.intervention.interfaces.rest.resources.GrowerRequestMetricsResource;
 import com.arcadiadevs.viora.platform.intervention.interfaces.rest.resources.SpecialistRequestMetricsResource;
