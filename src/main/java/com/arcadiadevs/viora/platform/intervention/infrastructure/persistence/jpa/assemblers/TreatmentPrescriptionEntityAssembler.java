@@ -53,7 +53,7 @@ public class TreatmentPrescriptionEntityAssembler {
         if (domain.getId() != null) {
             entity.setId(domain.getId().value());
         }
-        entity.setServiceProposalId(domain.getServiceProposalId().value());
+        entity.setServiceProposalId(domain.getServiceProposalId());
         entity.setStatus(domain.getStatus());
 
         if (domain.getFieldInspectionRecord() != null) {
