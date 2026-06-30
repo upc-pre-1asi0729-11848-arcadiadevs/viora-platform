@@ -1,4 +1,4 @@
-package com.arcadiadevs.viora.platform.intervention.domain.services;
+package com.arcadiadevs.viora.platform.intervention.application.queryservices;
 
 import com.arcadiadevs.viora.platform.intervention.domain.model.queries.GetSpecialistCandidatesByAlertIdQuery;
 import com.arcadiadevs.viora.platform.intervention.interfaces.rest.resources.SpecialistCandidateResource;
