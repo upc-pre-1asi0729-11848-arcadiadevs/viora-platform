@@ -5,8 +5,9 @@ import com.arcadiadevs.viora.platform.intervention.domain.model.commands.Prescri
 import com.arcadiadevs.viora.platform.intervention.domain.model.valueobjects.AgrochemicalPrescription;
 import com.arcadiadevs.viora.platform.intervention.domain.model.valueobjects.FieldInspectionRecord;
 import com.arcadiadevs.viora.platform.intervention.domain.model.valueobjects.ServiceProposalId;
+import com.arcadiadevs.viora.platform.intervention.domain.model.valueobjects.TreatmentPrescriptionId;
 import com.arcadiadevs.viora.platform.intervention.domain.model.valueobjects.TreatmentPrescriptionStatus;
-import com.arcadiadevs.viora.platform.shared.domain.model.aggregates.AuditableAbstractAggregateRoot;
+import com.arcadiadevs.viora.platform.shared.domain.model.aggregates.AbstractDomainAggregateRoot;
 import lombok.Getter;
 
 /**
@@ -14,8 +15,9 @@ import lombok.Getter;
  * Manages the field inspection and issuance of an agrochemical prescription.
  */
 @Getter
-public class TreatmentPrescription extends AuditableAbstractAggregateRoot<TreatmentPrescription> {
+public class TreatmentPrescription extends AbstractDomainAggregateRoot<TreatmentPrescription> {
 
+    private TreatmentPrescriptionId id;
     private ServiceProposalId serviceProposalId;
     private FieldInspectionRecord fieldInspectionRecord;
     private AgrochemicalPrescription agrochemicalPrescription;
@@ -68,7 +70,7 @@ public class TreatmentPrescription extends AuditableAbstractAggregateRoot<Treatm
         this.agrochemicalPrescription = new AgrochemicalPrescription(
                 command.applicationMethod(),
                 command.sprayVolume(),
-                command.preHarvestIntervalDays(),
+                command.preHarvestInterval(),
                 command.agronomistRecommendations(),
                 command.requiredPPE(),
                 command.products()

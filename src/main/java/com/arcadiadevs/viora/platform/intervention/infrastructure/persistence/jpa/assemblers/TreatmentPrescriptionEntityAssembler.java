@@ -12,7 +12,7 @@ public class TreatmentPrescriptionEntityAssembler {
             return null;
         }
 
-        var domain = new TreatmentPrescription(entity.getServiceProposalId());
+        var domain = new TreatmentPrescription(entity.getServiceProposalId().value());
         domain.restoreIdentity(new TreatmentPrescriptionId(entity.getId()));
         domain.restoreStatus(entity.getStatus());
 
