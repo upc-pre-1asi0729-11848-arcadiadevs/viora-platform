@@ -5,6 +5,7 @@ import com.arcadiadevs.viora.platform.intervention.domain.model.valueobjects.Cos
 import com.arcadiadevs.viora.platform.intervention.domain.model.valueobjects.InterventionRequestId;
 import com.arcadiadevs.viora.platform.intervention.domain.model.valueobjects.ServiceProposalId;
 import com.arcadiadevs.viora.platform.intervention.domain.model.valueobjects.ServiceProposalStatus;
+import com.arcadiadevs.viora.platform.shared.domain.model.aggregates.AbstractDomainAggregateRoot;
 import lombok.Getter;
 
 import java.util.Date;
@@ -14,7 +15,7 @@ import java.util.Date;
  * This aggregate root manages the lifecycle of a proposal submitted by a specialist.
  */
 @Getter
-public class ServiceProposal {
+public class ServiceProposal extends AbstractDomainAggregateRoot<ServiceProposal> {
 
     private ServiceProposalId id;
     private InterventionRequestId interventionRequestId;
