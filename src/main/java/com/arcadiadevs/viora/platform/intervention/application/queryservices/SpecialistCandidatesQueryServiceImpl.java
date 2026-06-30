@@ -1,7 +1,7 @@
 package com.arcadiadevs.viora.platform.intervention.application.queryservices;
 
 import com.arcadiadevs.viora.platform.intervention.domain.model.queries.GetSpecialistCandidatesByAlertIdQuery;
-import com.arcadiadevs.viora.platform.intervention.domain.services.SpecialistCandidatesQueryService;
+import com.arcadiadevs.viora.platform.intervention.application.queryservices.SpecialistCandidatesQueryService;
 import com.arcadiadevs.viora.platform.intervention.domain.services.SpecialistMatchingPolicy;
 import com.arcadiadevs.viora.platform.intervention.interfaces.rest.resources.SpecialistCandidateResource;
 import org.springframework.stereotype.Service;
