@@ -9,6 +9,9 @@ public class SubmitServiceProposalCommandFromResourceAssembler {
         return new SubmitServiceProposalCommand(
                 resource.interventionRequestId(),
                 resource.specialistId(),
+                resource.serviceTitle(),
+                resource.durationLabel(),
+                resource.scope(),
                 resource.proposedDate(),
                 resource.amount(),
                 resource.currency(),

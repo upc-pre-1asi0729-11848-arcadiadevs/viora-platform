@@ -9,6 +9,7 @@ import lombok.Getter;
 import lombok.Setter;
 
 import java.util.Date;
+import java.util.List;
 
 @Entity
 @Table(name = "service_proposals")
@@ -21,6 +22,17 @@ public class ServiceProposalEntity extends AuditableAbstractPersistenceEntity {
 
     @Column(name = "specialist_id", nullable = false)
     private Long specialistId;
+
+    @Column(name = "service_title")
+    private String serviceTitle;
+
+    @Column(name = "duration_label")
+    private String durationLabel;
+
+    @ElementCollection
+    @CollectionTable(name = "service_proposal_scope", joinColumns = @JoinColumn(name = "service_proposal_id"))
+    @Column(name = "scope_item", columnDefinition = "TEXT")
+    private List<String> scope;
 
     @Column(name = "proposed_date", nullable = false)
     private Date proposedDate;
