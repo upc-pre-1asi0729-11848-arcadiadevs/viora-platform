@@ -4,6 +4,7 @@ import com.arcadiadevs.viora.platform.intervention.domain.model.aggregates.Inter
 import com.arcadiadevs.viora.platform.intervention.domain.model.commands.CertifyApplicationCommand;
 import com.arcadiadevs.viora.platform.intervention.domain.model.valueobjects.ApplicationDate;
 import com.arcadiadevs.viora.platform.intervention.domain.model.valueobjects.AppliedArea;
+import com.arcadiadevs.viora.platform.intervention.domain.model.valueobjects.ExecutionStatus;
 import com.arcadiadevs.viora.platform.intervention.interfaces.rest.resources.CertifyApplicationResource;
 import com.arcadiadevs.viora.platform.intervention.interfaces.rest.resources.InterventionExecutionResource;
 
@@ -14,7 +15,7 @@ public class InterventionExecutionResourceAssembler {
                 resource.treatmentPrescriptionId(),
                 new ApplicationDate(resource.applicationDate()),
                 new AppliedArea(resource.appliedArea()),
-                resource.executionStatus(),
+                ExecutionStatus.valueOf(resource.executionStatus()),
                 resource.fieldNote()
         );
     }
@@ -25,7 +26,7 @@ public class InterventionExecutionResourceAssembler {
                 domain.getTreatmentPrescriptionId().value(),
                 domain.getApplicationDate().date(),
                 domain.getAppliedArea().description(),
-                domain.getExecutionStatus(),
+                domain.getExecutionStatus() != null ? domain.getExecutionStatus().name() : null,
                 domain.getFieldNote()
         );
     }

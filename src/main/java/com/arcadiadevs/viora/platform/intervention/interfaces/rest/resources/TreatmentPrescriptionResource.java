@@ -5,7 +5,7 @@ import com.arcadiadevs.viora.platform.intervention.domain.model.valueobjects.Tre
 public record TreatmentPrescriptionResource(
         Long id,
         Long serviceProposalId,
-        TreatmentPrescriptionStatus status,
+        String status,
         LogFieldInspectionDataResource fieldInspection,
         PrescribeTreatmentResource agrochemicalPrescription
 ) {}

@@ -9,6 +9,6 @@ public record InterventionExecutionResource(
         Long treatmentPrescriptionId,
         Date applicationDate,
         String appliedArea,
-        ExecutionStatus executionStatus,
+        String executionStatus,
         String fieldNote
 ) {}
