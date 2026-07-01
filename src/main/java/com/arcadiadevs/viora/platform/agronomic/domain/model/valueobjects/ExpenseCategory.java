@@ -6,5 +6,6 @@ package com.arcadiadevs.viora.platform.agronomic.domain.model.valueobjects;
 public enum ExpenseCategory {
     INPUTS,
     LABOR,
+    EQUIPMENT,
     SPECIALIST
 }
