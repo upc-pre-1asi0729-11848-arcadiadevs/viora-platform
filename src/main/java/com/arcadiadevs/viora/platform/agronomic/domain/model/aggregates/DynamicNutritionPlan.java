@@ -162,6 +162,27 @@ public class DynamicNutritionPlan extends AbstractDomainAggregateRoot<DynamicNut
     }
 
     /**
+     * Whether this plan's application window has already elapsed on the given date.
+     *
+     * @param date The reference date (typically today).
+     * @return True when the window ended before the given date.
+     */
+    public boolean isWindowExpiredOn(LocalDate date) {
+        return applicationWindow.isExpiredOn(date);
+    }
+
+    /**
+     * Retires a plan whose application window elapsed before it was executed, so it
+     * stops being the plot's active plan.
+     */
+    public void expire() {
+        if (this.status != NutritionPlanStatus.ACTIVE) {
+            throw new IllegalStateException("Only an active dynamic nutrition plan can expire.");
+        }
+        this.status = NutritionPlanStatus.EXPIRED;
+    }
+
+    /**
      * Certifies the in-field execution of this plan.
      *
      * <p>
