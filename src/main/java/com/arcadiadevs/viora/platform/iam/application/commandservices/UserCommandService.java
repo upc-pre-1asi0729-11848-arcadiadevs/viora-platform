@@ -1,6 +1,7 @@
 package com.arcadiadevs.viora.platform.iam.application.commandservices;
 
 import com.arcadiadevs.viora.platform.iam.domain.model.aggregates.User;
+import com.arcadiadevs.viora.platform.iam.domain.model.commands.ChangePasswordCommand;
 import com.arcadiadevs.viora.platform.iam.domain.model.commands.SignInCommand;
 import com.arcadiadevs.viora.platform.iam.domain.model.commands.SignUpCommand;
 import com.arcadiadevs.viora.platform.shared.application.result.ApplicationError;
@@ -27,6 +28,13 @@ public interface UserCommandService {
      */
     Result<User, ApplicationError> handle(SignUpCommand command);
 
+    /**
+     * Handles changing a user's password.
+     *
+     * @param command change password command
+     * @return updated user, or an application error
+     */
+    Result<User, ApplicationError> handle(ChangePasswordCommand command);
 
 }
 

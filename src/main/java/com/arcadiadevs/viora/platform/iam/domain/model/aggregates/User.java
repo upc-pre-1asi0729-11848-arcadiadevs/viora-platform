@@ -35,4 +35,8 @@ public class User extends AbstractDomainAggregateRoot<User> {
         this(username, password);
         this.role = role;
     }
+
+    public void changePassword(String newPasswordHash) {
+        this.password = newPasswordHash;
+    }
 }
