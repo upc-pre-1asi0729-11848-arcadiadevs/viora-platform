@@ -4,6 +4,7 @@ import com.arcadiadevs.viora.platform.iam.application.commandservices.UserComman
 import com.arcadiadevs.viora.platform.iam.application.internal.outboundservices.hashing.HashingService;
 import com.arcadiadevs.viora.platform.iam.application.internal.outboundservices.tokens.TokenService;
 import com.arcadiadevs.viora.platform.iam.domain.model.aggregates.User;
+import com.arcadiadevs.viora.platform.iam.domain.model.commands.ChangePasswordCommand;
 import com.arcadiadevs.viora.platform.iam.domain.model.commands.SignInCommand;
 import com.arcadiadevs.viora.platform.iam.domain.model.commands.SignUpCommand;
 import com.arcadiadevs.viora.platform.iam.domain.repositories.RoleRepository;
@@ -66,5 +67,24 @@ public class UserCommandServiceImpl implements UserCommandService {
         return userRepository.findByUsername(command.username())
                 .<Result<User, ApplicationError>>map(Result::success)
                 .orElseGet(() -> Result.failure(ApplicationError.unexpected("sign-up", "Created user could not be reloaded")));
+    }
+
+    @Override
+    public Result<User, ApplicationError> handle(ChangePasswordCommand command) {
+        var userOptional = userRepository.findById(command.userId());
+        if (userOptional.isEmpty()) {
+            return Result.failure(ApplicationError.notFound("User", command.userId().toString()));
+        }
+
+        var user = userOptional.get();
+
+        if (!hashingService.matches(command.currentPassword(), user.getPassword())) {
+            return Result.failure(ApplicationError.validationError("credentials", "Invalid current password"));
+        }
+
+        user.changePassword(hashingService.encode(command.newPassword().password()));
+        userRepository.save(user);
+
+        return Result.success(user);
     }
 }
