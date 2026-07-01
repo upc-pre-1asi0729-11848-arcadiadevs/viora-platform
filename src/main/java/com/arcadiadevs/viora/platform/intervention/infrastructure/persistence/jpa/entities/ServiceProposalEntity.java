@@ -1,7 +1,6 @@
 package com.arcadiadevs.viora.platform.intervention.infrastructure.persistence.jpa.entities;
 
 import com.arcadiadevs.viora.platform.intervention.domain.model.valueobjects.CostEstimate;
-import com.arcadiadevs.viora.platform.intervention.domain.model.valueobjects.InterventionRequestId;
 import com.arcadiadevs.viora.platform.intervention.domain.model.valueobjects.ServiceProposalStatus;
 import com.arcadiadevs.viora.platform.shared.infrastructure.persistence.jpa.entities.AuditableAbstractPersistenceEntity;
 import jakarta.persistence.*;
@@ -18,7 +17,7 @@ import java.util.List;
 public class ServiceProposalEntity extends AuditableAbstractPersistenceEntity {
 
     @Column(name = "intervention_request_id", nullable = false)
-    private InterventionRequestId interventionRequestId;
+    private Long interventionRequestId;
 
     @Column(name = "specialist_id", nullable = false)
     private Long specialistId;
@@ -29,7 +28,7 @@ public class ServiceProposalEntity extends AuditableAbstractPersistenceEntity {
     @Column(name = "duration_label")
     private String durationLabel;
 
-    @ElementCollection
+    @ElementCollection(fetch = FetchType.EAGER)
     @CollectionTable(name = "service_proposal_scope", joinColumns = @JoinColumn(name = "service_proposal_id"))
     @Column(name = "scope_item", columnDefinition = "TEXT")
     private List<String> scope;
