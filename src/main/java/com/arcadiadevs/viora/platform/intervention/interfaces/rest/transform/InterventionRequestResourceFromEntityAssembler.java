@@ -10,11 +10,14 @@ public class InterventionRequestResourceFromEntityAssembler {
                 entity.getId() != null ? entity.getId().value() : null,
                 entity.getReferenceCode() != null ? entity.getReferenceCode().code() : null,
                 entity.getGrowerId(),
+                entity.getPlotId(),
                 entity.getSpecialistId(),
                 entity.getAlertId(),
                 entity.getReason(),
                 entity.getMessage(),
-                entity.getStatus() != null ? entity.getStatus().name() : null
+                entity.getStatus() != null ? entity.getStatus().name() : null,
+                entity.getCreatedAt() != null ? entity.getCreatedAt().toInstant() : null,
+                entity.getUpdatedAt() != null ? entity.getUpdatedAt().toInstant() : null
         );
     }
 }

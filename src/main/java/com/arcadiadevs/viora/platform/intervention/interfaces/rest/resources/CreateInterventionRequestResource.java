@@ -5,6 +5,7 @@ package com.arcadiadevs.viora.platform.intervention.interfaces.rest.resources;
  */
 public record CreateInterventionRequestResource(
         Long growerId,
+        Long plotId,
         Long specialistId,
         Long alertId,
         String reason,

@@ -14,6 +14,8 @@ import java.util.List;
 public interface InterventionRequestJpaRepository extends JpaRepository<InterventionRequestEntity, Long> {
     
     List<InterventionRequestEntity> findByGrowerId(Long growerId);
-    
+
+    List<InterventionRequestEntity> findByGrowerIdAndPlotId(Long growerId, Long plotId);
+
     List<InterventionRequestEntity> findBySpecialistIdAndStatus(Long specialistId, InterventionStatus status);
 }

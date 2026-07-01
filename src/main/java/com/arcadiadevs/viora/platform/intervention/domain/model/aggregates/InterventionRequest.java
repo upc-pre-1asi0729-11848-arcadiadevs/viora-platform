@@ -21,9 +21,10 @@ public class InterventionRequest extends AbstractDomainAggregateRoot<Interventio
     
     // External Bounded Context Identifiers
     private Long growerId;
+    private Long plotId;
     private Long specialistId;
     private Long alertId;
-    
+
     private String reason;
     private String message;
     private InterventionStatus status;
@@ -35,9 +36,10 @@ public class InterventionRequest extends AbstractDomainAggregateRoot<Interventio
         // Default constructor
     }
 
-    public InterventionRequest(Long growerId, Long specialistId, Long alertId, String reason, String message) {
+    public InterventionRequest(Long growerId, Long plotId, Long specialistId, Long alertId, String reason, String message) {
         this.referenceCode = ReferenceCode.generate();
         this.growerId = growerId;
+        this.plotId = plotId;
         this.specialistId = specialistId;
         this.alertId = alertId;
         this.reason = reason;
@@ -50,6 +52,7 @@ public class InterventionRequest extends AbstractDomainAggregateRoot<Interventio
     public InterventionRequest(CreateInterventionRequestCommand command) {
         this.referenceCode = ReferenceCode.generate();
         this.growerId = command.growerId();
+        this.plotId = command.plotId();
         this.specialistId = command.specialistId();
         this.alertId = command.alertId();
         this.reason = command.reason();
@@ -75,5 +78,24 @@ public class InterventionRequest extends AbstractDomainAggregateRoot<Interventio
         this.status = InterventionStatus.DECLINED;
         this.declineReason = reason;
         this.updatedAt = new Date();
+    }
+
+    /**
+     * Restores the persisted lifecycle state of the request. Used by infrastructure
+     * assemblers when reconstructing the aggregate from storage, so the real status
+     * and audit timestamps are preserved instead of being reset to a fresh request.
+     *
+     * @param status        the persisted status
+     * @param declineReason the persisted decline reason (nullable)
+     * @param createdAt     the persisted creation timestamp
+     * @param updatedAt     the persisted last-update timestamp
+     * @return this aggregate, for chaining
+     */
+    public InterventionRequest restoreState(InterventionStatus status, String declineReason, Date createdAt, Date updatedAt) {
+        this.status = status;
+        this.declineReason = declineReason;
+        this.createdAt = createdAt;
+        this.updatedAt = updatedAt;
+        return this;
     }
 }

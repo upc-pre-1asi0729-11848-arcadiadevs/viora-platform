@@ -8,6 +8,7 @@ public class CreateInterventionRequestCommandFromResourceAssembler {
     public static CreateInterventionRequestCommand toCommandFromResource(CreateInterventionRequestResource resource) {
         return new CreateInterventionRequestCommand(
                 resource.growerId(),
+                resource.plotId(),
                 resource.specialistId(),
                 resource.alertId(),
                 resource.reason(),

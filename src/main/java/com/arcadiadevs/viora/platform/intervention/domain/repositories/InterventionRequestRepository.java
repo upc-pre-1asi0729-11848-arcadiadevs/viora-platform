@@ -18,5 +18,7 @@ public interface InterventionRequestRepository {
 
     List<InterventionRequest> findByGrowerId(Long growerId);
 
+    List<InterventionRequest> findByGrowerIdAndPlotId(Long growerId, Long plotId);
+
     List<InterventionRequest> findBySpecialistIdAndStatus(Long specialistId, InterventionStatus status);
 }
