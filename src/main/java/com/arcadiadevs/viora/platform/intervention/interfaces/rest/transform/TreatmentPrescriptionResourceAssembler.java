@@ -38,9 +38,9 @@ public class TreatmentPrescriptionResourceAssembler {
         }
 
         return new TreatmentPrescriptionResource(
-                domain.getId() != null ? domain.getId().value() : null,
+                domain.getId().value(),
                 domain.getServiceProposalId().value(),
-                domain.getStatus(),
+                domain.getStatus() != null ? domain.getStatus().name() : null,
                 inspectionResource,
                 prescriptionResource
         );
