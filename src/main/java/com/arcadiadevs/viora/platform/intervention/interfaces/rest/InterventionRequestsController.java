@@ -4,6 +4,7 @@ import com.arcadiadevs.viora.platform.intervention.domain.exceptions.Interventio
 import com.arcadiadevs.viora.platform.intervention.domain.model.aggregates.InterventionRequest;
 import com.arcadiadevs.viora.platform.intervention.domain.model.commands.CreateInterventionRequestCommand;
 import com.arcadiadevs.viora.platform.intervention.domain.model.commands.DeclineInterventionRequestCommand;
+import com.arcadiadevs.viora.platform.intervention.domain.model.queries.GetGrowerInterventionRequestsQuery;
 import com.arcadiadevs.viora.platform.intervention.domain.model.queries.GetInterventionRequestByIdQuery;
 import com.arcadiadevs.viora.platform.intervention.application.commandservices.InterventionRequestCommandService;
 import com.arcadiadevs.viora.platform.intervention.application.queryservices.InterventionRequestQueryService;
@@ -18,6 +19,8 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
 
 /**
  * REST controller for Intervention Requests.
@@ -57,6 +60,26 @@ public class InterventionRequestsController {
         
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(InterventionRequestResourceFromEntityAssembler.toResourceFromEntity(request.get()));
+    }
+
+    /**
+     * Lists a grower's intervention requests, optionally scoped to a single plot.
+     * Powers the "My assistance requests" history for the selected plot.
+     *
+     * @param growerId the grower whose requests are listed
+     * @param plotId   optional plot filter; when omitted the full history is returned
+     * @return the grower's intervention requests
+     */
+    @GetMapping
+    @Operation(summary = "List a grower's intervention requests (optionally by plot)")
+    public ResponseEntity<List<InterventionRequestResource>> getGrowerInterventionRequests(
+            @RequestParam Long growerId,
+            @RequestParam(required = false) Long plotId) {
+        var query = new GetGrowerInterventionRequestsQuery(growerId, plotId);
+        var requests = queryService.handle(query).stream()
+                .map(InterventionRequestResourceFromEntityAssembler::toResourceFromEntity)
+                .toList();
+        return ResponseEntity.ok(requests);
     }
 
     /**

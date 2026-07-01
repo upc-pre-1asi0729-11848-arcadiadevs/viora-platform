@@ -5,6 +5,7 @@ package com.arcadiadevs.viora.platform.intervention.domain.model.commands;
  */
 public record CreateInterventionRequestCommand(
         Long growerId,
+        Long plotId,
         Long specialistId,
         Long alertId,
         String reason,
@@ -13,6 +14,9 @@ public record CreateInterventionRequestCommand(
     public CreateInterventionRequestCommand {
         if (growerId == null || growerId <= 0) {
             throw new IllegalArgumentException("Grower ID is required and must be positive.");
+        }
+        if (plotId == null || plotId <= 0) {
+            throw new IllegalArgumentException("Plot ID is required and must be positive.");
         }
         if (specialistId == null || specialistId <= 0) {
             throw new IllegalArgumentException("Specialist ID is required and must be positive.");

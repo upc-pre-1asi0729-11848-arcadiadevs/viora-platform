@@ -27,6 +27,9 @@ public class InterventionRequestEntity extends AuditableAbstractPersistenceEntit
     private Long growerId;
 
     @Column(nullable = false)
+    private Long plotId;
+
+    @Column(nullable = false)
     private Long specialistId;
 
     @Column(nullable = false)
