@@ -25,7 +25,7 @@ public class InterventionExecutionCommandServiceImpl implements InterventionExec
     public Optional<InterventionExecution> handle(CertifyApplicationCommand command) {
         var treatmentPrescriptionId = new TreatmentPrescriptionId(command.treatmentPrescriptionId());
         
-        if (treatmentPrescriptionRepository.findById(treatmentPrescriptionId.value()).isEmpty()) {
+        if (treatmentPrescriptionRepository.findById(treatmentPrescriptionId).isEmpty()) {
             throw new IllegalArgumentException("Treatment prescription does not exist");
         }
 
