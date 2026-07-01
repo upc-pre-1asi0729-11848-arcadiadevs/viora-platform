@@ -35,6 +35,7 @@ public class InterventionRequestEntityAssembler {
                 entity.getMessage()
         );
         domain.restoreIdentity(new InterventionRequestId(entity.getId()));
+        domain.restoreReferenceCode(entity.getReferenceCode());
         domain.restoreState(
                 entity.getStatus(),
                 entity.getDeclineReason(),
