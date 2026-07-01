@@ -74,6 +74,21 @@ public class InterventionRequest extends AbstractDomainAggregateRoot<Interventio
         return this;
     }
 
+    /**
+     * Restores the persisted reference code when reconstructing the aggregate from
+     * storage. Without this the reconstruction constructor's freshly generated code
+     * would leak out, so the code would change on every read.
+     *
+     * @param referenceCode the persisted reference code
+     * @return this aggregate, for chaining
+     */
+    public InterventionRequest restoreReferenceCode(ReferenceCode referenceCode) {
+        if (referenceCode != null) {
+            this.referenceCode = referenceCode;
+        }
+        return this;
+    }
+
     public void decline(String reason) {
         this.status = InterventionStatus.DECLINED;
         this.declineReason = reason;
