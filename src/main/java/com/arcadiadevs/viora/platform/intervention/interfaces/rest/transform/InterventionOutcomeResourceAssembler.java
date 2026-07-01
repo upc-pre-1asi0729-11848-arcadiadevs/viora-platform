@@ -4,6 +4,10 @@ import com.arcadiadevs.viora.platform.intervention.domain.model.aggregates.Inter
 import com.arcadiadevs.viora.platform.intervention.domain.model.commands.CloseInterventionCommand;
 import com.arcadiadevs.viora.platform.intervention.domain.model.commands.ReportInterventionImpactCommand;
 import com.arcadiadevs.viora.platform.intervention.domain.model.valueobjects.GracePeriod;
+import com.arcadiadevs.viora.platform.intervention.domain.model.valueobjects.HireAgain;
+import com.arcadiadevs.viora.platform.intervention.domain.model.valueobjects.ImpactLevel;
+import com.arcadiadevs.viora.platform.intervention.domain.model.valueobjects.ObservedResult;
+import com.arcadiadevs.viora.platform.intervention.domain.model.valueobjects.ServiceResult;
 import com.arcadiadevs.viora.platform.intervention.interfaces.rest.resources.CloseInterventionResource;
 import com.arcadiadevs.viora.platform.intervention.interfaces.rest.resources.InterventionOutcomeResource;
 import com.arcadiadevs.viora.platform.intervention.interfaces.rest.resources.ReportInterventionImpactResource;
