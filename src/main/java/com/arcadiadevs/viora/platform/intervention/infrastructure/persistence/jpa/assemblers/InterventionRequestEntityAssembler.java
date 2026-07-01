@@ -4,6 +4,8 @@ import com.arcadiadevs.viora.platform.intervention.domain.model.aggregates.Inter
 import com.arcadiadevs.viora.platform.intervention.domain.model.valueobjects.InterventionRequestId;
 import com.arcadiadevs.viora.platform.intervention.infrastructure.persistence.jpa.entities.InterventionRequestEntity;
 
+import java.util.Date;
+
 public class InterventionRequestEntityAssembler {
 
     public static InterventionRequestEntity toEntity(InterventionRequest domain) {
@@ -13,6 +15,7 @@ public class InterventionRequestEntityAssembler {
         }
         entity.setReferenceCode(domain.getReferenceCode());
         entity.setGrowerId(domain.getGrowerId());
+        entity.setPlotId(domain.getPlotId());
         entity.setSpecialistId(domain.getSpecialistId());
         entity.setAlertId(domain.getAlertId());
         entity.setReason(domain.getReason());
@@ -25,15 +28,19 @@ public class InterventionRequestEntityAssembler {
     public static InterventionRequest toDomain(InterventionRequestEntity entity) {
         var domain = new InterventionRequest(
                 entity.getGrowerId(),
+                entity.getPlotId(),
                 entity.getSpecialistId(),
                 entity.getAlertId(),
                 entity.getReason(),
                 entity.getMessage()
         );
         domain.restoreIdentity(new InterventionRequestId(entity.getId()));
-        if ("DECLINED".equals(entity.getStatus().name())) {
-            domain.decline(entity.getDeclineReason());
-        }
+        domain.restoreState(
+                entity.getStatus(),
+                entity.getDeclineReason(),
+                entity.getCreatedAt() != null ? Date.from(entity.getCreatedAt()) : null,
+                entity.getUpdatedAt() != null ? Date.from(entity.getUpdatedAt()) : null
+        );
         return domain;
     }
 }

@@ -41,6 +41,13 @@ public class JpaInterventionRequestRepositoryAdapter implements InterventionRequ
     }
 
     @Override
+    public List<InterventionRequest> findByGrowerIdAndPlotId(Long growerId, Long plotId) {
+        return jpaRepository.findByGrowerIdAndPlotId(growerId, plotId).stream()
+                .map(InterventionRequestEntityAssembler::toDomain)
+                .toList();
+    }
+
+    @Override
     public List<InterventionRequest> findBySpecialistIdAndStatus(Long specialistId, InterventionStatus status) {
         return jpaRepository.findBySpecialistIdAndStatus(specialistId, status).stream()
                 .map(InterventionRequestEntityAssembler::toDomain)
