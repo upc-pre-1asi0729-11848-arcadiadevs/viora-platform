@@ -1,6 +1,7 @@
 package com.arcadiadevs.viora.platform.intervention.infrastructure.persistence.jpa.assemblers;
 
 import com.arcadiadevs.viora.platform.intervention.domain.model.aggregates.ServiceProposal;
+import com.arcadiadevs.viora.platform.intervention.domain.model.valueobjects.InterventionRequestId;
 import com.arcadiadevs.viora.platform.intervention.domain.model.valueobjects.ServiceProposalId;
 import com.arcadiadevs.viora.platform.intervention.infrastructure.persistence.jpa.entities.ServiceProposalEntity;
 
@@ -11,7 +12,8 @@ public class ServiceProposalEntityAssembler {
         if (domain.getId() != null) {
             entity.setId(domain.getId().value());
         }
-        entity.setInterventionRequestId(domain.getInterventionRequestId());
+        entity.setInterventionRequestId(
+                domain.getInterventionRequestId() != null ? domain.getInterventionRequestId().value() : null);
         entity.setSpecialistId(domain.getSpecialistId());
         entity.setServiceTitle(domain.getServiceTitle());
         entity.setDurationLabel(domain.getDurationLabel());
@@ -27,7 +29,9 @@ public class ServiceProposalEntityAssembler {
 
     public static ServiceProposal toDomain(ServiceProposalEntity entity) {
         var domain = new ServiceProposal(
-                entity.getInterventionRequestId(),
+                entity.getInterventionRequestId() != null
+                        ? new InterventionRequestId(entity.getInterventionRequestId())
+                        : null,
                 entity.getSpecialistId(),
                 entity.getProposedDate(),
                 entity.getCostEstimate() != null ? entity.getCostEstimate().amount() : null,

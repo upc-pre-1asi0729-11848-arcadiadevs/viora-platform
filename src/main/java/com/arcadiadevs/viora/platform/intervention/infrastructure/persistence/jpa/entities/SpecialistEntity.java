@@ -32,7 +32,7 @@ public class SpecialistEntity extends AuditableAbstractPersistenceEntity {
     @Column(name = "distance_km", nullable = false)
     private Double distanceKm;
 
-    @ElementCollection
+    @ElementCollection(fetch = FetchType.EAGER)
     @CollectionTable(name = "specialist_tags", joinColumns = @JoinColumn(name = "specialist_id"))
     @Column(name = "tag")
     private List<String> tags;
