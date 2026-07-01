@@ -13,6 +13,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
+
 /**
  * Dynamic nutrition plan query service.
  *
@@ -35,7 +37,7 @@ public class DynamicNutritionPlanQueryService {
      * @return Success with the active plan, or Failure when the plot is invalid,
      *         not owned by the user, or no active plan exists
      */
-    @Transactional(readOnly = true)
+    @Transactional
     public Result<DynamicNutritionPlan, ApplicationError> handle(GetActiveDynamicNutritionPlanQuery query) {
         try {
             var userId = new UserId(query.userId());
@@ -64,6 +66,17 @@ public class DynamicNutritionPlanQueryService {
     ) {
         var plan = dynamicNutritionPlanRepository.findActiveByUserIdAndPlotId(userId, plotId)
                 .orElseThrow(() -> new DynamicNutritionPlanNotFoundException(rawPlotId));
+
+        // Lazily retire a stale plan whose application window elapsed before it was
+        // executed in field, so it no longer surfaces as the plot's active plan.
+        if (plan.isActive() && !plan.isCertified() && plan.isWindowExpiredOn(LocalDate.now())) {
+            plan.expire();
+            dynamicNutritionPlanRepository.save(plan);
+            return Result.failure(ApplicationError.notFound(
+                    "Dynamic_nutrition_plan",
+                    String.valueOf(rawPlotId)
+            ));
+        }
 
         return Result.success(plan);
     }
