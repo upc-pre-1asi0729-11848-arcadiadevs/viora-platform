@@ -80,6 +80,18 @@ public class InterventionRequest extends AbstractDomainAggregateRoot<Interventio
         this.updatedAt = new Date();
     }
 
+    /** Marks that the specialist has submitted a proposal for this request. */
+    public void markProposalReceived() {
+        this.status = InterventionStatus.PROPOSAL_RECEIVED;
+        this.updatedAt = new Date();
+    }
+
+    /** Marks the request as accepted once its proposal is accepted by the grower. */
+    public void accept() {
+        this.status = InterventionStatus.ACCEPTED;
+        this.updatedAt = new Date();
+    }
+
     /**
      * Restores the persisted lifecycle state of the request. Used by infrastructure
      * assemblers when reconstructing the aggregate from storage, so the real status

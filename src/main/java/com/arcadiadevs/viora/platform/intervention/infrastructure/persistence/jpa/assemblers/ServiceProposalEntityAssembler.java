@@ -13,6 +13,9 @@ public class ServiceProposalEntityAssembler {
         }
         entity.setInterventionRequestId(domain.getInterventionRequestId());
         entity.setSpecialistId(domain.getSpecialistId());
+        entity.setServiceTitle(domain.getServiceTitle());
+        entity.setDurationLabel(domain.getDurationLabel());
+        entity.setScope(domain.getScope() != null ? java.util.List.copyOf(domain.getScope()) : java.util.List.of());
         entity.setProposedDate(domain.getProposedDate());
         if (domain.getCostEstimate() != null) {
             entity.setCostEstimate(domain.getCostEstimate());
@@ -33,6 +36,11 @@ public class ServiceProposalEntityAssembler {
         );
         domain.restoreIdentity(new ServiceProposalId(entity.getId()));
         domain.restoreStatus(entity.getStatus());
+        domain.restoreDetails(
+                entity.getServiceTitle(),
+                entity.getDurationLabel(),
+                entity.getScope() != null ? java.util.List.copyOf(entity.getScope()) : java.util.List.of()
+        );
         return domain;
     }
 }

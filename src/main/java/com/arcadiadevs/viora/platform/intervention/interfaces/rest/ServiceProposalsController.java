@@ -1,6 +1,7 @@
 package com.arcadiadevs.viora.platform.intervention.interfaces.rest;
 
 import com.arcadiadevs.viora.platform.intervention.application.commandservices.ServiceProposalCommandService;
+import com.arcadiadevs.viora.platform.intervention.application.queryservices.ServiceProposalQueryService;
 import com.arcadiadevs.viora.platform.intervention.domain.model.aggregates.ServiceProposal;
 import com.arcadiadevs.viora.platform.intervention.domain.model.commands.AcceptServiceProposalCommand;
 import com.arcadiadevs.viora.platform.intervention.domain.model.commands.RejectServiceProposalCommand;
@@ -15,6 +16,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
 import java.util.Optional;
 
 @RestController
@@ -23,9 +25,23 @@ import java.util.Optional;
 public class ServiceProposalsController {
 
     private final ServiceProposalCommandService commandService;
+    private final ServiceProposalQueryService queryService;
 
-    public ServiceProposalsController(ServiceProposalCommandService commandService) {
+    public ServiceProposalsController(
+            ServiceProposalCommandService commandService,
+            ServiceProposalQueryService queryService) {
         this.commandService = commandService;
+        this.queryService = queryService;
+    }
+
+    @GetMapping(params = "requestId")
+    @Operation(summary = "List the proposals submitted for an intervention request")
+    public ResponseEntity<List<ServiceProposalResource>> getProposalsByRequest(
+            @RequestParam Long requestId) {
+        var proposals = queryService.findByInterventionRequestId(requestId).stream()
+                .map(ServiceProposalResourceFromEntityAssembler::toResourceFromEntity)
+                .toList();
+        return ResponseEntity.ok(proposals);
     }
 
     @PostMapping

@@ -3,17 +3,16 @@ package com.arcadiadevs.viora.platform.intervention.interfaces.rest.resources;
 import java.util.List;
 
 /**
- * Resource representing a specialist candidate for an intervention.
+ * Public specialist profile (safe to show before a proposal is accepted).
  */
-public record SpecialistCandidateResource(
+public record SpecialistProfileResource(
         Long id,
-        String name,
+        String fullName,
         String role,
         Double successRate,
         Integer caseCount,
         Double distanceKm,
         List<String> tags,
-        String availability,
-        Boolean available
+        String availability
 ) {
 }
