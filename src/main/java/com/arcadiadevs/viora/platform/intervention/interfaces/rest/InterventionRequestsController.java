@@ -4,9 +4,11 @@ import com.arcadiadevs.viora.platform.intervention.domain.exceptions.Interventio
 import com.arcadiadevs.viora.platform.intervention.domain.model.aggregates.InterventionRequest;
 import com.arcadiadevs.viora.platform.intervention.domain.model.commands.CreateInterventionRequestCommand;
 import com.arcadiadevs.viora.platform.intervention.domain.model.commands.DeclineInterventionRequestCommand;
+import com.arcadiadevs.viora.platform.intervention.domain.model.commands.SubmitServiceProposalCommand;
 import com.arcadiadevs.viora.platform.intervention.domain.model.queries.GetGrowerInterventionRequestsQuery;
 import com.arcadiadevs.viora.platform.intervention.domain.model.queries.GetInterventionRequestByIdQuery;
 import com.arcadiadevs.viora.platform.intervention.application.commandservices.InterventionRequestCommandService;
+import com.arcadiadevs.viora.platform.intervention.application.commandservices.ServiceProposalCommandService;
 import com.arcadiadevs.viora.platform.intervention.application.queryservices.InterventionRequestQueryService;
 import com.arcadiadevs.viora.platform.intervention.interfaces.rest.resources.CreateInterventionRequestResource;
 import com.arcadiadevs.viora.platform.intervention.interfaces.rest.resources.DeclineInterventionRequestResource;
@@ -20,6 +22,9 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
+import java.util.Date;
 import java.util.List;
 
 /**
@@ -32,12 +37,15 @@ public class InterventionRequestsController {
 
     private final InterventionRequestCommandService commandService;
     private final InterventionRequestQueryService queryService;
+    private final ServiceProposalCommandService serviceProposalCommandService;
 
     public InterventionRequestsController(
             InterventionRequestCommandService commandService,
-            InterventionRequestQueryService queryService) {
+            InterventionRequestQueryService queryService,
+            ServiceProposalCommandService serviceProposalCommandService) {
         this.commandService = commandService;
         this.queryService = queryService;
+        this.serviceProposalCommandService = serviceProposalCommandService;
     }
 
     /**
@@ -120,7 +128,50 @@ public class InterventionRequestsController {
         if (request.isEmpty()) {
             throw new InterventionRequestNotFoundException(id);
         }
-        
+
         return ResponseEntity.ok(InterventionRequestResourceFromEntityAssembler.toResourceFromEntity(request.get()));
+    }
+
+    /**
+     * Simulates the specialist responding to a request: submits a service proposal
+     * on their behalf, which moves the request to PROPOSAL_RECEIVED. Exists because
+     * there is no specialist-facing application yet; it lets the full case flow be
+     * exercised end-to-end.
+     *
+     * @param id the intervention request to respond to
+     * @return the generated proposal's linked request, refreshed
+     */
+    @PostMapping("/{id}/simulate-specialist-response")
+    @Operation(summary = "Simulate a specialist submitting a proposal for the request")
+    public ResponseEntity<InterventionRequestResource> simulateSpecialistResponse(@PathVariable Long id) {
+        var request = queryService.handle(new GetInterventionRequestByIdQuery(id));
+        if (request.isEmpty()) {
+            throw new InterventionRequestNotFoundException(id);
+        }
+
+        var specialistId = request.get().getSpecialistId();
+        var command = new SubmitServiceProposalCommand(
+                id,
+                specialistId,
+                "Field inspection and phytosanitary evaluation",
+                "2-3 hours",
+                List.of(
+                        "Inspect affected zones in the plot",
+                        "Validate symptom report in field",
+                        "Review low-vigor areas",
+                        "Recommend next technical action"
+                ),
+                Date.from(Instant.now().plus(3, ChronoUnit.DAYS)),
+                280.0,
+                "PEN",
+                "The initial visit will focus on confirming the probable biological threat "
+                        + "and defining whether a technical prescription is required."
+        );
+
+        serviceProposalCommandService.handle(command);
+
+        var refreshed = queryService.handle(new GetInterventionRequestByIdQuery(id));
+        return ResponseEntity.ok(
+                InterventionRequestResourceFromEntityAssembler.toResourceFromEntity(refreshed.orElseThrow()));
     }
 }

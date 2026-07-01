@@ -9,6 +9,7 @@ import com.arcadiadevs.viora.platform.shared.domain.model.aggregates.AbstractDom
 import lombok.Getter;
 
 import java.util.Date;
+import java.util.List;
 
 /**
  * Represents a service proposal in the domain.
@@ -20,6 +21,9 @@ public class ServiceProposal extends AbstractDomainAggregateRoot<ServiceProposal
     private ServiceProposalId id;
     private InterventionRequestId interventionRequestId;
     private Long specialistId;
+    private String serviceTitle;
+    private String durationLabel;
+    private List<String> scope;
     private Date proposedDate;
     private CostEstimate costEstimate;
     private String proposalDetails;
@@ -39,6 +43,9 @@ public class ServiceProposal extends AbstractDomainAggregateRoot<ServiceProposal
     public ServiceProposal(SubmitServiceProposalCommand command) {
         this.interventionRequestId = new InterventionRequestId(command.interventionRequestId());
         this.specialistId = command.specialistId();
+        this.serviceTitle = command.serviceTitle();
+        this.durationLabel = command.durationLabel();
+        this.scope = command.scope();
         this.proposedDate = command.proposedDate();
         this.costEstimate = new CostEstimate(command.amount(), command.currency());
         this.proposalDetails = command.proposalDetails();
@@ -70,6 +77,13 @@ public class ServiceProposal extends AbstractDomainAggregateRoot<ServiceProposal
 
     public void restoreStatus(ServiceProposalStatus status) {
         this.status = status;
+    }
+
+    /** Restores the structured proposal content when rebuilding from storage. */
+    public void restoreDetails(String serviceTitle, String durationLabel, List<String> scope) {
+        this.serviceTitle = serviceTitle;
+        this.durationLabel = durationLabel;
+        this.scope = scope;
     }
 
     /**
