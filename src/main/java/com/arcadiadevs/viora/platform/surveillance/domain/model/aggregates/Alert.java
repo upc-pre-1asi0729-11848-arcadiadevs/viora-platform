@@ -137,6 +137,20 @@ public class Alert extends AbstractDomainAggregateRoot<Alert> {
         return this;
     }
 
+    /**
+     * Resolves the alert: the threat was addressed, whether by the producer directly
+     * or through a closed technical intervention. Resolved alerts drop out of the
+     * active panel.
+     */
+    public Alert resolve() {
+        this.status = AlertStatus.RESOLVED;
+        addTimelineRecord(
+                "Info",
+                "Alert resolved",
+                "The threat was addressed and the alert was resolved.");
+        return this;
+    }
+
     public Alert markAsReviewed() {
         if (this.status == AlertStatus.UNDER_REVIEW || this.status == AlertStatus.RESOLVED || this.status == AlertStatus.DISMISSED) {
             throw new AlertAlreadyReviewedException(this.id.value());
