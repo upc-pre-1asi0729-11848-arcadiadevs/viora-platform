@@ -8,6 +8,10 @@ import com.arcadiadevs.viora.platform.surveillance.interfaces.rest.transform.Ale
 import com.arcadiadevs.viora.platform.surveillance.interfaces.rest.resources.AlertTimelineRecordResource;
 import com.arcadiadevs.viora.platform.surveillance.application.commandservices.AlertCommandService;
 import com.arcadiadevs.viora.platform.surveillance.domain.model.commands.MarkAlertAsReviewedCommand;
+import com.arcadiadevs.viora.platform.surveillance.domain.model.commands.ResolveAlertCommand;
+import com.arcadiadevs.viora.platform.surveillance.domain.model.commands.DismissAlertCommand;
+import com.arcadiadevs.viora.platform.shared.application.result.ApplicationError;
+import com.arcadiadevs.viora.platform.shared.application.result.Result;
 import com.arcadiadevs.viora.platform.surveillance.interfaces.rest.resources.UpdateAlertResource;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -128,26 +132,27 @@ public class AlertsController {
             
             @RequestBody UpdateAlertResource resource
     ) {
-        // Evaluate the requested state change
-        if ("UNDER_REVIEW".equalsIgnoreCase(resource.status())) {
-            var command = new MarkAlertAsReviewedCommand(alertId);
-            var result = alertCommandService.handle(command);
+        // Evaluate the requested state change.
+        var status = resource.status() != null ? resource.status().trim().toUpperCase() : "";
+        return switch (status) {
+            case "UNDER_REVIEW" -> respond(alertCommandService.handle(new MarkAlertAsReviewedCommand(alertId)));
+            case "RESOLVED" -> respond(alertCommandService.handle(new ResolveAlertCommand(alertId)));
+            case "DISMISSED" -> respond(alertCommandService.handle(
+                    new DismissAlertCommand(alertId, "Dismissed by the producer.")));
+            // Any other status is not a supported transition on this endpoint.
+            default -> ResponseEntity.badRequest().build();
+        };
+    }
 
-            if (result.isFailure()) {
-                if (result.failure().get().message().contains("not found")) {
-                    return ResponseEntity.notFound().build();
-                }
-                return ResponseEntity.badRequest().build();
+    /** Maps a command result to the updated alert resource (or 404/400 on failure). */
+    private ResponseEntity<AlertResource> respond(Result<Long, ApplicationError> result) {
+        if (result.isFailure()) {
+            if (result.failure().get().message().contains("not found")) {
+                return ResponseEntity.notFound().build();
             }
-
-            var query = new GetAlertByIdQuery(result.success().get());
-            var alert = alertQueryService.handle(query);
-
-            var responseResource = AlertResourceFromAggregateAssembler.toResourceFromAggregate(alert.get());
-            return ResponseEntity.ok(responseResource);
+            return ResponseEntity.badRequest().build();
         }
-
-        // Return bad request if the status is not supported for updating
-        return ResponseEntity.badRequest().build();
+        var alert = alertQueryService.handle(new GetAlertByIdQuery(result.success().get()));
+        return ResponseEntity.ok(AlertResourceFromAggregateAssembler.toResourceFromAggregate(alert.get()));
     }
 }

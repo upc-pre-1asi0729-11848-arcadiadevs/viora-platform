@@ -8,6 +8,8 @@ import com.arcadiadevs.viora.platform.surveillance.domain.model.commands.Confirm
 import com.arcadiadevs.viora.platform.surveillance.domain.model.commands.CreateAlertCommand;
 import com.arcadiadevs.viora.platform.surveillance.domain.model.commands.DismissReportAlertCommand;
 import com.arcadiadevs.viora.platform.surveillance.domain.model.commands.MarkAlertAsReviewedCommand;
+import com.arcadiadevs.viora.platform.surveillance.domain.model.commands.ResolveAlertCommand;
+import com.arcadiadevs.viora.platform.surveillance.domain.model.commands.DismissAlertCommand;
 import com.arcadiadevs.viora.platform.surveillance.domain.exceptions.AlertAlreadyReviewedException;
 import com.arcadiadevs.viora.platform.surveillance.interfaces.events.AlertReviewedIntegrationEvent;
 import com.arcadiadevs.viora.platform.surveillance.domain.model.valueobjects.PlotId;
@@ -139,6 +141,45 @@ public class AlertCommandService {
             return Result.success(savedAlert.getId().value());
         } catch (Exception e) {
             log.error("Failed to dismiss report alert", e);
+            return Result.failure(new ApplicationError("Failed to dismiss alert: ", e.getMessage()));
+        }
+    }
+
+    /**
+     * Resolves an alert directly (producer self-service or triggered by a closed
+     * intervention). Idempotent-friendly: moves the alert to RESOLVED.
+     */
+    public Result<Long, ApplicationError> handle(ResolveAlertCommand command) {
+        log.info("Handling ResolveAlertCommand for Alert ID: {}", command.alertId());
+        try {
+            var alertOptional = alertRepository.findById(command.alertId());
+            if (alertOptional.isEmpty()) {
+                return Result.failure(ApplicationError.notFound("alert", command.alertId().toString()));
+            }
+            var alert = alertOptional.get();
+            alert.resolve();
+            var savedAlert = alertRepository.save(alert);
+            return Result.success(savedAlert.getId().value());
+        } catch (Exception e) {
+            log.error("Failed to resolve alert", e);
+            return Result.failure(new ApplicationError("Failed to resolve alert: ", e.getMessage()));
+        }
+    }
+
+    /** Dismisses an alert directly by its id (producer ruled it out as a false alarm). */
+    public Result<Long, ApplicationError> handle(DismissAlertCommand command) {
+        log.info("Handling DismissAlertCommand for Alert ID: {}", command.alertId());
+        try {
+            var alertOptional = alertRepository.findById(command.alertId());
+            if (alertOptional.isEmpty()) {
+                return Result.failure(ApplicationError.notFound("alert", command.alertId().toString()));
+            }
+            var alert = alertOptional.get();
+            alert.dismiss(command.reason());
+            var savedAlert = alertRepository.save(alert);
+            return Result.success(savedAlert.getId().value());
+        } catch (Exception e) {
+            log.error("Failed to dismiss alert", e);
             return Result.failure(new ApplicationError("Failed to dismiss alert: ", e.getMessage()));
         }
     }
