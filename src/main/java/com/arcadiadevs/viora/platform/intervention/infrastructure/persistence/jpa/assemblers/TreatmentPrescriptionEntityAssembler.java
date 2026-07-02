@@ -12,7 +12,7 @@ public class TreatmentPrescriptionEntityAssembler {
             return null;
         }
 
-        var domain = new TreatmentPrescription(entity.getServiceProposalId().value());
+        var domain = new TreatmentPrescription(entity.getServiceProposalId());
         domain.restoreIdentity(new TreatmentPrescriptionId(entity.getId()));
         domain.restoreStatus(entity.getStatus());
 
@@ -53,7 +53,8 @@ public class TreatmentPrescriptionEntityAssembler {
         if (domain.getId() != null) {
             entity.setId(domain.getId().value());
         }
-        entity.setServiceProposalId(domain.getServiceProposalId());
+        entity.setServiceProposalId(
+                domain.getServiceProposalId() != null ? domain.getServiceProposalId().value() : null);
         entity.setStatus(domain.getStatus());
 
         if (domain.getFieldInspectionRecord() != null) {
