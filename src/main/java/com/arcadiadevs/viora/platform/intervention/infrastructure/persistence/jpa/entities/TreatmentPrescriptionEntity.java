@@ -60,13 +60,13 @@ public class TreatmentPrescriptionEntity extends AuditableAbstractPersistenceEnt
     @Column(name = "agronomist_recommendations", columnDefinition = "TEXT")
     private String agronomistRecommendations;
 
-    @ElementCollection
+    @ElementCollection(fetch = FetchType.EAGER)
     @CollectionTable(name = "treatment_prescription_ppe", joinColumns = @JoinColumn(name = "treatment_prescription_id"))
     @Enumerated(EnumType.STRING)
     @Column(name = "ppe")
     private List<PersonalProtectiveEquipment> requiredPPE;
 
-    @ElementCollection
+    @ElementCollection(fetch = FetchType.EAGER)
     @CollectionTable(name = "treatment_prescription_products", joinColumns = @JoinColumn(name = "treatment_prescription_id"))
     private List<PrescribedProductItem> products;
 }
