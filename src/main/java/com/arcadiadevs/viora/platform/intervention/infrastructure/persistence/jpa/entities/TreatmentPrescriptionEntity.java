@@ -21,7 +21,7 @@ import java.util.List;
 public class TreatmentPrescriptionEntity extends AuditableAbstractPersistenceEntity {
 
     @Column(name = "service_proposal_id", nullable = false)
-    private ServiceProposalId serviceProposalId;
+    private Long serviceProposalId;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false)
